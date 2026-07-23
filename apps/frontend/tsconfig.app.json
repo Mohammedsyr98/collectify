@@ -1,0 +1,7 @@
+{
+  "extends": "@collectify/typescript-config/react.json",
+  "compilerOptions": {
+    "baseUrl": "."
+  },
+  "include": ["src"]
+}
