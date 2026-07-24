@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import 'dotenv/config';
 import 'reflect-metadata';
 
 import { AppModule } from './app.module';
@@ -18,6 +19,7 @@ function getFrontendOrigins(): string[] {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableShutdownHooks();
   app.setGlobalPrefix('api');
   app.enableCors({
     credentials: true,
