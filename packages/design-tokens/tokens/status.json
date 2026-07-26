@@ -1,0 +1,24 @@
+{
+  "status": {
+    "paid": {
+      "background": { "value": "{color.green.50}", "type": "color" },
+      "foreground": { "value": "{color.green.700}", "type": "color" },
+      "border": { "value": "{color.green.500}", "type": "color" }
+    },
+    "partial": {
+      "background": { "value": "{color.blue.50}", "type": "color" },
+      "foreground": { "value": "{color.blue.700}", "type": "color" },
+      "border": { "value": "{color.blue.500}", "type": "color" }
+    },
+    "due": {
+      "background": { "value": "{color.amber.50}", "type": "color" },
+      "foreground": { "value": "{color.amber.700}", "type": "color" },
+      "border": { "value": "{color.amber.400}", "type": "color" }
+    },
+    "overdue": {
+      "background": { "value": "{color.red.50}", "type": "color" },
+      "foreground": { "value": "{color.red.700}", "type": "color" },
+      "border": { "value": "{color.red.500}", "type": "color" }
+    }
+  }
+}

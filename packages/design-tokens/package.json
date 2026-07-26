@@ -1,0 +1,28 @@
+{
+  "name": "@collectify/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/js/tokens.js",
+  "types": "./dist/js/tokens.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/js/tokens.d.ts",
+      "import": "./dist/js/tokens.js"
+    },
+    "./css": "./dist/css/variables.css",
+    "./tailwind.css": "./dist/css/tailwind.css",
+    "./tokens.json": "./dist/json/tokens.json"
+  },
+  "scripts": {
+    "build": "style-dictionary build --config style-dictionary.config.mjs",
+    "lint": "eslint .",
+    "typecheck": "pnpm run build",
+    "test": "pnpm run build && node --test contract.test.mjs"
+  },
+  "devDependencies": {
+    "@collectify/eslint-config": "workspace:*",
+    "eslint": "^9.32.0",
+    "style-dictionary": "^5.5.0"
+  }
+}
