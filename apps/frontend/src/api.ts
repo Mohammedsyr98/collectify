@@ -1,4 +1,4 @@
-import type { HealthResponse } from '@collectify/contracts';
+import type { HealthResponse, SessionResponse } from '@collectify/contracts';
 
 const DEFAULT_BACKEND_URL = 'http://localhost:3000/api';
 
@@ -14,4 +14,16 @@ export async function getHealth(): Promise<HealthResponse> {
   }
 
   return response.json() as Promise<HealthResponse>;
+}
+
+export async function getSession(): Promise<SessionResponse> {
+  const response = await fetch(`${getBackendUrl()}/session`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Session probe failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<SessionResponse>;
 }

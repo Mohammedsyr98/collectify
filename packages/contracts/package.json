@@ -15,12 +15,16 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsc --noEmit -p tsconfig.json"
+    "test": "vitest run && tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@collectify/eslint-config": "workspace:*",
     "@collectify/typescript-config": "workspace:*",
     "eslint": "^9.32.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

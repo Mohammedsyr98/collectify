@@ -1,94 +1,94 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import type { HealthResponse } from '@collectify/contracts';
-
-import { getBackendUrl, getHealth } from './api';
-
-function formatUptime(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
+import { getBackendUrl, getSession } from './api';
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const sessionQuery = useQuery({
+    queryKey: ['session'],
+    queryFn: getSession,
+  });
 
-  const loadHealth = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  if (sessionQuery.isPending) {
+    return (
+      <main className="app-shell">
+        <section className="auth-panel" aria-labelledby="app-title">
+          <div>
+            <p className="eyebrow">Collectify</p>
+            <h1 id="app-title">Checking session</h1>
+            <p className="lede">Looking for an active owner session.</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
-    try {
-      const result = await getHealth();
-      setHealth(result);
-    } catch (caughtError) {
-      setHealth(null);
-      setError(caughtError instanceof Error ? caughtError.message : 'Unable to reach backend');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  if (sessionQuery.isError) {
+    return (
+      <main className="app-shell">
+        <section className="auth-panel" aria-labelledby="app-title">
+          <div>
+            <p className="eyebrow">Collectify</p>
+            <h1 id="app-title">Session unavailable</h1>
+            <p className="lede">Unable to complete the owner session probe.</p>
+          </div>
 
-  useEffect(() => {
-    void loadHealth();
-  }, [loadHealth]);
+          <div className="auth-card" aria-live="polite">
+            <div className="auth-card__header">
+              <span className="status-dot is-error" />
+              <span>Probe failed</span>
+            </div>
+            <p className="error-message">
+              {sessionQuery.error instanceof Error
+                ? sessionQuery.error.message
+                : 'Unable to reach backend'}
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
-  const statusText = error
-    ? 'Backend unavailable'
-    : health
-      ? 'Backend connected'
-      : 'Checking backend';
+  const session = sessionQuery.data;
+
+  if (session.authenticated) {
+    return (
+      <main className="app-shell">
+        <section className="auth-panel" aria-labelledby="app-title">
+          <div>
+            <p className="eyebrow">Collectify</p>
+            <h1 id="app-title">Owner session active</h1>
+            <p className="lede">Protected Collectify workspace</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="app-shell">
-      <section className="status-panel" aria-labelledby="app-title">
+      <section className="auth-panel" aria-labelledby="app-title">
         <div>
           <p className="eyebrow">Collectify</p>
-          <h1 id="app-title">Frontend</h1>
-          <p className="lede">
-            React is running, and this screen checks the NestJS backend health endpoint.
-          </p>
+          <h1 id="app-title">Signed out</h1>
+          <p className="lede">No owner session is active.</p>
         </div>
 
-        <div className="health-card" aria-live="polite">
-          <div className="health-card__header">
-            <span
-              className={`status-dot ${error ? 'is-error' : health ? 'is-ok' : 'is-loading'}`}
-            />
-            <span>{statusText}</span>
+        <div className="auth-card" aria-live="polite">
+          <div className="auth-card__header">
+            <span className="status-dot is-ok" />
+            <span>Session probe complete</span>
           </div>
 
           <dl>
             <div>
-              <dt>Service</dt>
-              <dd>{health?.service ?? 'backend'}</dd>
+              <dt>Authenticated</dt>
+              <dd>false</dd>
             </div>
             <div>
               <dt>Endpoint</dt>
-              <dd>{getBackendUrl()}/health</dd>
-            </div>
-            <div>
-              <dt>Uptime</dt>
-              <dd>
-                {health
-                  ? formatUptime(health.uptimeSeconds)
-                  : isLoading
-                    ? 'Checking'
-                    : 'Unavailable'}
-              </dd>
+              <dd>{getBackendUrl()}/session</dd>
             </div>
           </dl>
-
-          {error ? <p className="error-message">{error}</p> : null}
-
-          <button type="button" onClick={loadHealth} disabled={isLoading}>
-            {isLoading ? 'Checking...' : 'Refresh'}
-          </button>
         </div>
       </section>
     </main>
