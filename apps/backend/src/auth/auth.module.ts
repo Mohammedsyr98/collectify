@@ -1,26 +1,21 @@
 import { Module } from '@nestjs/common';
+import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 
 import { DatabaseModule } from '../database/database.module';
-import { AUTH_SESSION_READER } from '../session/auth-session-reader.contract';
-import {
-  BetterAuthRuntimeProvider,
-  DefaultBetterAuthRuntimeProvider,
-} from './better-auth-runtime.provider';
-import { BetterAuthSessionReader } from './better-auth-session.reader';
+import { DatabaseService } from '../database/database.service';
+import { createCollectifyBetterAuth } from './better-auth';
 
 @Module({
-  imports: [DatabaseModule],
-  providers: [
-    {
-      provide: BetterAuthRuntimeProvider,
-      useClass: DefaultBetterAuthRuntimeProvider,
-    },
-    BetterAuthSessionReader,
-    {
-      provide: AUTH_SESSION_READER,
-      useExisting: BetterAuthSessionReader,
-    },
+  imports: [
+    BetterAuthModule.forRootAsync({
+      imports: [DatabaseModule],
+      inject: [DatabaseService],
+      useFactory: (databaseService: DatabaseService) => ({
+        auth: createCollectifyBetterAuth(databaseService.db),
+      }),
+      disableGlobalAuthGuard: true,
+    }),
   ],
-  exports: [AUTH_SESSION_READER],
+  exports: [BetterAuthModule],
 })
 export class AuthModule {}

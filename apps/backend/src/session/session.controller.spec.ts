@@ -1,12 +1,23 @@
 import type { INestApplication } from '@nestjs/common';
+import { AuthService } from '@thallesp/nestjs-better-auth';
 import { Test } from '@nestjs/testing';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { CollectifyBetterAuth } from '../auth/better-auth';
 import { HealthController } from '../health.controller';
-import { AUTH_SESSION_READER } from './auth-session-reader.contract';
 import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
+
+interface GetSessionContext {
+  headers: Headers;
+  returnHeaders: true;
+}
+
+interface GetSessionResult {
+  response: null;
+  headers: Headers;
+}
 
 describe('SessionController', () => {
   let app: INestApplication | null = null;
@@ -39,13 +50,11 @@ describe('SessionController', () => {
       providers: [
         SessionService,
         {
-          provide: AUTH_SESSION_READER,
-          useValue: {
-            getSession: async () => ({
-              session: null,
-              responseHeaders: authResponseHeaders,
-            }),
-          },
+          provide: AuthService,
+          useValue: createAuthService(async () => ({
+            response: null,
+            headers: authResponseHeaders,
+          })),
         },
       ],
     }).compile();
@@ -84,4 +93,14 @@ function getSetCookie(headers: Headers): string[] {
       getSetCookie(): string[];
     }
   ).getSetCookie();
+}
+
+function createAuthService(
+  getSession: (context: GetSessionContext) => Promise<GetSessionResult>,
+): AuthService<CollectifyBetterAuth> {
+  return {
+    api: {
+      getSession,
+    },
+  } as unknown as AuthService<CollectifyBetterAuth>;
 }

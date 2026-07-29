@@ -7,7 +7,9 @@ import { readRuntimeConfig } from './config/runtime-config';
 
 async function bootstrap() {
   const config = readRuntimeConfig();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
 
   app.enableShutdownHooks();
   app.setGlobalPrefix('api');
