@@ -10,6 +10,10 @@ const nestjsConfig = [
       globals: {
         ...globals.node,
       },
+      parserOptions: {
+        emitDecoratorMetadata: true,
+        experimentalDecorators: true,
+      },
     },
   },
 ];

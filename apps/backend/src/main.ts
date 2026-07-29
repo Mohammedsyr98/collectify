@@ -3,33 +3,22 @@ import 'dotenv/config';
 import 'reflect-metadata';
 
 import { AppModule } from './app.module';
-
-function getPort(): number {
-  const parsedPort = Number.parseInt(process.env.PORT ?? '3000', 10);
-  return Number.isNaN(parsedPort) ? 3000 : parsedPort;
-}
-
-function getFrontendOrigins(): string[] {
-  return (process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
+import { readRuntimeConfig } from './config/runtime-config';
 
 async function bootstrap() {
+  const config = readRuntimeConfig();
   const app = await NestFactory.create(AppModule);
 
   app.enableShutdownHooks();
   app.setGlobalPrefix('api');
   app.enableCors({
     credentials: true,
-    origin: getFrontendOrigins(),
+    origin: config.frontendOrigins,
   });
 
-  const port = getPort();
-  await app.listen(port);
+  await app.listen(config.port);
 
-  console.log(`Backend listening on http://localhost:${port}/api`);
+  console.log(`Backend listening on http://localhost:${config.port}/api`);
 }
 
 void bootstrap();

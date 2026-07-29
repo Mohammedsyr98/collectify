@@ -47,7 +47,7 @@ button:disabled {
   padding: 32px;
 }
 
-.status-panel {
+.auth-panel {
   display: grid;
   gap: 28px;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
@@ -80,7 +80,7 @@ h1 {
   max-width: 560px;
 }
 
-.health-card {
+.auth-card {
   align-self: start;
   background: var(--card);
   border: 1px solid var(--border);
@@ -91,7 +91,7 @@ h1 {
   padding: 24px;
 }
 
-.health-card__header {
+.auth-card__header {
   align-items: center;
   color: var(--card-foreground);
   display: flex;
@@ -162,11 +162,11 @@ dd {
     padding: 24px;
   }
 
-  .status-panel {
+  .auth-panel {
     grid-template-columns: 1fr;
   }
 
-  .health-card {
+  .auth-card {
     align-self: stretch;
   }
 }

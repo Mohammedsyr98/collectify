@@ -14,6 +14,7 @@
   "dependencies": {
     "@collectify/contracts": "workspace:*",
     "@collectify/design-tokens": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
