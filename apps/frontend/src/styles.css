@@ -100,6 +100,43 @@ h1 {
   gap: 10px;
 }
 
+.auth-form {
+  gap: 16px;
+}
+
+.field {
+  color: var(--card-foreground);
+  display: grid;
+  font-size: 0.92rem;
+  font-weight: 700;
+  gap: 8px;
+}
+
+input,
+select {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-scale-sm);
+  color: var(--foreground);
+  font: inherit;
+  min-height: 44px;
+  padding: 0 12px;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  outline-offset: 1px;
+}
+
+.field-error {
+  color: var(--status-overdue-foreground);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .status-dot {
   border-radius: 999px;
   display: inline-flex;

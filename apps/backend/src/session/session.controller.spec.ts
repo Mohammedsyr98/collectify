@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { CollectifyBetterAuth } from '../auth/better-auth';
+import { DatabaseService } from '../database/database.service';
 import { HealthController } from '../health.controller';
 import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
@@ -55,6 +56,12 @@ describe('SessionController', () => {
             response: null,
             headers: authResponseHeaders,
           })),
+        },
+        {
+          provide: DatabaseService,
+          useValue: {
+            db: {},
+          },
         },
       ],
     }).compile();

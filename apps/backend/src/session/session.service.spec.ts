@@ -3,6 +3,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CollectifyBetterAuth } from '../auth/better-auth';
+import type { DatabaseService } from '../database/database.service';
 import { SessionService } from './session.service';
 
 interface AuthSessionResult {
@@ -24,7 +25,7 @@ interface GetSessionResult {
 }
 
 describe('SessionService', () => {
-  it('maps an authenticated auth session and preserves response headers', async () => {
+  it('maps an authenticated auth session with owner profile and preserves response headers', async () => {
     const nodeHeaders: IncomingHttpHeaders = {
       cookie: 'better-auth.session_token=valid',
     };
@@ -47,7 +48,15 @@ describe('SessionService', () => {
         };
       },
     );
-    const service = new SessionService(createAuthService(getSession));
+    const service = new SessionService(
+      createAuthService(getSession),
+      createDatabaseService([
+        {
+          preferredLanguage: 'tr',
+          defaultCurrency: 'TRY',
+        },
+      ]),
+    );
 
     await expect(service.getCurrentSession(nodeHeaders)).resolves.toEqual({
       body: {
@@ -57,7 +66,10 @@ describe('SessionService', () => {
           email: 'owner@example.test',
           name: null,
         },
-        ownerProfile: null,
+        ownerProfile: {
+          preferredLanguage: 'tr',
+          defaultCurrency: 'TRY',
+        },
       },
       responseHeaders,
     });
@@ -72,7 +84,10 @@ describe('SessionService', () => {
   });
 
   it('returns a signed-out session when Better Auth returns no result', async () => {
-    const service = new SessionService(createAuthService(async () => null));
+    const service = new SessionService(
+      createAuthService(async () => null),
+      createDatabaseService([]),
+    );
 
     await expect(service.getCurrentSession({})).resolves.toEqual({
       body: {
@@ -93,4 +108,28 @@ function createAuthService(
       getSession,
     },
   } as unknown as AuthService<CollectifyBetterAuth>;
+}
+
+function createDatabaseService(
+  ownerProfileRows: Array<{
+    preferredLanguage: 'en' | 'tr';
+    defaultCurrency: 'TRY' | 'USD' | 'EUR';
+  }>,
+): DatabaseService {
+  const limit = vi.fn(async () => ownerProfileRows);
+  const where = vi.fn(() => ({
+    limit,
+  }));
+  const from = vi.fn(() => ({
+    where,
+  }));
+  const select = vi.fn(() => ({
+    from,
+  }));
+
+  return {
+    db: {
+      select,
+    },
+  } as unknown as DatabaseService;
 }

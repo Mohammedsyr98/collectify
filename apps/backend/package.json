@@ -35,11 +35,13 @@
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.7",
     "@nestjs/testing": "^11.1.5",
+    "@swc/core": "^1.15.46",
     "@types/node": "^24.1.0",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "1.0.0-rc.4",
     "eslint": "^9.32.0",
     "typescript": "^5.9.2",
+    "unplugin-swc": "^1.5.9",
     "vitest": "^3.2.4"
   }
 }
