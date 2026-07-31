@@ -10,6 +10,7 @@
 ## Verification Before Done
 
 - Do not mark work complete without proving the relevant behavior works.
+- Do not make confident claims about whether code, config, or dependencies are needed unless the claim has been verified with a command, test, local source inspection, or clearly labeled as an opinion.
 - Compare behavior before and after the change when that matters.
 - Ask: "Would a staff engineer approve this?"
 - Run the narrowest meaningful tests, typecheck, lint, or logs needed to demonstrate correctness.
@@ -17,7 +18,10 @@
 
 ## Demand Elegance
 
+- For non-trivial work, optimize for correctness, codebase fit, and maintainability over completion speed.
 - For non-trivial changes, pause before finalizing and ask: "Is there a simpler, cleaner, more maintainable way?"
+- Pause before introducing shared helpers, new modules, configuration changes, or dependency changes. Explain the tradeoff and why the existing local pattern is not enough.
+- Before keeping a new abstraction, apply the deletion test: if the abstraction were removed, confirm that meaningful complexity would reappear at multiple call sites.
 - If the current fix feels hacky, step back and implement the clean solution that fits the codebase.
 - Skip this ceremony for simple, obvious fixes.
 - Challenge your own work before presenting it.
@@ -62,3 +66,7 @@
 - Keep shared API and request/response types in `packages/contracts`.
 - Keep edits scoped to the task unless a broader change is necessary for correctness.
 - Run the narrowest relevant verification before finishing.
+- For non-trivial features, checkpoint after each layer or subsystem, such as contracts, backend, frontend, and verification. Summarize what changed and any design concerns before widening the work.
+- Treat unexpected diffs as user-owned work. Do not revert, overwrite, or label them as tool noise until you inspect the diff and ask the user when the origin is unclear.
+- If the user says something smells complex, stop implementation, inspect the design, and either simplify it or explain why the complexity is essential.
+- Use `grill-me` when product intent, design shape, or tradeoffs are unclear; ask one question at a time.

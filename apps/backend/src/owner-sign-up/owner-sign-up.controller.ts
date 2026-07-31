@@ -1,0 +1,44 @@
+import {
+  Body,
+  Controller,
+  Headers,
+  HttpCode,
+  Post,
+  Res,
+} from '@nestjs/common';
+import type {
+  OwnerSignUpRequest,
+  OwnerSignUpResponse,
+} from '@collectify/contracts';
+import { ownerSignUpRequestSchema } from '@collectify/contracts';
+import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
+
+import { applyBetterAuthResponseHeaders } from '../auth/better-auth-response-headers';
+import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { OwnerSignUpService } from './owner-sign-up.service';
+
+const ownerSignUpValidationPipe = new ZodValidationPipe(
+  ownerSignUpRequestSchema,
+);
+
+@Controller('owner')
+export class OwnerSignUpController {
+  constructor(private readonly ownerSignUpService: OwnerSignUpService) {}
+
+  @Post('sign-up')
+  @HttpCode(200)
+  async signUp(
+    @Body(ownerSignUpValidationPipe) body: OwnerSignUpRequest,
+    @Headers() headers: IncomingHttpHeaders,
+    @Res({ passthrough: true }) response: ServerResponse,
+  ): Promise<OwnerSignUpResponse> {
+    const signUpResult = await this.ownerSignUpService.signUpOwner(
+      body,
+      headers,
+    );
+
+    applyBetterAuthResponseHeaders(signUpResult.responseHeaders, response);
+
+    return signUpResult.body;
+  }
+}
