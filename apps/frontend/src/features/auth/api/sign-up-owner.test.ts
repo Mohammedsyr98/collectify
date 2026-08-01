@@ -1,37 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ApiError } from './api';
-import { getBackendUrl, getSession, signUpOwner } from './api';
-
-describe('session API', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('requests the current session with credentials included', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          authenticated: false,
-          user: null,
-          ownerProfile: null,
-        }),
-      }),
-    );
-
-    await expect(getSession()).resolves.toEqual({
-      authenticated: false,
-      user: null,
-      ownerProfile: null,
-    });
-
-    expect(fetch).toHaveBeenCalledWith(`${getBackendUrl()}/session`, {
-      credentials: 'include',
-    });
-  });
-});
+import { getBackendUrl } from '../../../shared/api/http';
+import { signUpOwner } from './sign-up-owner';
 
 describe('owner sign-up API', () => {
   afterEach(() => {
@@ -120,7 +90,7 @@ describe('owner sign-up API', () => {
       fieldErrors: {
         email: ['An account already exists for this email.'],
       },
-    } satisfies Partial<ApiError>);
+    });
   });
 
   it('throws an ApiError when owner sign-up returns an unexpected body', async () => {
@@ -146,6 +116,6 @@ describe('owner sign-up API', () => {
     ).rejects.toMatchObject({
       status: 500,
       message: 'Owner sign-up failed with status 500',
-    } satisfies Partial<ApiError>);
+    });
   });
 });
