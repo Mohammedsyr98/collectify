@@ -4,5 +4,11 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "src/**/*.spec.ts"]
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/**/*.spec.ts",
+    "src/**/*.integration-spec.ts",
+    "src/test-support/**"
+  ]
 }
