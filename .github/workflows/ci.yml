@@ -35,10 +35,16 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test
+      - name: Frontend tests
+        run: pnpm test:frontend
 
-      - name: Integration test
+      - name: Backend tests
+        run: pnpm test:backend
+
+      - name: Package tests
+        run: pnpm test:packages
+
+      - name: Backend integration tests
         run: pnpm test:integration
 
       - name: Build
