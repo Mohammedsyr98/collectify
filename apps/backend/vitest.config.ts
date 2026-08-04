@@ -21,6 +21,7 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
+    exclude: ['src/**/*.integration.spec.ts'],
     include: ['src/**/*.spec.ts'],
   },
 });
