@@ -23,7 +23,7 @@ export default defineConfig({
     environment: 'node',
     fileParallelism: false,
     hookTimeout: 300_000,
-    include: ['src/**/*.integration-spec.ts'],
+    include: ['src/**/*.integration.spec.ts'],
     testTimeout: 300_000,
   },
 });
