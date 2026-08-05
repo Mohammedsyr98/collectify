@@ -8,6 +8,7 @@ on:
 
 jobs:
   quality:
+    name: Quality checks
     runs-on: ubuntu-latest
 
     steps:
@@ -35,7 +36,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-  frontend-tests:
+  # React/jsdom tests for component behavior, frontend app flows, and API-client contracts.
+  frontend-ui-and-app-tests:
+    name: Frontend UI and app tests
     runs-on: ubuntu-latest
 
     steps:
@@ -57,10 +60,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Frontend tests
+      - name: Run frontend UI and app tests
         run: pnpm test:frontend
 
-  backend-tests:
+  # Fast backend specs. Real database behavior belongs in backend-real-integration-tests.
+  backend-fast-tests:
+    name: Backend fast tests
     runs-on: ubuntu-latest
 
     steps:
@@ -82,10 +87,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Backend tests
+      - name: Run backend fast tests
         run: pnpm test:backend
 
-  package-tests:
+  # Shared package behavior, including contracts and generated design-token outputs.
+  package-contract-tests:
+    name: Package contract tests
     runs-on: ubuntu-latest
 
     steps:
@@ -107,11 +114,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Package tests
+      - name: Run package contract tests
         run: pnpm test:packages
 
-  backend-integration-tests:
+  # Real backend integration tests: Nest app wiring, Testcontainers Postgres, and Better Auth paths.
+  backend-real-integration-tests:
+    name: Backend real integration tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -132,17 +142,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Backend integration tests
+      - name: Run backend real integration tests
         run: pnpm test:integration
 
   build:
+    name: Production build
     runs-on: ubuntu-latest
     needs:
       - quality
-      - frontend-tests
-      - backend-tests
-      - package-tests
-      - backend-integration-tests
+      - frontend-ui-and-app-tests
+      - backend-fast-tests
+      - package-contract-tests
+      - backend-real-integration-tests
 
     steps:
       - name: Checkout
