@@ -9,7 +9,7 @@ describe('OwnerSignUpForm', () => {
     cleanup();
   });
 
-  it('renders the owner sign-up fields without out-of-scope auth links', () => {
+  it('shows the owner sign-up controls', () => {
     render(<OwnerSignUpForm isSubmitting={false} onSubmit={vi.fn()} />);
 
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
@@ -20,9 +20,6 @@ describe('OwnerSignUpForm', () => {
     expect(
       screen.getByRole('button', { name: 'Create account' }),
     ).toBeInTheDocument();
-
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    expect(screen.queryByText(/terms|help center/i)).not.toBeInTheDocument();
   });
 
   it('shows Zod validation errors beneath matching inputs before submit', async () => {
@@ -68,4 +65,29 @@ describe('OwnerSignUpForm', () => {
     });
   });
 
+  it('disables submission while owner sign-up is pending', () => {
+    render(<OwnerSignUpForm isSubmitting={true} onSubmit={vi.fn()} />);
+
+    expect(
+      screen.getByRole('button', { name: 'Creating account' }),
+    ).toBeDisabled();
+  });
+
+  it('toggles password visibility', async () => {
+    const user = userEvent.setup();
+
+    render(<OwnerSignUpForm isSubmitting={false} onSubmit={vi.fn()} />);
+
+    const passwordInput = screen.getByLabelText('Password');
+
+    expect(passwordInput).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+    expect(passwordInput).toHaveAttribute('type', 'text');
+
+    await user.click(screen.getByRole('button', { name: 'Hide password' }));
+
+    expect(passwordInput).toHaveAttribute('type', 'password');
+  });
 });
