@@ -1,20 +1,22 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { OwnerSignInRequest, OwnerSignUpRequest } from '@collectify/contracts';
-
+import { getSetCookie } from '../test-support/http-cookies';
 import {
   startIntegrationPostgres,
   type IntegrationBackend,
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
+import { createOwnerAuthClient } from '../test-support/owner-auth-client';
 
 describe('POST /owner/sign-in', () => {
   let postgres: IntegrationPostgres | undefined;
   let backend: IntegrationBackend | undefined;
+  let ownerAuth: ReturnType<typeof createOwnerAuthClient> | undefined;
 
   beforeAll(async () => {
     postgres = await startIntegrationPostgres();
     backend = await postgres.startBackend();
+    ownerAuth = createOwnerAuthClient(backend.baseUrl);
   });
 
   beforeEach(async () => {
@@ -27,7 +29,7 @@ describe('POST /owner/sign-in', () => {
   });
 
   it('creates an authenticated owner session for existing owners', async () => {
-    const signUpResponse = await signUpOwner({
+    const signUpResponse = await ownerAuth!.signUpOwner({
       name: 'Owner',
       email: 'owner@example.com',
       password: 'password123',
@@ -36,7 +38,7 @@ describe('POST /owner/sign-in', () => {
     });
     expect(signUpResponse.status).toBe(200);
 
-    const signInResponse = await signInOwner({
+    const signInResponse = await ownerAuth!.signInOwner({
       email: '  OWNER@EXAMPLE.COM  ',
       password: 'password123',
     });
@@ -61,7 +63,7 @@ describe('POST /owner/sign-in', () => {
   });
 
   it('rejects invalid owner credentials without creating a session', async () => {
-    const signUpResponse = await signUpOwner({
+    const signUpResponse = await ownerAuth!.signUpOwner({
       name: 'Owner',
       email: 'owner@example.com',
       password: 'password123',
@@ -70,7 +72,7 @@ describe('POST /owner/sign-in', () => {
     });
     expect(signUpResponse.status).toBe(200);
 
-    const signInResponse = await signInOwner({
+    const signInResponse = await ownerAuth!.signInOwner({
       email: 'owner@example.com',
       password: 'wrong-password',
     });
@@ -88,7 +90,7 @@ describe('POST /owner/sign-in', () => {
   });
 
   it('rejects authenticated users without owner profile context', async () => {
-    const signUpResponse = await signUpOwner({
+    const signUpResponse = await ownerAuth!.signUpOwner({
       name: 'Owner',
       email: 'owner@example.com',
       password: 'password123',
@@ -102,7 +104,7 @@ describe('POST /owner/sign-in', () => {
       signUpBody.user.id,
     ]);
 
-    const signInResponse = await signInOwner({
+    const signInResponse = await ownerAuth!.signInOwner({
       email: 'owner@example.com',
       password: 'password123',
     });
@@ -114,32 +116,4 @@ describe('POST /owner/sign-in', () => {
       message: 'Owner profile setup is incomplete.',
     });
   });
-
-  async function signUpOwner(request: OwnerSignUpRequest): Promise<Response> {
-    return fetch(`${backend!.baseUrl}/owner/sign-up`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-  }
-
-  async function signInOwner(request: OwnerSignInRequest): Promise<Response> {
-    return fetch(`${backend!.baseUrl}/owner/sign-in`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-  }
 });
-
-function getSetCookie(headers: Headers): string[] {
-  return (
-    headers as Headers & {
-      getSetCookie(): string[];
-    }
-  ).getSetCookie();
-}
