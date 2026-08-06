@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   currencySchema,
+  ownerSignInErrorResponseSchema,
+  ownerSignInRequestSchema,
+  ownerSignInResponseSchema,
   ownerSignUpErrorResponseSchema,
   ownerSignUpRequestSchema,
   ownerSignUpResponseSchema,
@@ -177,6 +180,81 @@ describe('owner sign-up contracts', () => {
       fieldErrors: {
         email: ['Enter a valid email address.'],
       },
+    });
+  });
+});
+
+describe('owner sign-in contracts', () => {
+  it('accepts a valid owner sign-in request and normalizes email', () => {
+    expect(
+      ownerSignInRequestSchema.parse({
+        email: '  OWNER@EXAMPLE.COM  ',
+        password: 'password123',
+      }),
+    ).toEqual({
+      email: 'owner@example.com',
+      password: 'password123',
+    });
+  });
+
+  it('requires owner profile context on successful sign-in', () => {
+    expect(
+      ownerSignInResponseSchema.parse({
+        authenticated: true,
+        user: {
+          id: 'user_123',
+          email: 'owner@example.com',
+          name: 'Owner',
+        },
+        ownerProfile: {
+          preferredLanguage: 'tr',
+          defaultCurrency: 'TRY',
+        },
+      }),
+    ).toMatchObject({
+      authenticated: true,
+      ownerProfile: {
+        preferredLanguage: 'tr',
+        defaultCurrency: 'TRY',
+      },
+    });
+
+    expect(() =>
+      ownerSignInResponseSchema.parse({
+        authenticated: true,
+        user: {
+          id: 'user_123',
+          email: 'owner@example.com',
+          name: 'Owner',
+        },
+        ownerProfile: null,
+      }),
+    ).toThrow();
+  });
+
+  it('accepts controlled owner sign-in errors', () => {
+    expect(
+      ownerSignInErrorResponseSchema.parse({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Email or password is incorrect.',
+        fieldErrors: {
+          email: ['Email or password is incorrect.'],
+        },
+      }),
+    ).toMatchObject({
+      code: 'INVALID_CREDENTIALS',
+      fieldErrors: {
+        email: ['Email or password is incorrect.'],
+      },
+    });
+
+    expect(
+      ownerSignInErrorResponseSchema.parse({
+        code: 'OWNER_PROFILE_MISSING',
+        message: 'Owner profile setup is incomplete.',
+      }),
+    ).toMatchObject({
+      code: 'OWNER_PROFILE_MISSING',
     });
   });
 });
