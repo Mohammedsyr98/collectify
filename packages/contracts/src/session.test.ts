@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import {
   currencySchema,
+  ownerLanguageSchema,
+} from './owner-profile.js';
+import {
   ownerSignInErrorResponseSchema,
   ownerSignInRequestSchema,
   ownerSignInResponseSchema,
   ownerSignUpErrorResponseSchema,
   ownerSignUpRequestSchema,
   ownerSignUpResponseSchema,
-  ownerLanguageSchema,
+} from './owner-auth.js';
+import {
   sessionResponseSchema,
-} from './index.js';
+} from './session.js';
 
 describe('session contracts', () => {
   it('accepts a signed-out session response without user details', () => {
