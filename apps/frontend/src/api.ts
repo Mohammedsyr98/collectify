@@ -1,5 +1,6 @@
 export {
   createApiError,
+  getApiErrorDescription,
   getBackendUrl,
   isApiError,
 } from './shared/api/http';

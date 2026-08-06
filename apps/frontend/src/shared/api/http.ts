@@ -39,6 +39,25 @@ export function isApiError(error: unknown): error is ApiError {
   );
 }
 
+export function getApiErrorDescription(
+  error: unknown,
+  fallbackDescription: string,
+): string {
+  if (!isApiError(error)) {
+    return fallbackDescription;
+  }
+
+  const fieldMessages = Object.values(error.fieldErrors ?? {})
+    .flatMap((messages) => messages ?? [])
+    .filter((message) => message.length > 0);
+
+  if (fieldMessages.length > 0) {
+    return Array.from(new Set(fieldMessages)).join(' ');
+  }
+
+  return error.message || fallbackDescription;
+}
+
 export async function readJsonResponse(response: Response): Promise<unknown> {
   try {
     return await response.json();
