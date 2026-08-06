@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { CollectifyBetterAuth } from '../auth/better-auth';
 import { DatabaseService } from '../database/database.service';
 import { HealthController } from '../health.controller';
+import { getSetCookie } from '../test-support/http-cookies';
 import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
 
@@ -93,14 +94,6 @@ describe('SessionController', () => {
     expect(healthResponse.status).toBe(200);
   });
 });
-
-function getSetCookie(headers: Headers): string[] {
-  return (
-    headers as Headers & {
-      getSetCookie(): string[];
-    }
-  ).getSetCookie();
-}
 
 function createAuthService(
   getSession: (context: GetSessionContext) => Promise<GetSessionResult>,

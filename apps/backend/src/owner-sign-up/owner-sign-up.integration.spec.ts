@@ -1,20 +1,22 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { OwnerSignUpRequest } from '@collectify/contracts';
-
+import { getSetCookie } from '../test-support/http-cookies';
 import {
   startIntegrationPostgres,
   type IntegrationBackend,
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
+import { createOwnerAuthClient } from '../test-support/owner-auth-client';
 
 describe('POST /owner/sign-up', () => {
   let postgres: IntegrationPostgres | undefined;
   let backend: IntegrationBackend | undefined;
+  let ownerAuth: ReturnType<typeof createOwnerAuthClient> | undefined;
 
   beforeAll(async () => {
     postgres = await startIntegrationPostgres();
     backend = await postgres.startBackend();
+    ownerAuth = createOwnerAuthClient(backend.baseUrl);
   });
 
   beforeEach(async () => {
@@ -27,7 +29,7 @@ describe('POST /owner/sign-up', () => {
   });
 
   it('creates an authenticated owner session', async () => {
-    const response = await signUpOwner({
+    const response = await ownerAuth!.signUpOwner({
       name: 'Owner',
       email: 'owner@example.com',
       password: 'password123',
@@ -53,7 +55,7 @@ describe('POST /owner/sign-up', () => {
       },
     });
 
-    const sessionResponse = await getSession(response.headers);
+    const sessionResponse = await ownerAuth!.getSession(response.headers);
 
     expect(sessionResponse.status).toBe(200);
     await expect(sessionResponse.json()).resolves.toMatchObject({
@@ -70,7 +72,7 @@ describe('POST /owner/sign-up', () => {
   });
 
   it('normalizes owner signup input before creating the session', async () => {
-    const response = await signUpOwner({
+    const response = await ownerAuth!.signUpOwner({
       name: '  Owner  ',
       email: '  OWNER@EXAMPLE.COM  ',
       password: 'password123',
@@ -123,7 +125,7 @@ describe('POST /owner/sign-up', () => {
   });
 
   it('rejects duplicate owner email', async () => {
-    const firstResponse = await signUpOwner({
+    const firstResponse = await ownerAuth!.signUpOwner({
       name: 'Owner',
       email: 'owner@example.com',
       password: 'password123',
@@ -133,7 +135,7 @@ describe('POST /owner/sign-up', () => {
 
     expect(firstResponse.status).toBe(200);
 
-    const duplicateResponse = await signUpOwner({
+    const duplicateResponse = await ownerAuth!.signUpOwner({
       name: 'Second Owner',
       email: '  OWNER@EXAMPLE.COM  ',
       password: 'password123',
@@ -156,7 +158,7 @@ describe('POST /owner/sign-up', () => {
     await enableOwnerProfileInsertFailure();
 
     try {
-      const failedResponse = await signUpOwner({
+      const failedResponse = await ownerAuth!.signUpOwner({
         name: 'Rollback Owner',
         email: 'rollback-owner@example.com',
         password: 'password123',
@@ -174,7 +176,7 @@ describe('POST /owner/sign-up', () => {
       await disableOwnerProfileInsertFailure();
     }
 
-    const retryResponse = await signUpOwner({
+    const retryResponse = await ownerAuth!.signUpOwner({
       name: 'Rollback Owner',
       email: 'rollback-owner@example.com',
       password: 'password123',
@@ -195,24 +197,6 @@ describe('POST /owner/sign-up', () => {
       },
     });
   });
-
-  async function signUpOwner(request: OwnerSignUpRequest): Promise<Response> {
-    return fetch(`${backend!.baseUrl}/owner/sign-up`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-  }
-
-  async function getSession(signUpHeaders: Headers): Promise<Response> {
-    return fetch(`${backend!.baseUrl}/session`, {
-      headers: {
-        cookie: toCookieHeader(getSetCookie(signUpHeaders)),
-      },
-    });
-  }
 
   async function enableOwnerProfileInsertFailure(): Promise<void> {
     await postgres!.query(`
@@ -240,15 +224,3 @@ describe('POST /owner/sign-up', () => {
     await postgres!.query('DROP FUNCTION IF EXISTS fail_owner_profile_insert()');
   }
 });
-
-function getSetCookie(headers: Headers): string[] {
-  return (
-    headers as Headers & {
-      getSetCookie(): string[];
-    }
-  ).getSetCookie();
-}
-
-function toCookieHeader(setCookies: string[]): string {
-  return setCookies.map((cookie) => cookie.split(';')[0]).join('; ');
-}
