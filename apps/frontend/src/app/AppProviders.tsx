@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
+import { LocalizationProvider } from '../shared/localization';
 import { ToastProvider } from '../shared/ui/toast/ToastProvider';
 
 const defaultQueryClient = new QueryClient();
@@ -14,7 +15,9 @@ export function AppProviders({
 }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>{children}</ToastProvider>
+      <LocalizationProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </LocalizationProvider>
     </QueryClientProvider>
   );
 }

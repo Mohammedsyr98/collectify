@@ -5,16 +5,25 @@ import { FormProvider, useForm } from 'react-hook-form';
 
 import { ownerSignUpRequestSchema, type OwnerSignUpRequest } from '@collectify/contracts';
 
+import {
+  isSupportedLocale,
+  localeMetadata,
+  supportedLocales,
+  type SupportedLocale,
+  useLocalization,
+} from '../../../shared/localization';
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { FormSelect } from '../../../shared/ui/form/FormSelect';
 
-const defaultValues: OwnerSignUpRequest = {
-  name: '',
-  email: '',
-  password: '',
-  preferredLanguage: 'en',
-  defaultCurrency: 'USD',
-};
+function createDefaultValues(preferredLanguage: SupportedLocale): OwnerSignUpRequest {
+  return {
+    name: '',
+    email: '',
+    password: '',
+    preferredLanguage,
+    defaultCurrency: 'USD',
+  };
+}
 
 export function OwnerSignUpForm({
   isSubmitting,
@@ -24,8 +33,9 @@ export function OwnerSignUpForm({
   onSubmit: (request: OwnerSignUpRequest) => Promise<void> | void;
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const { locale, setLocale } = useLocalization();
   const form = useForm<OwnerSignUpRequest>({
-    defaultValues,
+    defaultValues: createDefaultValues(locale),
     resolver: zodResolver(ownerSignUpRequestSchema),
   });
   const { handleSubmit } = form;
@@ -84,10 +94,15 @@ export function OwnerSignUpForm({
             icon={<Globe2 aria-hidden="true" size={16} strokeWidth={2.2} />}
             label="Interface language"
             name="preferredLanguage"
-            options={[
-              { label: 'English', value: 'en' },
-              { label: 'Turkish', value: 'tr' },
-            ]}
+            onChange={(event) => {
+              if (isSupportedLocale(event.currentTarget.value)) {
+                setLocale(event.currentTarget.value);
+              }
+            }}
+            options={supportedLocales.map((supportedLocale) => ({
+              label: localeMetadata[supportedLocale].label,
+              value: supportedLocale,
+            }))}
           />
 
           <FormSelect

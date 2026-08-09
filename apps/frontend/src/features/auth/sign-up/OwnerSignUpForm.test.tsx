@@ -1,16 +1,44 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ComponentProps } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LocalizationProvider } from '../../../shared/localization';
 import { OwnerSignUpForm } from './OwnerSignUpForm';
 
+function renderOwnerSignUpForm({
+  isSubmitting = false,
+  onSubmit = vi.fn(),
+}: {
+  isSubmitting?: boolean;
+  onSubmit?: ComponentProps<typeof OwnerSignUpForm>['onSubmit'];
+} = {}) {
+  return render(
+    <LocalizationProvider>
+      <OwnerSignUpForm isSubmitting={isSubmitting} onSubmit={onSubmit} />
+    </LocalizationProvider>,
+  );
+}
+
+function setBrowserLanguages(languages: readonly string[]) {
+  Object.defineProperty(window.navigator, 'languages', {
+    configurable: true,
+    value: languages,
+  });
+}
+
 describe('OwnerSignUpForm', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    setBrowserLanguages(['en-US']);
+  });
+
   afterEach(() => {
     cleanup();
   });
 
   it('shows the owner sign-up controls', () => {
-    render(<OwnerSignUpForm isSubmitting={false} onSubmit={vi.fn()} />);
+    renderOwnerSignUpForm();
 
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Email address')).toBeInTheDocument();
@@ -26,7 +54,7 @@ describe('OwnerSignUpForm', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(<OwnerSignUpForm isSubmitting={false} onSubmit={onSubmit} />);
+    renderOwnerSignUpForm({ onSubmit });
 
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
@@ -47,7 +75,7 @@ describe('OwnerSignUpForm', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(<OwnerSignUpForm isSubmitting={false} onSubmit={onSubmit} />);
+    renderOwnerSignUpForm({ onSubmit });
 
     await user.type(screen.getByLabelText('Name'), '  Owner  ');
     await user.type(screen.getByLabelText('Email address'), 'OWNER@EXAMPLE.COM');
@@ -66,7 +94,7 @@ describe('OwnerSignUpForm', () => {
   });
 
   it('disables submission while owner sign-up is pending', () => {
-    render(<OwnerSignUpForm isSubmitting={true} onSubmit={vi.fn()} />);
+    renderOwnerSignUpForm({ isSubmitting: true });
 
     expect(
       screen.getByRole('button', { name: 'Creating account' }),
@@ -76,7 +104,7 @@ describe('OwnerSignUpForm', () => {
   it('toggles password visibility', async () => {
     const user = userEvent.setup();
 
-    render(<OwnerSignUpForm isSubmitting={false} onSubmit={vi.fn()} />);
+    renderOwnerSignUpForm();
 
     const passwordInput = screen.getByLabelText('Password');
 
@@ -89,5 +117,30 @@ describe('OwnerSignUpForm', () => {
     await user.click(screen.getByRole('button', { name: 'Hide password' }));
 
     expect(passwordInput).toHaveAttribute('type', 'password');
+  });
+
+  it('defaults preferred language from the active locale', () => {
+    setBrowserLanguages(['tr-TR']);
+
+    renderOwnerSignUpForm();
+
+    expect(screen.getByLabelText('Interface language')).toHaveValue('tr');
+  });
+
+  it('submits explicit language changes', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    renderOwnerSignUpForm({ onSubmit });
+
+    await user.type(screen.getByLabelText('Name'), 'Owner');
+    await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ preferredLanguage: 'tr' }),
+    );
   });
 });
