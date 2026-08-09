@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export function AuthShell({
   children,
@@ -9,6 +10,8 @@ export function AuthShell({
   subtitle: string;
   title: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-background px-7 pb-8 pt-5.5 text-foreground before:absolute before:inset-x-0 before:top-0 before:h-0.5 max-[760px]:px-4.5 max-[760px]:pb-6.5 max-[760px]:pt-4.5">
       <section
@@ -44,7 +47,7 @@ export function AuthShell({
         </div>
 
         <p className="mt-4 text-center text-[0.69rem] font-semibold text-muted-foreground">
-          Your data is protected with encrypted session cookies.
+          {t('auth.shell.secureSession')}
         </p>
       </section>
     </main>

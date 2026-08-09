@@ -1,16 +1,44 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ComponentProps } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LocalizationProvider } from '../../../shared/localization';
 import { OwnerSignInForm } from './OwnerSignInForm';
 
+function renderOwnerSignInForm({
+  isSubmitting = false,
+  onSubmit = vi.fn(),
+}: {
+  isSubmitting?: boolean;
+  onSubmit?: ComponentProps<typeof OwnerSignInForm>['onSubmit'];
+} = {}) {
+  return render(
+    <LocalizationProvider>
+      <OwnerSignInForm isSubmitting={isSubmitting} onSubmit={onSubmit} />
+    </LocalizationProvider>,
+  );
+}
+
+function setBrowserLanguages(languages: readonly string[]) {
+  Object.defineProperty(window.navigator, 'languages', {
+    configurable: true,
+    value: languages,
+  });
+}
+
 describe('OwnerSignInForm', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    setBrowserLanguages(['en-US']);
+  });
+
   afterEach(() => {
     cleanup();
   });
 
   it('shows the owner sign-in controls', () => {
-    render(<OwnerSignInForm isSubmitting={false} onSubmit={vi.fn()} />);
+    renderOwnerSignInForm();
 
     expect(screen.getByLabelText('Email address')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
@@ -23,7 +51,7 @@ describe('OwnerSignInForm', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(<OwnerSignInForm isSubmitting={false} onSubmit={onSubmit} />);
+    renderOwnerSignInForm({ onSubmit });
 
     await user.click(screen.getByRole('button', { name: 'Enter workspace' }));
 
@@ -43,7 +71,7 @@ describe('OwnerSignInForm', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(<OwnerSignInForm isSubmitting={false} onSubmit={onSubmit} />);
+    renderOwnerSignInForm({ onSubmit });
 
     await user.type(screen.getByLabelText('Email address'), 'OWNER@EXAMPLE.COM');
     await user.type(screen.getByLabelText('Password'), 'password123');
@@ -56,7 +84,7 @@ describe('OwnerSignInForm', () => {
   });
 
   it('disables submission while owner sign-in is pending', () => {
-    render(<OwnerSignInForm isSubmitting={true} onSubmit={vi.fn()} />);
+    renderOwnerSignInForm({ isSubmitting: true });
 
     expect(screen.getByRole('button', { name: 'Signing in' })).toBeDisabled();
   });
@@ -64,7 +92,7 @@ describe('OwnerSignInForm', () => {
   it('toggles password visibility', async () => {
     const user = userEvent.setup();
 
-    render(<OwnerSignInForm isSubmitting={false} onSubmit={vi.fn()} />);
+    renderOwnerSignInForm();
 
     const passwordInput = screen.getByLabelText('Password');
 
@@ -77,5 +105,18 @@ describe('OwnerSignInForm', () => {
     await user.click(screen.getByRole('button', { name: 'Hide password' }));
 
     expect(passwordInput).toHaveAttribute('type', 'password');
+  });
+
+  it('renders sign-in controls from the resolved Turkish locale without a selector', () => {
+    setBrowserLanguages(['tr-TR']);
+
+    renderOwnerSignInForm();
+
+    expect(screen.getByLabelText('E-posta adresi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Şifre')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Çalışma alanına gir' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Arayüz dili')).not.toBeInTheDocument();
   });
 });

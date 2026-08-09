@@ -80,7 +80,6 @@ describe('OwnerSignUpForm', () => {
     await user.type(screen.getByLabelText('Name'), '  Owner  ');
     await user.type(screen.getByLabelText('Email address'), 'OWNER@EXAMPLE.COM');
     await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
     await user.selectOptions(screen.getByLabelText('Default currency'), 'TRY');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
@@ -88,7 +87,7 @@ describe('OwnerSignUpForm', () => {
       name: 'Owner',
       email: 'owner@example.com',
       password: 'password123',
-      preferredLanguage: 'tr',
+      preferredLanguage: 'en',
       defaultCurrency: 'TRY',
     });
   });
@@ -124,7 +123,24 @@ describe('OwnerSignUpForm', () => {
 
     renderOwnerSignUpForm();
 
-    expect(screen.getByLabelText('Interface language')).toHaveValue('tr');
+    expect(screen.getByLabelText('Arayüz dili')).toHaveValue('tr');
+  });
+
+  it('renders sign-up controls and language options from the resolved Turkish locale', () => {
+    setBrowserLanguages(['tr-TR']);
+
+    renderOwnerSignUpForm();
+
+    expect(screen.getByLabelText('Ad')).toBeInTheDocument();
+    expect(screen.getByLabelText('E-posta adresi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Şifre')).toBeInTheDocument();
+    expect(screen.getByLabelText('Arayüz dili')).toBeInTheDocument();
+    expect(screen.getByLabelText('Varsayılan para birimi')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'İngilizce' })).toHaveValue('en');
+    expect(screen.getByRole('option', { name: 'Türkçe' })).toHaveValue('tr');
+    expect(
+      screen.getByRole('button', { name: 'Hesap oluştur' }),
+    ).toBeInTheDocument();
   });
 
   it('submits explicit language changes', async () => {
@@ -137,7 +153,7 @@ describe('OwnerSignUpForm', () => {
     await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
     await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.click(screen.getByRole('button', { name: 'Hesap oluştur' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ preferredLanguage: 'tr' }),

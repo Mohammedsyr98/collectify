@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import type { OwnerSignUpRequest } from '@collectify/contracts';
 
@@ -7,10 +8,9 @@ import { useToast } from '../../../shared/ui/toast/toastContext';
 import { signUpOwner } from '../api/sign-up-owner';
 import { sessionQueryKey } from '../session/sessionQueries';
 
-const fallbackSignUpError = 'Unable to create owner account. Try again.';
-
 export function useOwnerSignUpSubmit() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { showToast } = useToast();
 
   const signUpMutation = useMutation({
@@ -19,15 +19,18 @@ export function useOwnerSignUpSubmit() {
       queryClient.setQueryData(sessionQueryKey, session);
       showToast({
         variant: 'success',
-        title: 'Account created',
-        description: 'Your Collectify workspace is ready.',
+        title: t('toast.auth.signUp.successTitle'),
+        description: t('toast.auth.signUp.successDescription'),
       });
     },
     onError: (error) => {
       showToast({
         variant: 'error',
-        title: 'Could not create account',
-        description: getApiErrorDescription(error, fallbackSignUpError),
+        title: t('toast.auth.signUp.errorTitle'),
+        description: getApiErrorDescription(
+          error,
+          t('toast.auth.signUp.errorDescription'),
+        ),
       });
     },
   });

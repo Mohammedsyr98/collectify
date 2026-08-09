@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { AuthShell } from './components/AuthShell';
 import { OwnerSignInForm } from './sign-in/OwnerSignInForm';
@@ -10,28 +11,29 @@ type AuthMode = 'sign-in' | 'sign-up';
 
 export function AuthEntryPage() {
   const [mode, setMode] = useState<AuthMode>('sign-up');
+  const { t } = useTranslation();
   const signIn = useOwnerSignInSubmit();
   const signUp = useOwnerSignUpSubmit();
   const isSignIn = mode === 'sign-in';
 
   return (
     <AuthShell
-      title={isSignIn ? 'Sign in' : 'Create account'}
+      title={isSignIn ? t('auth.entry.signIn.title') : t('auth.entry.signUp.title')}
       subtitle={
         isSignIn
-          ? 'Use your owner credentials to enter Collectify.'
-          : 'Set up the owner profile for your Collectify workspace.'
+          ? t('auth.entry.signIn.subtitle')
+          : t('auth.entry.signUp.subtitle')
       }
     >
       <div className="mb-4 grid grid-cols-2 rounded-[5px] border border-border bg-background p-1">
         <button
-          aria-label="Show create account form"
+          aria-label={t('auth.entry.showCreateAccountForm')}
           aria-pressed={!isSignIn}
           className={authModeButtonClassName(!isSignIn)}
           onClick={() => setMode('sign-up')}
           type="button"
         >
-          Create account
+          {t('auth.entry.createAccountTab')}
         </button>
         <button
           aria-pressed={isSignIn}
@@ -39,7 +41,7 @@ export function AuthEntryPage() {
           onClick={() => setMode('sign-in')}
           type="button"
         >
-          Sign in
+          {t('auth.entry.signInTab')}
         </button>
       </div>
 
