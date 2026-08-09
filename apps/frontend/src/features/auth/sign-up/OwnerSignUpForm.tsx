@@ -2,18 +2,23 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Banknote, Eye, EyeOff, Globe2, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { ownerSignUpRequestSchema, type OwnerSignUpRequest } from '@collectify/contracts';
 
 import {
   isSupportedLocale,
-  localeMetadata,
   supportedLocales,
   type SupportedLocale,
   useLocalization,
 } from '../../../shared/localization';
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { FormSelect } from '../../../shared/ui/form/FormSelect';
+
+const localeNameTranslationKeys = {
+  en: 'locale.english',
+  tr: 'locale.turkish',
+} satisfies Record<SupportedLocale, string>;
 
 function createDefaultValues(preferredLanguage: SupportedLocale): OwnerSignUpRequest {
   return {
@@ -33,6 +38,7 @@ export function OwnerSignUpForm({
   onSubmit: (request: OwnerSignUpRequest) => Promise<void> | void;
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const { t } = useTranslation();
   const { locale, setLocale } = useLocalization();
   const form = useForm<OwnerSignUpRequest>({
     defaultValues: createDefaultValues(locale),
@@ -50,18 +56,18 @@ export function OwnerSignUpForm({
         <FormInput
           autoComplete="name"
           icon={<UserRound aria-hidden="true" size={16} strokeWidth={2.2} />}
-          label="Name"
+          label={t('auth.signUp.nameLabel')}
           name="name"
-          placeholder="Ada Lovelace"
+          placeholder={t('auth.signUp.namePlaceholder')}
           type="text"
         />
 
         <FormInput
           autoComplete="email"
           icon={<Mail aria-hidden="true" size={16} strokeWidth={2.2} />}
-          label="Email address"
+          label={t('auth.signUp.emailLabel')}
           name="email"
-          placeholder="owner@example.com"
+          placeholder={t('auth.signUp.emailPlaceholder')}
           type="email"
         />
 
@@ -69,10 +75,18 @@ export function OwnerSignUpForm({
           autoComplete="new-password"
           endAdornment={
             <button
-              aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+              aria-label={
+                isPasswordVisible
+                  ? t('auth.togglePassword.hide')
+                  : t('auth.togglePassword.show')
+              }
               className="absolute right-[5px] inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => setIsPasswordVisible((current) => !current)}
-              title={isPasswordVisible ? 'Hide password' : 'Show password'}
+              title={
+                isPasswordVisible
+                  ? t('auth.togglePassword.hide')
+                  : t('auth.togglePassword.show')
+              }
               type="button"
             >
               {isPasswordVisible ? (
@@ -83,16 +97,16 @@ export function OwnerSignUpForm({
             </button>
           }
           icon={<LockKeyhole aria-hidden="true" size={16} strokeWidth={2.2} />}
-          label="Password"
+          label={t('auth.signUp.passwordLabel')}
           name="password"
-          placeholder="At least 8 characters"
+          placeholder={t('auth.signUp.passwordPlaceholder')}
           type={isPasswordVisible ? 'text' : 'password'}
         />
 
         <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
           <FormSelect
             icon={<Globe2 aria-hidden="true" size={16} strokeWidth={2.2} />}
-            label="Interface language"
+            label={t('auth.signUp.languageLabel')}
             name="preferredLanguage"
             onChange={(event) => {
               if (isSupportedLocale(event.currentTarget.value)) {
@@ -100,14 +114,14 @@ export function OwnerSignUpForm({
               }
             }}
             options={supportedLocales.map((supportedLocale) => ({
-              label: localeMetadata[supportedLocale].label,
+              label: t(localeNameTranslationKeys[supportedLocale]),
               value: supportedLocale,
             }))}
           />
 
           <FormSelect
             icon={<Banknote aria-hidden="true" size={16} strokeWidth={2.2} />}
-            label="Default currency"
+            label={t('auth.signUp.currencyLabel')}
             name="defaultCurrency"
             options={[
               { label: 'USD', value: 'USD' },
@@ -122,7 +136,7 @@ export function OwnerSignUpForm({
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? 'Creating account' : 'Create account'}
+          {isSubmitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
         </button>
       </form>
     </FormProvider>

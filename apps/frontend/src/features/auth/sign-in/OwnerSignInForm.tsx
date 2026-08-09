@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, LockKeyhole, LogIn, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { ownerSignInRequestSchema, type OwnerSignInRequest } from '@collectify/contracts';
 
@@ -20,6 +21,7 @@ export function OwnerSignInForm({
   onSubmit: (request: OwnerSignInRequest) => Promise<void> | void;
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const { t } = useTranslation();
   const form = useForm<OwnerSignInRequest>({
     defaultValues,
     resolver: zodResolver(ownerSignInRequestSchema),
@@ -36,9 +38,9 @@ export function OwnerSignInForm({
         <FormInput
           autoComplete="email"
           icon={<Mail aria-hidden="true" size={16} strokeWidth={2.2} />}
-          label="Email address"
+          label={t('auth.signIn.emailLabel')}
           name="email"
-          placeholder="owner@example.com"
+          placeholder={t('auth.signIn.emailPlaceholder')}
           type="email"
         />
 
@@ -46,10 +48,18 @@ export function OwnerSignInForm({
           autoComplete="current-password"
           endAdornment={
             <button
-              aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+              aria-label={
+                isPasswordVisible
+                  ? t('auth.togglePassword.hide')
+                  : t('auth.togglePassword.show')
+              }
               className="absolute right-[5px] inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => setIsPasswordVisible((current) => !current)}
-              title={isPasswordVisible ? 'Hide password' : 'Show password'}
+              title={
+                isPasswordVisible
+                  ? t('auth.togglePassword.hide')
+                  : t('auth.togglePassword.show')
+              }
               type="button"
             >
               {isPasswordVisible ? (
@@ -60,9 +70,9 @@ export function OwnerSignInForm({
             </button>
           }
           icon={<LockKeyhole aria-hidden="true" size={16} strokeWidth={2.2} />}
-          label="Password"
+          label={t('auth.signIn.passwordLabel')}
           name="password"
-          placeholder="Your password"
+          placeholder={t('auth.signIn.passwordPlaceholder')}
           type={isPasswordVisible ? 'text' : 'password'}
         />
 
@@ -72,7 +82,7 @@ export function OwnerSignInForm({
           type="submit"
         >
           <LogIn aria-hidden="true" size={16} strokeWidth={2.3} />
-          {isSubmitting ? 'Signing in' : 'Enter workspace'}
+          {isSubmitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
         </button>
       </form>
     </FormProvider>

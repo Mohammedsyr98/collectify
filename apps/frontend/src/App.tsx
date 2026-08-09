@@ -1,5 +1,11 @@
+import { useTranslation } from 'react-i18next';
+
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
 import { useSessionQuery } from './features/auth/session/sessionQueries';
+import {
+  isSupportedLocale,
+  type SupportedLocale,
+} from './shared/localization';
 
 const statusDotClassName = {
   error: 'bg-status-overdue-border',
@@ -7,15 +13,21 @@ const statusDotClassName = {
   warning: 'bg-status-due-border',
 };
 
+const localeNameTranslationKeys = {
+  en: 'locale.english',
+  tr: 'locale.turkish',
+} satisfies Record<SupportedLocale, string>;
+
 function App() {
+  const { t } = useTranslation();
   const sessionQuery = useSessionQuery();
 
   if (sessionQuery.isPending) {
     return (
       <StatusPage
-        detail="Looking for an active owner session."
+        detail={t('app.status.checkingSession.detail')}
         tone="loading"
-        title="Checking session"
+        title={t('app.status.checkingSession.title')}
       />
     );
   }
@@ -23,13 +35,9 @@ function App() {
   if (sessionQuery.isError) {
     return (
       <StatusPage
-        detail={
-          sessionQuery.error instanceof Error
-            ? sessionQuery.error.message
-            : 'Unable to reach backend.'
-        }
+        detail={t('app.status.sessionUnavailable.detail')}
         tone="error"
-        title="Session unavailable"
+        title={t('app.status.sessionUnavailable.title')}
       />
     );
   }
@@ -49,9 +57,9 @@ function App() {
   if (session.authenticated && !session.ownerProfile) {
     return (
       <StatusPage
-        detail="Complete owner setup before entering the workspace."
+        detail={t('app.status.ownerSetupIncomplete.detail')}
         tone="warning"
-        title="Owner setup incomplete"
+        title={t('app.status.ownerSetupIncomplete.title')}
       />
     );
   }
@@ -97,6 +105,11 @@ function OwnerWorkspacePreview({
   email: string;
   preferredLanguage: string;
 }) {
+  const { t } = useTranslation();
+  const preferredLanguageLabel = isSupportedLocale(preferredLanguage)
+    ? t(localeNameTranslationKeys[preferredLanguage])
+    : preferredLanguage;
+
   return (
     <main className="flex min-h-screen items-center bg-background p-7">
       <section
@@ -105,26 +118,26 @@ function OwnerWorkspacePreview({
       >
         <p className="m-0 text-[0.76rem] font-[850] tracking-normal text-primary">Collectify</p>
         <h1 className="m-0 text-[1.6rem] leading-[1.15] tracking-normal" id="app-title">
-          Owner session active
+          {t('app.workspace.title')}
         </h1>
-        <p className="m-0 text-muted-foreground">Protected Collectify workspace</p>
+        <p className="m-0 text-muted-foreground">{t('app.workspace.subtitle')}</p>
 
         <dl className="mt-1 grid gap-3">
           <div className="grid gap-[3px] border-t border-border pt-3">
             <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
-              Email
+              {t('app.workspace.emailLabel')}
             </dt>
             <dd className="m-0 break-words">{email}</dd>
           </div>
           <div className="grid gap-[3px] border-t border-border pt-3">
             <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
-              Language
+              {t('app.workspace.languageLabel')}
             </dt>
-            <dd className="m-0 break-words">{preferredLanguage}</dd>
+            <dd className="m-0 break-words">{preferredLanguageLabel}</dd>
           </div>
           <div className="grid gap-[3px] border-t border-border pt-3">
             <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
-              Currency
+              {t('app.workspace.currencyLabel')}
             </dt>
             <dd className="m-0 break-words">{defaultCurrency}</dd>
           </div>

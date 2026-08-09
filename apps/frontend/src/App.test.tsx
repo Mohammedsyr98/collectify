@@ -90,8 +90,17 @@ function renderApp() {
   return renderWithAppProviders(<App />);
 }
 
+function setBrowserLanguages(languages: readonly string[]) {
+  Object.defineProperty(window.navigator, 'languages', {
+    configurable: true,
+    value: languages,
+  });
+}
+
 describe('App', () => {
   beforeEach(() => {
+    window.localStorage.clear();
+    setBrowserLanguages(['en-US']);
     mockSession(unauthenticatedSession);
   });
 
@@ -202,16 +211,16 @@ describe('App', () => {
     await user.type(await screen.findByLabelText('Name'), 'Owner');
     await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
     await user.selectOptions(screen.getByLabelText('Default currency'), 'TRY');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
+    await user.click(screen.getByRole('button', { name: 'Hesap oluştur' }));
 
     expect(
-      await screen.findByText('Protected Collectify workspace'),
+      await screen.findByText('Korunan Collectify çalışma alanı'),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('status', { name: 'Account created' }),
-    ).toHaveTextContent('Your Collectify workspace is ready.');
+      await screen.findByRole('status', { name: 'Hesap oluşturuldu' }),
+    ).toHaveTextContent('Collectify çalışma alanınız hazır.');
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
     expect(screen.getByText('TRY')).toBeInTheDocument();
   });

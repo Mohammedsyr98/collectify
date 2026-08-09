@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import type { OwnerSignInRequest } from '@collectify/contracts';
 
@@ -7,10 +8,9 @@ import { useToast } from '../../../shared/ui/toast/toastContext';
 import { signInOwner } from '../api/sign-in-owner';
 import { sessionQueryKey } from '../session/sessionQueries';
 
-const fallbackSignInError = 'Unable to sign in. Try again.';
-
 export function useOwnerSignInSubmit() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { showToast } = useToast();
 
   const signInMutation = useMutation({
@@ -19,15 +19,18 @@ export function useOwnerSignInSubmit() {
       queryClient.setQueryData(sessionQueryKey, session);
       showToast({
         variant: 'success',
-        title: 'Signed in',
-        description: 'Welcome back to Collectify.',
+        title: t('toast.auth.signIn.successTitle'),
+        description: t('toast.auth.signIn.successDescription'),
       });
     },
     onError: (error) => {
       showToast({
         variant: 'error',
-        title: 'Could not sign in',
-        description: getApiErrorDescription(error, fallbackSignInError),
+        title: t('toast.auth.signIn.errorTitle'),
+        description: getApiErrorDescription(
+          error,
+          t('toast.auth.signIn.errorDescription'),
+        ),
       });
     },
   });
