@@ -144,6 +144,7 @@ describe('App', () => {
 
   it('shows sign-in errors accessibly without entering the workspace', async () => {
     const user = userEvent.setup();
+    setBrowserLanguages(['tr-TR']);
     mockOwnerSignInError(
       {
         code: 'INVALID_CREDENTIALS',
@@ -156,18 +157,28 @@ describe('App', () => {
     );
     renderApp();
 
-    await user.click(await screen.findByRole('button', { name: 'Sign in' }));
-    await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
-    await user.type(screen.getByLabelText('Password'), 'wrong-password');
-    await user.click(screen.getByRole('button', { name: 'Enter workspace' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Giri\u015f yap' }),
+    );
+    await user.type(
+      screen.getByLabelText('E-posta adresi'),
+      'owner@example.com',
+    );
+    await user.type(screen.getByLabelText('\u015eifre'), 'wrong-password');
+    await user.click(
+      screen.getByRole('button', { name: '\u00c7al\u0131\u015fma alan\u0131na gir' }),
+    );
 
     expect(
       await screen.findByRole('alert', {
-        name: 'Could not sign in',
+        name: 'Giri\u015f yap\u0131lamad\u0131',
       }),
-    ).toHaveTextContent('Email or password is incorrect.');
+    ).toHaveTextContent('E-posta veya \u015fifre hatal\u0131.');
     expect(
-      screen.getByRole('heading', { name: 'Sign in' }),
+      screen.queryByText('Email or password is incorrect.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Giri\u015f yap' }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText('Protected Collectify workspace'),
@@ -227,6 +238,7 @@ describe('App', () => {
 
   it('shows backend field errors in a toast without entering the workspace', async () => {
     const user = userEvent.setup();
+    setBrowserLanguages(['tr-TR']);
     mockOwnerSignUpError(
       {
         code: 'ACCOUNT_ALREADY_EXISTS',
@@ -239,21 +251,33 @@ describe('App', () => {
     );
     renderApp();
 
-    await user.type(await screen.findByLabelText('Name'), 'Owner');
-    await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.type(await screen.findByLabelText('Ad'), 'Owner');
+    await user.type(
+      screen.getByLabelText('E-posta adresi'),
+      'owner@example.com',
+    );
+    await user.type(screen.getByLabelText('\u015eifre'), 'password123');
+    const submitButton = screen
+      .getAllByRole('button', { name: 'Hesap olu\u015ftur' })
+      .find((button) => button.getAttribute('type') === 'submit');
+    if (!submitButton) {
+      throw new Error('Expected Turkish sign-up submit button.');
+    }
+    await user.click(submitButton);
 
     expect(
       await screen.findByRole('alert', {
-        name: 'Could not create account',
+        name: 'Hesap olu\u015fturulamad\u0131',
       }),
-    ).toHaveTextContent('An account already exists for this email.');
+    ).toHaveTextContent('Bu e-posta adresiyle zaten bir hesap var.');
+    expect(
+      screen.queryByText('An account already exists for this email.'),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText('Check the highlighted fields.'),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByLabelText('Email address'),
+      screen.getByLabelText('E-posta adresi'),
     ).not.toHaveAccessibleDescription();
     expect(
       screen.queryByText('Protected Collectify workspace'),
