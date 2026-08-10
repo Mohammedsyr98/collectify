@@ -67,6 +67,27 @@ describe('OwnerSignInForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('renders auth validation errors through the active message catalog', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    setBrowserLanguages(['tr-TR']);
+
+    renderOwnerSignInForm({ onSubmit });
+
+    await user.click(screen.getByRole('button', { name: /alan/ }));
+
+    expect(
+      await screen.findByText('Ge\u00e7erli bir e-posta adresi girin.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('E-posta adresi')).toHaveAccessibleDescription(
+      'Ge\u00e7erli bir e-posta adresi girin.',
+    );
+    expect(
+      screen.getByText('\u015eifre gereklidir.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('submits a normalized owner sign-in request', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

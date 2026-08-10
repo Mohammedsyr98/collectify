@@ -3,6 +3,10 @@ import {
   HttpStatus,
   type PipeTransform,
 } from '@nestjs/common';
+import {
+  getValidationErrorMessageFallback,
+  isValidationErrorCode,
+} from '@collectify/contracts';
 
 export interface ZodValidationError {
   issues: Array<{
@@ -69,8 +73,19 @@ function fieldErrorsFromZodError(
       continue;
     }
 
-    fieldErrors[field] = [...(fieldErrors[field] ?? []), issue.message];
+    fieldErrors[field] = [
+      ...(fieldErrors[field] ?? []),
+      getIssueMessageFallback(issue.message),
+    ];
   }
 
   return fieldErrors;
+}
+
+function getIssueMessageFallback(message: string): string {
+  if (isValidationErrorCode(message)) {
+    return getValidationErrorMessageFallback(message);
+  }
+
+  return message;
 }
