@@ -79,6 +79,13 @@ const resources = {
       },
       toast: {
         auth: {
+          apiErrors: {
+            ACCOUNT_ALREADY_EXISTS: 'An account already exists for this email.',
+            INVALID_CREDENTIALS: 'Email or password is incorrect.',
+            OWNER_PROFILE_MISSING: 'Owner profile setup is incomplete.',
+            PROFILE_SETUP_FAILED: 'We could not finish owner setup. Try again.',
+            VALIDATION_ERROR: 'Check the highlighted fields.',
+          },
           signIn: {
             errorDescription: 'Unable to sign in. Try again.',
             errorTitle: 'Could not sign in',
@@ -177,6 +184,15 @@ const resources = {
       },
       toast: {
         auth: {
+          apiErrors: {
+            ACCOUNT_ALREADY_EXISTS:
+              'Bu e-posta adresiyle zaten bir hesap var.',
+            INVALID_CREDENTIALS: 'E-posta veya \u015fifre hatal\u0131.',
+            OWNER_PROFILE_MISSING: 'Sahip profili kurulumu eksik.',
+            PROFILE_SETUP_FAILED:
+              'Sahip kurulumu tamamlanamad\u0131. Tekrar deneyin.',
+            VALIDATION_ERROR: 'Vurgulanan alanlar\u0131 kontrol edin.',
+          },
           signIn: {
             errorDescription: 'Giriş yapılamadı. Tekrar deneyin.',
             errorTitle: 'Giriş yapılamadı',

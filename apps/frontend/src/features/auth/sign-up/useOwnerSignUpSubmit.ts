@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import type { OwnerSignUpRequest } from '@collectify/contracts';
 
-import { getApiErrorDescription } from '../../../shared/api/http';
 import { useToast } from '../../../shared/ui/toast/toastContext';
+import { getOwnerSignUpApiErrorDescription } from '../api/auth-api-error-description';
 import { signUpOwner } from '../api/sign-up-owner';
 import { sessionQueryKey } from '../session/sessionQueries';
 
@@ -27,9 +27,10 @@ export function useOwnerSignUpSubmit() {
       showToast({
         variant: 'error',
         title: t('toast.auth.signUp.errorTitle'),
-        description: getApiErrorDescription(
+        description: getOwnerSignUpApiErrorDescription(
           error,
           t('toast.auth.signUp.errorDescription'),
+          t,
         ),
       });
     },
