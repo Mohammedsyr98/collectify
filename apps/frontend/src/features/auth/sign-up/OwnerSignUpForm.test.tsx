@@ -71,6 +71,30 @@ describe('OwnerSignUpForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('renders auth validation errors through the active message catalog', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    setBrowserLanguages(['tr-TR']);
+
+    renderOwnerSignUpForm({ onSubmit });
+
+    await user.click(screen.getByRole('button', { name: /Hesap/ }));
+
+    expect(await screen.findByText('Ad gereklidir.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ad')).toHaveAccessibleDescription(
+      'Ad gereklidir.',
+    );
+    expect(screen.getByLabelText('E-posta adresi')).toHaveAccessibleDescription(
+      'Ge\u00e7erli bir e-posta adresi girin.',
+    );
+    expect(
+      screen.getByText(
+        '\u015eifre 8 ile 128 karakter aras\u0131nda olmal\u0131d\u0131r.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('submits a normalized owner sign-up request', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

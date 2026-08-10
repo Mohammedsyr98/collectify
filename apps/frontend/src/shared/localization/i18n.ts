@@ -93,6 +93,15 @@ const resources = {
           },
         },
       },
+      validation: {
+        AUTH_DEFAULT_CURRENCY_UNSUPPORTED: 'Choose TRY, USD, or EUR.',
+        AUTH_EMAIL_INVALID: 'Enter a valid email address.',
+        AUTH_NAME_REQUIRED: 'Name is required.',
+        AUTH_PREFERRED_LANGUAGE_UNSUPPORTED: 'Choose English or Turkish.',
+        AUTH_SIGN_IN_PASSWORD_REQUIRED: 'Password is required.',
+        AUTH_SIGN_UP_PASSWORD_LENGTH:
+          'Password must be between 8 and 128 characters.',
+      },
     },
   },
   tr: {
@@ -181,6 +190,16 @@ const resources = {
             successTitle: 'Hesap oluşturuldu',
           },
         },
+      },
+      validation: {
+        AUTH_DEFAULT_CURRENCY_UNSUPPORTED: 'TRY, USD veya EUR se\u00e7in.',
+        AUTH_EMAIL_INVALID: 'Ge\u00e7erli bir e-posta adresi girin.',
+        AUTH_NAME_REQUIRED: 'Ad gereklidir.',
+        AUTH_PREFERRED_LANGUAGE_UNSUPPORTED:
+          '\u0130ngilizce veya T\u00fcrk\u00e7e se\u00e7in.',
+        AUTH_SIGN_IN_PASSWORD_REQUIRED: '\u015eifre gereklidir.',
+        AUTH_SIGN_UP_PASSWORD_LENGTH:
+          '\u015eifre 8 ile 128 karakter aras\u0131nda olmal\u0131d\u0131r.',
       },
     },
   },

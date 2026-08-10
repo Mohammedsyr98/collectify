@@ -6,18 +6,19 @@ import {
   ownerProfileSchema,
 } from './owner-profile.js';
 import { sessionUserSchema } from './session.js';
+import { validationErrorCode } from './validation.js';
 
 export const ownerSignUpRequestSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required.'),
+  name: z.string().trim().min(1, validationErrorCode.authNameRequired),
   email: z
     .string()
     .trim()
-    .email('Enter a valid email address.')
+    .email(validationErrorCode.authEmailInvalid)
     .transform((email) => email.toLowerCase()),
   password: z
     .string()
-    .min(8, 'Password must be between 8 and 128 characters.')
-    .max(128, 'Password must be between 8 and 128 characters.'),
+    .min(8, validationErrorCode.authSignUpPasswordLength)
+    .max(128, validationErrorCode.authSignUpPasswordLength),
   preferredLanguage: ownerLanguageSchema,
   defaultCurrency: currencySchema,
 });
@@ -26,9 +27,9 @@ export const ownerSignInRequestSchema = z.object({
   email: z
     .string()
     .trim()
-    .email('Enter a valid email address.')
+    .email(validationErrorCode.authEmailInvalid)
     .transform((email) => email.toLowerCase()),
-  password: z.string().min(1, 'Password is required.'),
+  password: z.string().min(1, validationErrorCode.authSignInPasswordRequired),
 });
 
 export const ownerSignUpResponseSchema = z.object({

@@ -2,7 +2,7 @@ import { HttpException } from '@nestjs/common';
 import { ownerSignUpRequestSchema } from '@collectify/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { ZodValidationPipe } from './zod-validation.pipe';
+import { ZodValidationPipe, type ZodSchema } from './zod-validation.pipe';
 
 describe('ZodValidationPipe', () => {
   it('returns the parsed schema output', () => {
@@ -61,5 +61,35 @@ describe('ZodValidationPipe', () => {
     const pipe = new ZodValidationPipe(ownerSignUpRequestSchema, () => exception);
 
     expect(() => pipe.transform({ name: '' })).toThrow(exception);
+  });
+
+  it('passes through unknown validation messages unchanged', () => {
+    const schema: ZodSchema<unknown> = {
+      safeParse: () =>
+        ({
+          success: false,
+          error: {
+            issues: [
+              {
+                path: ['reference'],
+                message: 'Reference is required.',
+              },
+            ],
+          },
+        }),
+    };
+    const pipe = new ZodValidationPipe(schema);
+
+    try {
+      pipe.transform({ reference: '' });
+      expect.unreachable('expected validation to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpException);
+      expect((error as HttpException).getResponse()).toMatchObject({
+        fieldErrors: {
+          reference: ['Reference is required.'],
+        },
+      });
+    }
   });
 });
