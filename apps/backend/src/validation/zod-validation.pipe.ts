@@ -25,16 +25,16 @@ export interface ZodSchema<T> {
       };
 }
 
-export type ZodValidationExceptionFactory = (
-  error: ZodValidationError,
-) => Error;
-
 export type ZodValidationIssueMessageResolver = (message: string) => string;
+
+export interface ZodValidationPipeOptions {
+  resolveIssueMessage?: ZodValidationIssueMessageResolver;
+}
 
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   constructor(
     private readonly schema: ZodSchema<T>,
-    private readonly createException: ZodValidationExceptionFactory = createZodValidationExceptionFactory(),
+    private readonly options: ZodValidationPipeOptions = {},
   ) {}
 
   transform(value: unknown): T {
@@ -44,23 +44,29 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
       return parsed.data;
     }
 
-    throw this.createException(parsed.error);
+    throw createZodValidationException(
+      parsed.error,
+      this.options.resolveIssueMessage ?? defaultIssueMessageResolver,
+    );
   }
 }
 
-export function createZodValidationExceptionFactory(
-  resolveIssueMessage: ZodValidationIssueMessageResolver = (message) =>
-    message,
-): ZodValidationExceptionFactory {
-  return (error) =>
-    new HttpException(
-      {
-        code: 'VALIDATION_ERROR',
-        message: 'Check the highlighted fields.',
-        fieldErrors: fieldErrorsFromZodError(error, resolveIssueMessage),
-      },
-      HttpStatus.BAD_REQUEST,
-    );
+const defaultIssueMessageResolver: ZodValidationIssueMessageResolver = (
+  message,
+) => message;
+
+function createZodValidationException(
+  error: ZodValidationError,
+  resolveIssueMessage: ZodValidationIssueMessageResolver,
+): HttpException {
+  return new HttpException(
+    {
+      code: 'VALIDATION_ERROR',
+      message: 'Check the highlighted fields.',
+      fieldErrors: fieldErrorsFromZodError(error, resolveIssueMessage),
+    },
+    HttpStatus.BAD_REQUEST,
+  );
 }
 
 function fieldErrorsFromZodError(

@@ -62,6 +62,30 @@ describe('POST /owner/sign-in', () => {
     });
   });
 
+  it('rejects invalid sign-in input', async () => {
+    const response = await fetch(`${backend!.baseUrl}/owner/sign-in`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'not-an-email',
+        password: '',
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(getSetCookie(response.headers)).toEqual([]);
+    await expect(response.json()).resolves.toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'Check the highlighted fields.',
+      fieldErrors: {
+        email: ['Enter a valid email address.'],
+        password: ['Password is required.'],
+      },
+    });
+  });
+
   it('rejects invalid owner credentials without creating a session', async () => {
     const signUpResponse = await ownerAuth!.signUpOwner({
       name: 'Owner',
