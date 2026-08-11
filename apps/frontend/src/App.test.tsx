@@ -284,6 +284,35 @@ describe('App', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows profile setup sign-up errors as a localized toast', async () => {
+    const user = userEvent.setup();
+    mockOwnerSignUpError(
+      {
+        code: 'PROFILE_SETUP_FAILED',
+        message: 'Backend profile setup failed.',
+      },
+      500,
+    );
+    renderApp();
+
+    await user.type(await screen.findByLabelText('Name'), 'Owner');
+    await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(
+      await screen.findByRole('alert', {
+        name: 'Could not create account',
+      }),
+    ).toHaveTextContent('We could not finish owner setup. Try again.');
+    expect(
+      screen.queryByText('Backend profile setup failed.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows a failure toast for unexpected sign-up errors', async () => {
     const user = userEvent.setup();
     mockOwnerSignUpNetworkError();

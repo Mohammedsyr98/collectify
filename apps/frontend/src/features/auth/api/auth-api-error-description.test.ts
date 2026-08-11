@@ -8,6 +8,18 @@ import {
 } from './auth-api-error-description';
 
 describe('auth API error descriptions', () => {
+  it('exposes auth API error translations through direct semantic keys', () => {
+    const englishI18n = createAppI18nInstance('en');
+    const turkishI18n = createAppI18nInstance('tr');
+
+    expect(englishI18n.t('auth.errors.INVALID_CREDENTIALS')).toBe(
+      'Email or password is incorrect.',
+    );
+    expect(turkishI18n.t('auth.errors.ACCOUNT_ALREADY_EXISTS')).toBe(
+      'Bu e-posta adresiyle zaten bir hesap var.',
+    );
+  });
+
   it('uses localized copy for known sign-in error codes', () => {
     const i18n = createAppI18nInstance('tr');
     const error = createApiError('Email or password is incorrect.', {
