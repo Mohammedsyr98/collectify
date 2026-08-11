@@ -93,7 +93,41 @@ describe('owner sign-up API', () => {
     });
   });
 
-  it('throws an ApiError when owner sign-up returns an unexpected body', async () => {
+  it('preserves owner sign-up errors with unknown string codes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({
+          code: 'FUTURE_SIGN_UP_RULE',
+          message: 'Backend sign-up fallback.',
+          fieldErrors: {
+            email: ['Backend sign-up field detail.'],
+          },
+        }),
+      }),
+    );
+
+    await expect(
+      signUpOwner({
+        name: 'Owner',
+        email: 'owner@example.com',
+        password: 'password123',
+        preferredLanguage: 'en',
+        defaultCurrency: 'USD',
+      }),
+    ).rejects.toMatchObject({
+      code: 'FUTURE_SIGN_UP_RULE',
+      fieldErrors: {
+        email: ['Backend sign-up field detail.'],
+      },
+      message: 'Backend sign-up fallback.',
+      status: 409,
+    });
+  });
+
+  it('throws a message-less ApiError when owner sign-up returns an unexpected body', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -114,8 +148,8 @@ describe('owner sign-up API', () => {
         defaultCurrency: 'USD',
       }),
     ).rejects.toMatchObject({
+      message: '',
       status: 500,
-      message: 'Owner sign-up failed with status 500',
     });
   });
 });

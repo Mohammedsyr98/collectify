@@ -84,7 +84,38 @@ describe('owner sign-in API', () => {
     });
   });
 
-  it('throws an ApiError when owner sign-in returns an unexpected body', async () => {
+  it('preserves owner sign-in errors with unknown string codes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({
+          code: 'FUTURE_SIGN_IN_RULE',
+          message: 'Backend sign-in fallback.',
+          fieldErrors: {
+            email: ['Backend sign-in field detail.'],
+          },
+        }),
+      }),
+    );
+
+    await expect(
+      signInOwner({
+        email: 'owner@example.com',
+        password: 'password123',
+      }),
+    ).rejects.toMatchObject({
+      code: 'FUTURE_SIGN_IN_RULE',
+      fieldErrors: {
+        email: ['Backend sign-in field detail.'],
+      },
+      message: 'Backend sign-in fallback.',
+      status: 409,
+    });
+  });
+
+  it('throws a message-less ApiError when owner sign-in returns an unexpected body', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -102,8 +133,8 @@ describe('owner sign-in API', () => {
         password: 'password123',
       }),
     ).rejects.toMatchObject({
+      message: '',
       status: 500,
-      message: 'Owner sign-in failed with status 500',
     });
   });
 });

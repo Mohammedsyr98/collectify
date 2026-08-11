@@ -1,10 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import type { OwnerSignInRequest } from '@collectify/contracts';
+import {
+  isAuthApiErrorCode,
+  type OwnerSignInRequest,
+} from '@collectify/contracts';
 
+import { resolveApiErrorDescription } from '../../../shared/api/http';
 import { useToast } from '../../../shared/ui/toast/toastContext';
-import { getOwnerSignInApiErrorDescription } from '../api/auth-api-error-description';
 import { signInOwner } from '../api/sign-in-owner';
 import { sessionQueryKey } from '../session/sessionQueries';
 
@@ -27,11 +30,11 @@ export function useOwnerSignInSubmit() {
       showToast({
         variant: 'error',
         title: t('toast.auth.signIn.errorTitle'),
-        description: getOwnerSignInApiErrorDescription(
-          error,
-          t('toast.auth.signIn.errorDescription'),
-          t,
-        ),
+        description: resolveApiErrorDescription(error, {
+          describeKnownCode: (code) => t(`auth.errors.${code}`),
+          fallbackDescription: t('toast.auth.signIn.errorDescription'),
+          isKnownCode: isAuthApiErrorCode,
+        }),
       });
     },
   });

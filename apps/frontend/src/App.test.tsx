@@ -5,9 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type {
-  OwnerSignInErrorResponse,
   OwnerSignInResponse,
-  OwnerSignUpErrorResponse,
   OwnerSignUpResponse,
   SessionResponse,
 } from '@collectify/contracts';
@@ -36,6 +34,12 @@ const ownerSession: OwnerSignUpResponse = {
   },
 };
 
+type AuthApiErrorResponse = {
+  code: string;
+  fieldErrors?: Partial<Record<string, string[]>>;
+  message: string;
+};
+
 function mockSession(response: SessionResponse) {
   server.use(
     http.get(`${getBackendUrl()}/session`, () => HttpResponse.json(response)),
@@ -50,10 +54,7 @@ function mockOwnerSignUpSuccess(response: OwnerSignUpResponse) {
   );
 }
 
-function mockOwnerSignUpError(
-  response: OwnerSignUpErrorResponse,
-  status: number,
-) {
+function mockOwnerSignUpError(response: AuthApiErrorResponse, status: number) {
   server.use(
     http.post(`${getBackendUrl()}/owner/sign-up`, () =>
       HttpResponse.json(response, { status }),
@@ -61,9 +62,16 @@ function mockOwnerSignUpError(
   );
 }
 
-function mockOwnerSignUpNetworkError() {
+function mockOwnerSignUpMalformedError() {
   server.use(
-    http.post(`${getBackendUrl()}/owner/sign-up`, () => HttpResponse.error()),
+    http.post(`${getBackendUrl()}/owner/sign-up`, () =>
+      HttpResponse.json(
+        {
+          message: 'Malformed backend body.',
+        },
+        { status: 500 },
+      ),
+    ),
   );
 }
 
@@ -75,10 +83,7 @@ function mockOwnerSignInSuccess(response: OwnerSignInResponse) {
   );
 }
 
-function mockOwnerSignInError(
-  response: OwnerSignInErrorResponse,
-  status: number,
-) {
+function mockOwnerSignInError(response: AuthApiErrorResponse, status: number) {
   server.use(
     http.post(`${getBackendUrl()}/owner/sign-in`, () =>
       HttpResponse.json(response, { status }),
@@ -236,7 +241,7 @@ describe('App', () => {
     expect(screen.getByText('TRY')).toBeInTheDocument();
   });
 
-  it('shows backend field errors in a toast without entering the workspace', async () => {
+  it('shows known sign-up API errors as localized toasts', async () => {
     const user = userEvent.setup();
     setBrowserLanguages(['tr-TR']);
     mockOwnerSignUpError(
@@ -284,6 +289,39 @@ describe('App', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows backend fallback messages for unknown auth API codes', async () => {
+    const user = userEvent.setup();
+    mockOwnerSignUpError(
+      {
+        code: 'FUTURE_SIGN_UP_RULE',
+        message: 'Backend fallback from newer server.',
+        fieldErrors: {
+          email: ['Backend field detail.'],
+        },
+      },
+      409,
+    );
+    renderApp();
+
+    await user.type(await screen.findByLabelText('Name'), 'Owner');
+    await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(
+      await screen.findByRole('alert', {
+        name: 'Could not create account',
+      }),
+    ).toHaveTextContent('Backend fallback from newer server.');
+    expect(screen.queryByText('Backend field detail.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('auth.errors.FUTURE_SIGN_UP_RULE'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows profile setup sign-up errors as a localized toast', async () => {
     const user = userEvent.setup();
     mockOwnerSignUpError(
@@ -313,21 +351,35 @@ describe('App', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a failure toast for unexpected sign-up errors', async () => {
+  it('shows a localized failure toast for malformed sign-up error responses', async () => {
     const user = userEvent.setup();
-    mockOwnerSignUpNetworkError();
+    setBrowserLanguages(['tr-TR']);
+    mockOwnerSignUpMalformedError();
     renderApp();
 
-    await user.type(await screen.findByLabelText('Name'), 'Owner');
-    await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.type(await screen.findByLabelText('Ad'), 'Owner');
+    await user.type(
+      screen.getByLabelText('E-posta adresi'),
+      'owner@example.com',
+    );
+    await user.type(screen.getByLabelText('\u015eifre'), 'password123');
+    const submitButton = screen
+      .getAllByRole('button', { name: 'Hesap olu\u015ftur' })
+      .find((button) => button.getAttribute('type') === 'submit');
+    if (!submitButton) {
+      throw new Error('Expected Turkish sign-up submit button.');
+    }
+    await user.click(submitButton);
 
     expect(
       await screen.findByRole('alert', {
-        name: 'Could not create account',
+        name: 'Hesap olu\u015fturulamad\u0131',
       }),
-    ).toHaveTextContent('Unable to create owner account. Try again.');
+    ).toHaveTextContent(
+      'Sahip hesab\u0131 olu\u015fturulamad\u0131. Tekrar deneyin.',
+    );
+    expect(screen.queryByText('Malformed backend body.')).not.toBeInTheDocument();
+    expect(screen.queryByText('500')).not.toBeInTheDocument();
   });
 
   it('does not show protected UI for an auth session missing owner profile', async () => {
