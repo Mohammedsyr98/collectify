@@ -2,7 +2,10 @@ export {
   useLocalization,
   type LocalizationContextValue,
 } from './useLocalization';
-export { LocalizationProvider } from './LocalizationProvider';
+export {
+  LocalizationProvider,
+  type CreateI18nInstance,
+} from './LocalizationProvider';
 export { createI18nInstance } from './i18n';
 export {
   defaultLocale,

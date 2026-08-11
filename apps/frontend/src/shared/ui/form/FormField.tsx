@@ -1,29 +1,26 @@
 import type { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-
-import { isAuthValidationCode } from '@collectify/contracts';
 
 import { getFieldErrorId } from './fieldIds';
+
+export type FormErrorFormatter = (error: string) => string;
 
 export function FormField({
   children,
   error,
+  formatError,
   htmlFor,
   icon,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  formatError?: FormErrorFormatter;
   htmlFor: string;
   icon?: ReactNode;
   label: string;
 }) {
-  const { t } = useTranslation();
   const errorId = getFieldErrorId(htmlFor);
-  const displayedError =
-    error && isAuthValidationCode(error)
-      ? t(`validation.${error}`, { defaultValue: error })
-      : error;
+  const displayedError = error ? (formatError?.(error) ?? error) : undefined;
   const inputFrameClassName =
     'relative flex min-h-[42px] items-center rounded-[5px] border border-border bg-background transition-all focus-within:border-primary focus-within:bg-card focus-within:ring-[3px] focus-within:ring-primary/15';
 

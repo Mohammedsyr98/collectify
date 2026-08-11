@@ -12,6 +12,7 @@ import {
   type SupportedLocale,
   useLocalization,
 } from '../../../shared/localization';
+import { useAuthValidationErrorFormatter } from '../localization/useAuthValidationErrorFormatter';
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { FormSelect } from '../../../shared/ui/form/FormSelect';
 
@@ -40,6 +41,7 @@ export function OwnerSignUpForm({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { t } = useTranslation();
   const { locale, setLocale } = useLocalization();
+  const formatValidationError = useAuthValidationErrorFormatter();
   const form = useForm<OwnerSignUpRequest>({
     defaultValues: createDefaultValues(locale),
     resolver: zodResolver(ownerSignUpRequestSchema),
@@ -55,6 +57,7 @@ export function OwnerSignUpForm({
       >
         <FormInput
           autoComplete="name"
+          formatError={formatValidationError}
           icon={<UserRound aria-hidden="true" size={16} strokeWidth={2.2} />}
           label={t('auth.signUp.nameLabel')}
           name="name"
@@ -64,6 +67,7 @@ export function OwnerSignUpForm({
 
         <FormInput
           autoComplete="email"
+          formatError={formatValidationError}
           icon={<Mail aria-hidden="true" size={16} strokeWidth={2.2} />}
           label={t('auth.signUp.emailLabel')}
           name="email"
@@ -73,6 +77,7 @@ export function OwnerSignUpForm({
 
         <FormInput
           autoComplete="new-password"
+          formatError={formatValidationError}
           endAdornment={
             <button
               aria-label={
@@ -105,6 +110,7 @@ export function OwnerSignUpForm({
 
         <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
           <FormSelect
+            formatError={formatValidationError}
             icon={<Globe2 aria-hidden="true" size={16} strokeWidth={2.2} />}
             label={t('auth.signUp.languageLabel')}
             name="preferredLanguage"
@@ -120,6 +126,7 @@ export function OwnerSignUpForm({
           />
 
           <FormSelect
+            formatError={formatValidationError}
             icon={<Banknote aria-hidden="true" size={16} strokeWidth={2.2} />}
             label={t('auth.signUp.currencyLabel')}
             name="defaultCurrency"

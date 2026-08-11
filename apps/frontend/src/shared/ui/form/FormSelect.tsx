@@ -11,7 +11,7 @@ import {
 } from 'react-hook-form';
 
 import { getFieldErrorId } from './fieldIds';
-import { FormField } from './FormField';
+import { FormField, type FormErrorFormatter } from './FormField';
 
 type SelectValue = ComponentPropsWithoutRef<'select'>['value'];
 
@@ -31,6 +31,7 @@ type FormSelectProps<
   ComponentPropsWithoutRef<'select'>,
   'defaultValue' | 'name' | 'value'
 > & {
+  formatError?: FormErrorFormatter;
   icon?: ReactNode;
   label: string;
   name: TName;
@@ -44,6 +45,7 @@ export function FormSelect<
     SelectValue
   >,
 >({
+  formatError,
   icon,
   label,
   name,
@@ -71,7 +73,13 @@ export function FormSelect<
     .join(' ');
 
   return (
-    <FormField error={error} htmlFor={id} icon={icon} label={label}>
+    <FormField
+      error={error}
+      formatError={formatError}
+      htmlFor={id}
+      icon={icon}
+      label={label}
+    >
       <select
         {...selectProps}
         aria-describedby={describedBy || undefined}

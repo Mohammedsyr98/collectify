@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalizationProvider } from '../../../shared/localization';
+import { AppLocalizationProvider } from '../../../app/localization/AppLocalizationProvider';
 import { OwnerSignUpForm } from './OwnerSignUpForm';
 
 function renderOwnerSignUpForm({
@@ -14,9 +14,9 @@ function renderOwnerSignUpForm({
   onSubmit?: ComponentProps<typeof OwnerSignUpForm>['onSubmit'];
 } = {}) {
   return render(
-    <LocalizationProvider>
+    <AppLocalizationProvider>
       <OwnerSignUpForm isSubmitting={isSubmitting} onSubmit={onSubmit} />
-    </LocalizationProvider>,
+    </AppLocalizationProvider>,
   );
 }
 
@@ -81,6 +81,37 @@ describe('OwnerSignUpForm', () => {
     await user.click(screen.getByRole('button', { name: /Hesap/ }));
 
     expect(await screen.findByText('Ad gereklidir.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ad')).toHaveAccessibleDescription(
+      'Ad gereklidir.',
+    );
+    expect(screen.getByLabelText('E-posta adresi')).toHaveAccessibleDescription(
+      'Ge\u00e7erli bir e-posta adresi girin.',
+    );
+    expect(
+      screen.getByText(
+        '\u015eifre 8 ile 128 karakter aras\u0131nda olmal\u0131d\u0131r.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('updates visible auth validation errors when the language changes', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    renderOwnerSignUpForm({ onSubmit });
+
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('Name is required.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+      'Name is required.',
+    );
+
+    await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
+
+    expect(await screen.findByText('Ad gereklidir.')).toBeInTheDocument();
+    expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Ad')).toHaveAccessibleDescription(
       'Ad gereklidir.',
     );

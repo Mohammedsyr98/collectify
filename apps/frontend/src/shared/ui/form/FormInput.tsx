@@ -11,7 +11,7 @@ import {
 } from 'react-hook-form';
 
 import { getFieldErrorId } from './fieldIds';
-import { FormField } from './FormField';
+import { FormField, type FormErrorFormatter } from './FormField';
 
 type InputValue = ComponentPropsWithoutRef<'input'>['value'];
 
@@ -26,6 +26,7 @@ type FormInputProps<
   'defaultValue' | 'name' | 'value'
 > & {
   endAdornment?: ReactNode;
+  formatError?: FormErrorFormatter;
   icon?: ReactNode;
   label: string;
   name: TName;
@@ -39,6 +40,7 @@ export function FormInput<
   >,
 >({
   endAdornment,
+  formatError,
   icon,
   label,
   name,
@@ -66,7 +68,13 @@ export function FormInput<
     .join(' ');
 
   return (
-    <FormField error={error} htmlFor={id} icon={icon} label={label}>
+    <FormField
+      error={error}
+      formatError={formatError}
+      htmlFor={id}
+      icon={icon}
+      label={label}
+    >
       <input
         {...inputProps}
         aria-describedby={describedBy || undefined}

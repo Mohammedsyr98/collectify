@@ -5,13 +5,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { i18n } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 
 import {
   LocalizationContext,
   type LocalizationContextValue,
 } from './useLocalization';
-import { createI18nInstance } from './i18n';
 import {
   localeMetadata,
   localeStorageKey,
@@ -20,7 +20,15 @@ import {
   type SupportedLocale,
 } from './locales';
 
-export function LocalizationProvider({ children }: { children: ReactNode }) {
+export type CreateI18nInstance = (initialLocale: SupportedLocale) => i18n;
+
+export function LocalizationProvider({
+  children,
+  createI18nInstance,
+}: {
+  children: ReactNode;
+  createI18nInstance: CreateI18nInstance;
+}) {
   const [{ i18n, initialLocale }] = useState(() => {
     const locale = resolveInitialLocale({
       browserLanguages: getBrowserLanguages(),
