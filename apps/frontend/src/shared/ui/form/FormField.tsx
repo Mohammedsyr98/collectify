@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { isValidationErrorCode } from '@collectify/contracts';
+import { isAuthValidationCode } from '@collectify/contracts';
 
 import { getFieldErrorId } from './fieldIds';
 
@@ -21,7 +21,7 @@ export function FormField({
   const { t } = useTranslation();
   const errorId = getFieldErrorId(htmlFor);
   const displayedError =
-    error && isValidationErrorCode(error)
+    error && isAuthValidationCode(error)
       ? t(`validation.${error}`, { defaultValue: error })
       : error;
   const inputFrameClassName =

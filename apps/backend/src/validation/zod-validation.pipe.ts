@@ -3,10 +3,6 @@ import {
   HttpStatus,
   type PipeTransform,
 } from '@nestjs/common';
-import {
-  getValidationErrorMessageFallback,
-  isValidationErrorCode,
-} from '@collectify/contracts';
 
 export interface ZodValidationError {
   issues: Array<{
@@ -33,10 +29,12 @@ export type ZodValidationExceptionFactory = (
   error: ZodValidationError,
 ) => Error;
 
+export type ZodValidationIssueMessageResolver = (message: string) => string;
+
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   constructor(
     private readonly schema: ZodSchema<T>,
-    private readonly createException: ZodValidationExceptionFactory = defaultExceptionFactory,
+    private readonly createException: ZodValidationExceptionFactory = createZodValidationExceptionFactory(),
   ) {}
 
   transform(value: unknown): T {
@@ -50,19 +48,24 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   }
 }
 
-function defaultExceptionFactory(error: ZodValidationError): HttpException {
-  return new HttpException(
-    {
-      code: 'VALIDATION_ERROR',
-      message: 'Check the highlighted fields.',
-      fieldErrors: fieldErrorsFromZodError(error),
-    },
-    HttpStatus.BAD_REQUEST,
-  );
+export function createZodValidationExceptionFactory(
+  resolveIssueMessage: ZodValidationIssueMessageResolver = (message) =>
+    message,
+): ZodValidationExceptionFactory {
+  return (error) =>
+    new HttpException(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'Check the highlighted fields.',
+        fieldErrors: fieldErrorsFromZodError(error, resolveIssueMessage),
+      },
+      HttpStatus.BAD_REQUEST,
+    );
 }
 
 function fieldErrorsFromZodError(
   error: ZodValidationError,
+  resolveIssueMessage: ZodValidationIssueMessageResolver,
 ): Record<string, string[]> {
   const fieldErrors: Record<string, string[]> = {};
 
@@ -75,17 +78,9 @@ function fieldErrorsFromZodError(
 
     fieldErrors[field] = [
       ...(fieldErrors[field] ?? []),
-      getIssueMessageFallback(issue.message),
+      resolveIssueMessage(issue.message),
     ];
   }
 
   return fieldErrors;
-}
-
-function getIssueMessageFallback(message: string): string {
-  if (isValidationErrorCode(message)) {
-    return getValidationErrorMessageFallback(message);
-  }
-
-  return message;
 }

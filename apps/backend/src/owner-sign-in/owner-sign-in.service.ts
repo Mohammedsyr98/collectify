@@ -1,10 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AuthService } from '@thallesp/nestjs-better-auth';
-import type {
-  OwnerProfile,
-  OwnerSignInErrorResponse,
-  OwnerSignInRequest,
-  OwnerSignInResponse,
+import {
+  authApiErrorCode,
+  type OwnerProfile,
+  type OwnerSignInErrorResponse,
+  type OwnerSignInRequest,
+  type OwnerSignInResponse,
 } from '@collectify/contracts';
 import { eq } from 'drizzle-orm';
 import type { IncomingHttpHeaders } from 'node:http';
@@ -107,7 +108,7 @@ async function findOwnerProfile(
 function invalidCredentialsException(): HttpException {
   return new HttpException(
     {
-      code: 'INVALID_CREDENTIALS',
+      code: authApiErrorCode.invalidCredentials,
       message: invalidCredentialsMessage,
       fieldErrors: {
         email: [invalidCredentialsMessage],
@@ -121,7 +122,7 @@ function invalidCredentialsException(): HttpException {
 function ownerProfileMissingException(): HttpException {
   return new HttpException(
     {
-      code: 'OWNER_PROFILE_MISSING',
+      code: authApiErrorCode.ownerProfileMissing,
       message: ownerProfileMissingMessage,
     } satisfies OwnerSignInErrorResponse,
     HttpStatus.CONFLICT,

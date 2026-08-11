@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
-import { validationErrorCode } from './validation.js';
+import { authValidationCode } from './auth-codes.js';
 
 export const ownerLanguageSchema = z.enum(
   ['en', 'tr'],
-  validationErrorCode.authPreferredLanguageUnsupported,
+  authValidationCode.authPreferredLanguageUnsupported,
 );
 export const currencySchema = z.enum(
   ['TRY', 'USD', 'EUR'],
-  validationErrorCode.authDefaultCurrencyUnsupported,
+  authValidationCode.authDefaultCurrencyUnsupported,
 );
 
 export const ownerProfileSchema = z.object({
