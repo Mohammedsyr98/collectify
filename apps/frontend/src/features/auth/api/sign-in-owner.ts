@@ -1,5 +1,4 @@
 import {
-  ownerSignInErrorResponseSchema,
   ownerSignInResponseSchema,
   type OwnerSignInRequest,
   type OwnerSignInResponse,
@@ -7,6 +6,7 @@ import {
 
 import {
   createApiError,
+  createApiErrorFromResponseBody,
   getBackendUrl,
   readJsonResponse,
 } from '../../../shared/api/http';
@@ -26,17 +26,7 @@ export async function signInOwner(
   const responseBody = await readJsonResponse(response);
 
   if (!response.ok) {
-    const errorResult = ownerSignInErrorResponseSchema.safeParse(responseBody);
-
-    if (errorResult.success) {
-      throw createApiError(errorResult.data.message, {
-        status: response.status,
-        code: errorResult.data.code,
-        fieldErrors: errorResult.data.fieldErrors,
-      });
-    }
-
-    throw createApiError(`Owner sign-in failed with status ${response.status}`, {
+    throw createApiErrorFromResponseBody(responseBody, {
       status: response.status,
     });
   }
