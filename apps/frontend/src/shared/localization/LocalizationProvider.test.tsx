@@ -4,10 +4,28 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  createI18nInstance,
   LocalizationProvider,
   localeStorageKey,
+  type SupportedLocale,
   useLocalization,
 } from './index';
+
+const testI18nResources = {
+  en: {
+    common: {},
+  },
+  tr: {
+    common: {},
+  },
+};
+
+function createTestI18nInstance(initialLocale: SupportedLocale) {
+  return createI18nInstance({
+    initialLocale,
+    resources: testI18nResources,
+  });
+}
 
 function LocaleProbe() {
   const { locale, setLocale } = useLocalization();
@@ -23,7 +41,11 @@ function LocaleProbe() {
 }
 
 function renderWithLocalization(children: ReactNode) {
-  return render(<LocalizationProvider>{children}</LocalizationProvider>);
+  return render(
+    <LocalizationProvider createI18nInstance={createTestI18nInstance}>
+      {children}
+    </LocalizationProvider>,
+  );
 }
 
 function setBrowserLanguages(languages: readonly string[]) {

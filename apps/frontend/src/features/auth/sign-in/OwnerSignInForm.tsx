@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ownerSignInRequestSchema, type OwnerSignInRequest } from '@collectify/contracts';
 
+import { useAuthValidationErrorFormatter } from '../localization/useAuthValidationErrorFormatter';
 import { FormInput } from '../../../shared/ui/form/FormInput';
 
 const defaultValues: OwnerSignInRequest = {
@@ -22,6 +23,7 @@ export function OwnerSignInForm({
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { t } = useTranslation();
+  const formatValidationError = useAuthValidationErrorFormatter();
   const form = useForm<OwnerSignInRequest>({
     defaultValues,
     resolver: zodResolver(ownerSignInRequestSchema),
@@ -37,6 +39,7 @@ export function OwnerSignInForm({
       >
         <FormInput
           autoComplete="email"
+          formatError={formatValidationError}
           icon={<Mail aria-hidden="true" size={16} strokeWidth={2.2} />}
           label={t('auth.signIn.emailLabel')}
           name="email"
@@ -46,6 +49,7 @@ export function OwnerSignInForm({
 
         <FormInput
           autoComplete="current-password"
+          formatError={formatValidationError}
           endAdornment={
             <button
               aria-label={

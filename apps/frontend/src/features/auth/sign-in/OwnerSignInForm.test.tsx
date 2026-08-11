@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalizationProvider } from '../../../shared/localization';
+import { AppLocalizationProvider } from '../../../app/localization/AppLocalizationProvider';
 import { OwnerSignInForm } from './OwnerSignInForm';
 
 function renderOwnerSignInForm({
@@ -14,9 +14,9 @@ function renderOwnerSignInForm({
   onSubmit?: ComponentProps<typeof OwnerSignInForm>['onSubmit'];
 } = {}) {
   return render(
-    <LocalizationProvider>
+    <AppLocalizationProvider>
       <OwnerSignInForm isSubmitting={isSubmitting} onSubmit={onSubmit} />
-    </LocalizationProvider>,
+    </AppLocalizationProvider>,
   );
 }
 

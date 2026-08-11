@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppI18nInstance } from '../../../app/localization/i18n';
 import { createApiError } from '../../../shared/api/http';
-import { createI18nInstance } from '../../../shared/localization';
 import {
   getOwnerSignInApiErrorDescription,
   getOwnerSignUpApiErrorDescription,
@@ -9,7 +9,7 @@ import {
 
 describe('auth API error descriptions', () => {
   it('uses localized copy for known sign-in error codes', () => {
-    const i18n = createI18nInstance('tr');
+    const i18n = createAppI18nInstance('tr');
     const error = createApiError('Email or password is incorrect.', {
       code: 'INVALID_CREDENTIALS',
       fieldErrors: {
@@ -24,7 +24,7 @@ describe('auth API error descriptions', () => {
   });
 
   it('uses localized copy for known sign-up error codes', () => {
-    const i18n = createI18nInstance('tr');
+    const i18n = createAppI18nInstance('tr');
     const error = createApiError('An account already exists for this email.', {
       code: 'ACCOUNT_ALREADY_EXISTS',
       fieldErrors: {
@@ -39,7 +39,7 @@ describe('auth API error descriptions', () => {
   });
 
   it('falls back to existing API descriptions for unknown codes', () => {
-    const i18n = createI18nInstance('tr');
+    const i18n = createAppI18nInstance('tr');
     const error = createApiError('Backend fallback message.', {
       code: 'SOMETHING_ELSE',
       fieldErrors: {
@@ -54,7 +54,7 @@ describe('auth API error descriptions', () => {
   });
 
   it('falls back to safe descriptions for non-API errors', () => {
-    const i18n = createI18nInstance('tr');
+    const i18n = createAppI18nInstance('tr');
 
     expect(
       getOwnerSignInApiErrorDescription(
