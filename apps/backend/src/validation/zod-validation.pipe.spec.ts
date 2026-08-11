@@ -1,12 +1,11 @@
 import { HttpException } from '@nestjs/common';
-import { authValidationCode, ownerSignUpRequestSchema } from '@collectify/contracts';
+import {
+  authValidationCode,
+  ownerSignUpRequestSchema,
+} from '@collectify/contracts';
 import { describe, expect, it } from 'vitest';
 
-import {
-  createZodValidationExceptionFactory,
-  ZodValidationPipe,
-  type ZodSchema,
-} from './zod-validation.pipe';
+import { ZodValidationPipe, type ZodSchema } from './zod-validation.pipe';
 
 describe('ZodValidationPipe', () => {
   it('returns the parsed schema output', () => {
@@ -63,14 +62,12 @@ describe('ZodValidationPipe', () => {
   });
 
   it('uses the provided message resolver for field error messages', () => {
-    const pipe = new ZodValidationPipe(
-      ownerSignUpRequestSchema,
-      createZodValidationExceptionFactory((message) =>
+    const pipe = new ZodValidationPipe(ownerSignUpRequestSchema, {
+      resolveIssueMessage: (message) =>
         message === authValidationCode.authNameRequired
           ? 'Name is required.'
           : message,
-      ),
-    );
+    });
 
     try {
       pipe.transform({
@@ -89,15 +86,6 @@ describe('ZodValidationPipe', () => {
         },
       });
     }
-  });
-
-  it('uses the route exception factory when one is provided', () => {
-    const exception = new HttpException({
-      code: 'CUSTOM_VALIDATION_ERROR',
-    }, 400);
-    const pipe = new ZodValidationPipe(ownerSignUpRequestSchema, () => exception);
-
-    expect(() => pipe.transform({ name: '' })).toThrow(exception);
   });
 
   it('passes through unknown validation messages unchanged', () => {
@@ -125,6 +113,51 @@ describe('ZodValidationPipe', () => {
       expect((error as HttpException).getResponse()).toMatchObject({
         fieldErrors: {
           reference: ['Reference is required.'],
+        },
+      });
+    }
+  });
+
+  it('groups multiple issues by field through the pipe interface', () => {
+    const schema: ZodSchema<unknown> = {
+      safeParse: () =>
+        ({
+          success: false,
+          error: {
+            issues: [
+              {
+                path: ['email'],
+                message: 'Email is required.',
+              },
+              {
+                path: ['email'],
+                message: 'Email must be valid.',
+              },
+              {
+                path: ['password'],
+                message: 'Password is required.',
+              },
+              {
+                path: [0],
+                message: 'Ignored non-field issue.',
+              },
+            ],
+          },
+        }),
+    };
+    const pipe = new ZodValidationPipe(schema);
+
+    try {
+      pipe.transform({});
+      expect.unreachable('expected validation to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpException);
+      expect((error as HttpException).getResponse()).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'Check the highlighted fields.',
+        fieldErrors: {
+          email: ['Email is required.', 'Email must be valid.'],
+          password: ['Password is required.'],
         },
       });
     }
