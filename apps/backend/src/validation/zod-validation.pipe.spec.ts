@@ -1,8 +1,12 @@
 import { HttpException } from '@nestjs/common';
-import { ownerSignUpRequestSchema } from '@collectify/contracts';
+import { authValidationCode, ownerSignUpRequestSchema } from '@collectify/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { ZodValidationPipe, type ZodSchema } from './zod-validation.pipe';
+import {
+  createZodValidationExceptionFactory,
+  ZodValidationPipe,
+  type ZodSchema,
+} from './zod-validation.pipe';
 
 describe('ZodValidationPipe', () => {
   it('returns the parsed schema output', () => {
@@ -25,7 +29,7 @@ describe('ZodValidationPipe', () => {
     });
   });
 
-  it('throws the default controlled validation error for invalid input', () => {
+  it('throws the default controlled validation error with schema messages', () => {
     const pipe = new ZodValidationPipe(ownerSignUpRequestSchema);
 
     try {
@@ -44,11 +48,44 @@ describe('ZodValidationPipe', () => {
         code: 'VALIDATION_ERROR',
         message: 'Check the highlighted fields.',
         fieldErrors: {
+          name: [authValidationCode.authNameRequired],
+          email: [authValidationCode.authEmailInvalid],
+          password: [authValidationCode.authSignUpPasswordLength],
+          preferredLanguage: [
+            authValidationCode.authPreferredLanguageUnsupported,
+          ],
+          defaultCurrency: [
+            authValidationCode.authDefaultCurrencyUnsupported,
+          ],
+        },
+      });
+    }
+  });
+
+  it('uses the provided message resolver for field error messages', () => {
+    const pipe = new ZodValidationPipe(
+      ownerSignUpRequestSchema,
+      createZodValidationExceptionFactory((message) =>
+        message === authValidationCode.authNameRequired
+          ? 'Name is required.'
+          : message,
+      ),
+    );
+
+    try {
+      pipe.transform({
+        name: '',
+        email: 'owner@example.com',
+        password: 'password123',
+        preferredLanguage: 'en',
+        defaultCurrency: 'TRY',
+      });
+      expect.unreachable('expected validation to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpException);
+      expect((error as HttpException).getResponse()).toMatchObject({
+        fieldErrors: {
           name: ['Name is required.'],
-          email: ['Enter a valid email address.'],
-          password: ['Password must be between 8 and 128 characters.'],
-          preferredLanguage: ['Choose English or Turkish.'],
-          defaultCurrency: ['Choose TRY, USD, or EUR.'],
         },
       });
     }

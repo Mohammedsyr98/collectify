@@ -6,19 +6,23 @@ import {
   ownerProfileSchema,
 } from './owner-profile.js';
 import { sessionUserSchema } from './session.js';
-import { validationErrorCode } from './validation.js';
+import {
+  authValidationCode,
+  ownerSignInApiErrorCodes,
+  ownerSignUpApiErrorCodes,
+} from './auth-codes.js';
 
 export const ownerSignUpRequestSchema = z.object({
-  name: z.string().trim().min(1, validationErrorCode.authNameRequired),
+  name: z.string().trim().min(1, authValidationCode.authNameRequired),
   email: z
     .string()
     .trim()
-    .email(validationErrorCode.authEmailInvalid)
+    .email(authValidationCode.authEmailInvalid)
     .transform((email) => email.toLowerCase()),
   password: z
     .string()
-    .min(8, validationErrorCode.authSignUpPasswordLength)
-    .max(128, validationErrorCode.authSignUpPasswordLength),
+    .min(8, authValidationCode.authSignUpPasswordLength)
+    .max(128, authValidationCode.authSignUpPasswordLength),
   preferredLanguage: ownerLanguageSchema,
   defaultCurrency: currencySchema,
 });
@@ -27,9 +31,9 @@ export const ownerSignInRequestSchema = z.object({
   email: z
     .string()
     .trim()
-    .email(validationErrorCode.authEmailInvalid)
+    .email(authValidationCode.authEmailInvalid)
     .transform((email) => email.toLowerCase()),
-  password: z.string().min(1, validationErrorCode.authSignInPasswordRequired),
+  password: z.string().min(1, authValidationCode.authSignInPasswordRequired),
 });
 
 export const ownerSignUpResponseSchema = z.object({
@@ -57,11 +61,7 @@ export const ownerSignInFieldErrorsSchema = z
   })
   .strict();
 
-export const ownerSignInErrorCodeSchema = z.enum([
-  'VALIDATION_ERROR',
-  'INVALID_CREDENTIALS',
-  'OWNER_PROFILE_MISSING',
-]);
+export const ownerSignInErrorCodeSchema = z.enum(ownerSignInApiErrorCodes);
 
 export const ownerSignInErrorResponseSchema = z.object({
   code: ownerSignInErrorCodeSchema,
@@ -69,11 +69,7 @@ export const ownerSignInErrorResponseSchema = z.object({
   fieldErrors: ownerSignInFieldErrorsSchema.optional(),
 });
 
-export const ownerSignUpErrorCodeSchema = z.enum([
-  'VALIDATION_ERROR',
-  'ACCOUNT_ALREADY_EXISTS',
-  'PROFILE_SETUP_FAILED',
-]);
+export const ownerSignUpErrorCodeSchema = z.enum(ownerSignUpApiErrorCodes);
 
 export const ownerSignUpErrorResponseSchema = z.object({
   code: ownerSignUpErrorCodeSchema,

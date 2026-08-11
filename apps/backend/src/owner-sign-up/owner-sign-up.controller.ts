@@ -14,11 +14,16 @@ import { ownerSignUpRequestSchema } from '@collectify/contracts';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
 import { applyBetterAuthResponseHeaders } from '../auth/better-auth-response-headers';
-import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { getAuthValidationMessageFallback } from '../auth/auth-validation-message-fallbacks';
+import {
+  createZodValidationExceptionFactory,
+  ZodValidationPipe,
+} from '../validation/zod-validation.pipe';
 import { OwnerSignUpService } from './owner-sign-up.service';
 
 const ownerSignUpValidationPipe = new ZodValidationPipe(
   ownerSignUpRequestSchema,
+  createZodValidationExceptionFactory(getAuthValidationMessageFallback),
 );
 
 @Controller('owner')

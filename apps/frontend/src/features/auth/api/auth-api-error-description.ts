@@ -1,21 +1,26 @@
-import type {
-  OwnerSignInErrorCode,
-  OwnerSignUpErrorCode,
+import {
+  authApiErrorCode,
+  type OwnerSignInErrorCode,
+  type OwnerSignUpErrorCode,
 } from '@collectify/contracts';
 import type { TFunction } from 'i18next';
 
 import { getApiErrorDescription, isApiError } from '../../../shared/api/http';
 
 const signInErrorDescriptionKeys = {
-  INVALID_CREDENTIALS: 'toast.auth.apiErrors.INVALID_CREDENTIALS',
-  OWNER_PROFILE_MISSING: 'toast.auth.apiErrors.OWNER_PROFILE_MISSING',
-  VALIDATION_ERROR: 'toast.auth.apiErrors.VALIDATION_ERROR',
+  [authApiErrorCode.invalidCredentials]:
+    'toast.auth.apiErrors.INVALID_CREDENTIALS',
+  [authApiErrorCode.ownerProfileMissing]:
+    'toast.auth.apiErrors.OWNER_PROFILE_MISSING',
+  [authApiErrorCode.validationError]: 'toast.auth.apiErrors.VALIDATION_ERROR',
 } satisfies Record<OwnerSignInErrorCode, string>;
 
 const signUpErrorDescriptionKeys = {
-  ACCOUNT_ALREADY_EXISTS: 'toast.auth.apiErrors.ACCOUNT_ALREADY_EXISTS',
-  PROFILE_SETUP_FAILED: 'toast.auth.apiErrors.PROFILE_SETUP_FAILED',
-  VALIDATION_ERROR: 'toast.auth.apiErrors.VALIDATION_ERROR',
+  [authApiErrorCode.accountAlreadyExists]:
+    'toast.auth.apiErrors.ACCOUNT_ALREADY_EXISTS',
+  [authApiErrorCode.profileSetupFailed]:
+    'toast.auth.apiErrors.PROFILE_SETUP_FAILED',
+  [authApiErrorCode.validationError]: 'toast.auth.apiErrors.VALIDATION_ERROR',
 } satisfies Record<OwnerSignUpErrorCode, string>;
 
 export function getOwnerSignInApiErrorDescription(

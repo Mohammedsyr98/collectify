@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AuthService } from '@thallesp/nestjs-better-auth';
-import type {
-  OwnerSignUpErrorResponse,
-  OwnerSignUpRequest,
-  OwnerSignUpResponse,
+import {
+  authApiErrorCode,
+  type OwnerSignUpErrorResponse,
+  type OwnerSignUpRequest,
+  type OwnerSignUpResponse,
 } from '@collectify/contracts';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -125,7 +126,7 @@ function mapBetterAuthSignUpError(error: unknown): HttpException {
 function duplicateAccountException(): HttpException {
   return new HttpException(
     {
-      code: 'ACCOUNT_ALREADY_EXISTS',
+      code: authApiErrorCode.accountAlreadyExists,
       message: duplicateAccountMessage,
       fieldErrors: {
         email: [duplicateAccountMessage],
@@ -138,7 +139,7 @@ function duplicateAccountException(): HttpException {
 function profileSetupFailedException(): HttpException {
   return new HttpException(
     {
-      code: 'PROFILE_SETUP_FAILED',
+      code: authApiErrorCode.profileSetupFailed,
       message: profileSetupFailedMessage,
     } satisfies OwnerSignUpErrorResponse,
     HttpStatus.INTERNAL_SERVER_ERROR,

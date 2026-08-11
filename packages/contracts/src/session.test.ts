@@ -14,9 +14,8 @@ import {
 } from './owner-auth.js';
 import { sessionResponseSchema } from './session.js';
 import {
-  getValidationErrorMessageFallback,
-  validationErrorCode,
-} from './validation.js';
+  authValidationCode,
+} from './auth-codes.js';
 
 describe('session contracts', () => {
   it('accepts a signed-out session response without user details', () => {
@@ -128,39 +127,15 @@ describe('owner sign-up contracts', () => {
     expect(
       result.error.issues.map((issue) => [issue.path[0], issue.message]),
     ).toEqual([
-      ['name', validationErrorCode.authNameRequired],
-      ['email', validationErrorCode.authEmailInvalid],
-      ['password', validationErrorCode.authSignUpPasswordLength],
+      ['name', authValidationCode.authNameRequired],
+      ['email', authValidationCode.authEmailInvalid],
+      ['password', authValidationCode.authSignUpPasswordLength],
       [
         'preferredLanguage',
-        validationErrorCode.authPreferredLanguageUnsupported,
+        authValidationCode.authPreferredLanguageUnsupported,
       ],
-      ['defaultCurrency', validationErrorCode.authDefaultCurrencyUnsupported],
+      ['defaultCurrency', authValidationCode.authDefaultCurrencyUnsupported],
     ]);
-  });
-
-  it('provides English fallback messages for owner sign-up validation codes', () => {
-    expect(
-      getValidationErrorMessageFallback(validationErrorCode.authNameRequired),
-    ).toBe('Name is required.');
-    expect(
-      getValidationErrorMessageFallback(validationErrorCode.authEmailInvalid),
-    ).toBe('Enter a valid email address.');
-    expect(
-      getValidationErrorMessageFallback(
-        validationErrorCode.authSignUpPasswordLength,
-      ),
-    ).toBe('Password must be between 8 and 128 characters.');
-    expect(
-      getValidationErrorMessageFallback(
-        validationErrorCode.authPreferredLanguageUnsupported,
-      ),
-    ).toBe('Choose English or Turkish.');
-    expect(
-      getValidationErrorMessageFallback(
-        validationErrorCode.authDefaultCurrencyUnsupported,
-      ),
-    ).toBe('Choose TRY, USD, or EUR.');
   });
 
   it('requires owner profile context on successful sign-up', () => {
@@ -245,8 +220,8 @@ describe('owner sign-in contracts', () => {
     expect(
       result.error.issues.map((issue) => [issue.path[0], issue.message]),
     ).toEqual([
-      ['email', validationErrorCode.authEmailInvalid],
-      ['password', validationErrorCode.authSignInPasswordRequired],
+      ['email', authValidationCode.authEmailInvalid],
+      ['password', authValidationCode.authSignInPasswordRequired],
     ]);
   });
 
