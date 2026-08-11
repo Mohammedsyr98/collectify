@@ -1,5 +1,6 @@
 import type { Resource } from 'i18next';
 
+import { authApiErrorTranslations } from '../../features/auth/localization/authApiErrorTranslations';
 import { authValidationTranslations } from '../../features/auth/localization/authValidationTranslations';
 
 export const appI18nResources = {
@@ -29,6 +30,7 @@ export const appI18nResources = {
         },
       },
       auth: {
+        errors: authApiErrorTranslations.en,
         entry: {
           createAccountTab: 'Create account',
           showCreateAccountForm: 'Show create account form',
@@ -77,13 +79,6 @@ export const appI18nResources = {
       },
       toast: {
         auth: {
-          apiErrors: {
-            ACCOUNT_ALREADY_EXISTS: 'An account already exists for this email.',
-            INVALID_CREDENTIALS: 'Email or password is incorrect.',
-            OWNER_PROFILE_MISSING: 'Owner profile setup is incomplete.',
-            PROFILE_SETUP_FAILED: 'We could not finish owner setup. Try again.',
-            VALIDATION_ERROR: 'Check the highlighted fields.',
-          },
           signIn: {
             errorDescription: 'Unable to sign in. Try again.',
             errorTitle: 'Could not sign in',
@@ -126,6 +121,7 @@ export const appI18nResources = {
         },
       },
       auth: {
+        errors: authApiErrorTranslations.tr,
         entry: {
           createAccountTab: 'Hesap oluştur',
           showCreateAccountForm: 'Hesap oluşturma formunu göster',
@@ -174,15 +170,6 @@ export const appI18nResources = {
       },
       toast: {
         auth: {
-          apiErrors: {
-            ACCOUNT_ALREADY_EXISTS:
-              'Bu e-posta adresiyle zaten bir hesap var.',
-            INVALID_CREDENTIALS: 'E-posta veya \u015fifre hatal\u0131.',
-            OWNER_PROFILE_MISSING: 'Sahip profili kurulumu eksik.',
-            PROFILE_SETUP_FAILED:
-              'Sahip kurulumu tamamlanamad\u0131. Tekrar deneyin.',
-            VALIDATION_ERROR: 'Vurgulanan alanlar\u0131 kontrol edin.',
-          },
           signIn: {
             errorDescription: 'Giriş yapılamadı. Tekrar deneyin.',
             errorTitle: 'Giriş yapılamadı',
