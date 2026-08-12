@@ -1,9 +1,8 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import {
   authApiErrorCode,
   type OwnerProfile,
-  type OwnerSignInErrorResponse,
   type OwnerSignInRequest,
   type OwnerSignInResponse,
 } from '@collectify/contracts';
@@ -14,6 +13,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import type { CollectifyBetterAuth } from '../auth/better-auth';
 import { DatabaseService } from '../database/database.service';
 import { ownerProfiles } from '../database/schema';
+import { ownerSignInException } from './owner-sign-in.errors';
 
 export interface OwnerSignInResult {
   body: OwnerSignInResponse;
@@ -31,9 +31,6 @@ interface BetterAuthSignInResult {
   };
   headers: Headers;
 }
-
-const invalidCredentialsMessage = 'Email or password is incorrect.';
-const ownerProfileMissingMessage = 'Owner profile setup is incomplete.';
 
 @Injectable()
 export class OwnerSignInService {
@@ -53,7 +50,7 @@ export class OwnerSignInService {
     );
 
     if (!ownerProfile) {
-      throw ownerProfileMissingException();
+      throw ownerSignInException(authApiErrorCode.ownerProfileMissing);
     }
 
     return {
@@ -84,7 +81,7 @@ export class OwnerSignInService {
         },
       })) as BetterAuthSignInResult;
     } catch {
-      throw invalidCredentialsException();
+      throw ownerSignInException(authApiErrorCode.invalidCredentials);
     }
   }
 }
@@ -103,28 +100,4 @@ async function findOwnerProfile(
     .limit(1);
 
   return ownerProfile ?? null;
-}
-
-function invalidCredentialsException(): HttpException {
-  return new HttpException(
-    {
-      code: authApiErrorCode.invalidCredentials,
-      message: invalidCredentialsMessage,
-      fieldErrors: {
-        email: [invalidCredentialsMessage],
-        password: [invalidCredentialsMessage],
-      },
-    } satisfies OwnerSignInErrorResponse,
-    HttpStatus.UNAUTHORIZED,
-  );
-}
-
-function ownerProfileMissingException(): HttpException {
-  return new HttpException(
-    {
-      code: authApiErrorCode.ownerProfileMissing,
-      message: ownerProfileMissingMessage,
-    } satisfies OwnerSignInErrorResponse,
-    HttpStatus.CONFLICT,
-  );
 }
