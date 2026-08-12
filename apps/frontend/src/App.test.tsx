@@ -91,6 +91,19 @@ function mockOwnerSignInError(response: AuthApiErrorResponse, status: number) {
   );
 }
 
+function mockOwnerSignInMalformedError() {
+  server.use(
+    http.post(`${getBackendUrl()}/owner/sign-in`, () =>
+      HttpResponse.json(
+        {
+          message: 'Malformed backend body.',
+        },
+        { status: 500 },
+      ),
+    ),
+  );
+}
+
 function renderApp() {
   return renderWithAppProviders(<App />);
 }
@@ -217,6 +230,33 @@ describe('App', () => {
     expect(
       screen.queryByText('Protected Collectify workspace'),
     ).not.toBeInTheDocument();
+  });
+
+  it('shows a generic localized fallback for malformed sign-in error responses', async () => {
+    const user = userEvent.setup();
+    setBrowserLanguages(['tr-TR']);
+    mockOwnerSignInMalformedError();
+    renderApp();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Giri\u015f yap' }),
+    );
+    await user.type(
+      screen.getByLabelText('E-posta adresi'),
+      'owner@example.com',
+    );
+    await user.type(screen.getByLabelText('\u015eifre'), 'password123');
+    await user.click(
+      screen.getByRole('button', { name: '\u00c7al\u0131\u015fma alan\u0131na gir' }),
+    );
+
+    expect(
+      await screen.findByRole('alert', {
+        name: 'Giri\u015f yap\u0131lamad\u0131',
+      }),
+    ).toHaveTextContent('Bir \u015feyler ters gitti. Tekrar deneyin.');
+    expect(screen.queryByText('Malformed backend body.')).not.toBeInTheDocument();
+    expect(screen.queryByText('500')).not.toBeInTheDocument();
   });
 
   it('shows protected owner context with a success toast after sign-up', async () => {
@@ -375,9 +415,7 @@ describe('App', () => {
       await screen.findByRole('alert', {
         name: 'Hesap olu\u015fturulamad\u0131',
       }),
-    ).toHaveTextContent(
-      'Sahip hesab\u0131 olu\u015fturulamad\u0131. Tekrar deneyin.',
-    );
+    ).toHaveTextContent('Bir \u015feyler ters gitti. Tekrar deneyin.');
     expect(screen.queryByText('Malformed backend body.')).not.toBeInTheDocument();
     expect(screen.queryByText('500')).not.toBeInTheDocument();
   });

@@ -32,7 +32,7 @@ export function useOwnerSignInSubmit() {
         title: t('toast.auth.signIn.errorTitle'),
         description: resolveApiErrorDescription(error, {
           describeKnownCode: (code) => t(`auth.errors.${code}`),
-          fallbackDescription: t('toast.auth.signIn.errorDescription'),
+          fallbackDescription: t('errors.genericDescription'),
           isKnownCode: isAuthApiErrorCode,
         }),
       });

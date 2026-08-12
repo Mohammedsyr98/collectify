@@ -77,16 +77,17 @@ export const appI18nResources = {
         english: 'English',
         turkish: 'Turkish',
       },
+      errors: {
+        genericDescription: 'Something went wrong. Try again.',
+      },
       toast: {
         auth: {
           signIn: {
-            errorDescription: 'Unable to sign in. Try again.',
             errorTitle: 'Could not sign in',
             successDescription: 'Welcome back to Collectify.',
             successTitle: 'Signed in',
           },
           signUp: {
-            errorDescription: 'Unable to create owner account. Try again.',
             errorTitle: 'Could not create account',
             successDescription: 'Your Collectify workspace is ready.',
             successTitle: 'Account created',
@@ -168,16 +169,17 @@ export const appI18nResources = {
         english: '\u0130ngilizce',
         turkish: 'T\u00fcrk\u00e7e',
       },
+      errors: {
+        genericDescription: 'Bir şeyler ters gitti. Tekrar deneyin.',
+      },
       toast: {
         auth: {
           signIn: {
-            errorDescription: 'Giriş yapılamadı. Tekrar deneyin.',
             errorTitle: 'Giriş yapılamadı',
             successDescription: 'Collectify’a tekrar hoş geldiniz.',
             successTitle: 'Giriş yapıldı',
           },
           signUp: {
-            errorDescription: 'Sahip hesabı oluşturulamadı. Tekrar deneyin.',
             errorTitle: 'Hesap oluşturulamadı',
             successDescription: 'Collectify çalışma alanınız hazır.',
             successTitle: 'Hesap oluşturuldu',
