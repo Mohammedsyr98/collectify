@@ -22,14 +22,14 @@ export function useOwnerSignUpSubmit() {
       queryClient.setQueryData(sessionQueryKey, session);
       showToast({
         variant: 'success',
-        title: t('toast.auth.signUp.successTitle'),
-        description: t('toast.auth.signUp.successDescription'),
+        title: t('auth.toast.signUp.successTitle'),
+        description: t('auth.toast.signUp.successDescription'),
       });
     },
     onError: (error) => {
       showToast({
         variant: 'error',
-        title: t('toast.auth.signUp.errorTitle'),
+        title: t('auth.toast.signUp.errorTitle'),
         description: resolveApiErrorDescription(error, {
           describeKnownCode: (code) => t(`auth.errors.${code}`),
           fallbackDescription: t('errors.genericDescription'),
