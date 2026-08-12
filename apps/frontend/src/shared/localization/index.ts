@@ -7,6 +7,7 @@ export {
   type CreateI18nInstance,
 } from './LocalizationProvider';
 export { createI18nInstance } from './i18n';
+export { sharedLocalizationResources } from './resources';
 export {
   defaultLocale,
   isSupportedLocale,
