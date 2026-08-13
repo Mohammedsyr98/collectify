@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { authValidationCode } from './auth-codes.js';
+import { authValidationCode } from '../auth/validation-codes.js';
 
 export const ownerLanguageSchema = z.enum(
   ['en', 'tr'],

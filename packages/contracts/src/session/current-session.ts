@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ownerProfileSchema } from './owner-profile.js';
+import { ownerProfileSchema } from '../owner-profile/owner-profile.js';
 
 export const sessionUserSchema = z.object({
   id: z.string().min(1),
