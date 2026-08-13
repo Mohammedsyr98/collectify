@@ -1,8 +1,7 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import {
   authApiErrorCode,
-  type OwnerSignUpErrorResponse,
   type OwnerSignUpRequest,
   type OwnerSignUpResponse,
 } from '@collectify/contracts';
@@ -15,6 +14,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import type { CollectifyBetterAuth } from '../auth/better-auth';
 import { DatabaseService } from '../database/database.service';
 import { ownerProfiles, user as authUsers } from '../database/schema';
+import { ownerSignUpException } from './owner-sign-up.errors';
 
 export interface OwnerSignUpResult {
   body: OwnerSignUpResponse;
@@ -32,9 +32,6 @@ interface BetterAuthSignUpResult {
   };
   headers: Headers;
 }
-
-const duplicateAccountMessage = 'An account already exists for this email.';
-const profileSetupFailedMessage = 'We could not finish owner setup. Try again.';
 
 @Injectable()
 export class OwnerSignUpService {
@@ -55,7 +52,7 @@ export class OwnerSignUpService {
       await this.rollbackAuthUser(signUpResult.response.user.id).catch(() => {
         // The response must not expose a partial sign-up or apply cookies.
       });
-      throw profileSetupFailedException();
+      throw ownerSignUpException(authApiErrorCode.profileSetupFailed);
     }
 
     return {
@@ -112,36 +109,10 @@ export class OwnerSignUpService {
   }
 }
 
-function mapBetterAuthSignUpError(error: unknown): HttpException {
-  if (
-    isAPIError(error) &&
-    error.body?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
-  ) {
-    return duplicateAccountException();
+function mapBetterAuthSignUpError(error: unknown): ReturnType<typeof ownerSignUpException> {
+  if (isAPIError(error) && error.body?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
+    return ownerSignUpException(authApiErrorCode.accountAlreadyExists);
   }
 
-  return profileSetupFailedException();
-}
-
-function duplicateAccountException(): HttpException {
-  return new HttpException(
-    {
-      code: authApiErrorCode.accountAlreadyExists,
-      message: duplicateAccountMessage,
-      fieldErrors: {
-        email: [duplicateAccountMessage],
-      },
-    } satisfies OwnerSignUpErrorResponse,
-    HttpStatus.CONFLICT,
-  );
-}
-
-function profileSetupFailedException(): HttpException {
-  return new HttpException(
-    {
-      code: authApiErrorCode.profileSetupFailed,
-      message: profileSetupFailedMessage,
-    } satisfies OwnerSignUpErrorResponse,
-    HttpStatus.INTERNAL_SERVER_ERROR,
-  );
+  return ownerSignUpException(authApiErrorCode.profileSetupFailed);
 }
