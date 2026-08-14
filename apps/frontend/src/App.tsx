@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
-import { useSessionQuery } from './features/auth/session/sessionQueries';
-import { useOwnerProfileLanguageSync } from './features/auth/session/useOwnerProfileLanguageSync';
+import { useAppSessionState } from './features/auth/session/useAppSessionState';
 import {
   isSupportedLocale,
   type SupportedLocale,
@@ -22,24 +20,9 @@ const localeNameTranslationKeys = {
 
 function App() {
   const { t } = useTranslation();
-  const sessionQuery = useSessionQuery();
-  const { isOwnerProfileLanguageSynced, syncOwnerProfileLanguage } =
-    useOwnerProfileLanguageSync();
-  const ownerProfile = sessionQuery.data?.authenticated
-    ? sessionQuery.data.ownerProfile
-    : null;
-  const isOwnerProfileLanguagePending =
-    !!ownerProfile && !isOwnerProfileLanguageSynced(ownerProfile);
+  const appSession = useAppSessionState();
 
-  useEffect(() => {
-    if (!ownerProfile || !isOwnerProfileLanguagePending) {
-      return;
-    }
-
-    void syncOwnerProfileLanguage(ownerProfile);
-  }, [isOwnerProfileLanguagePending, ownerProfile, syncOwnerProfileLanguage]);
-
-  if (sessionQuery.isPending || isOwnerProfileLanguagePending) {
+  if (appSession.status === 'loading') {
     return (
       <StatusPage
         detail={t('app.status.checkingSession.detail')}
@@ -49,7 +32,7 @@ function App() {
     );
   }
 
-  if (sessionQuery.isError) {
+  if (appSession.status === 'sessionUnavailable') {
     return (
       <StatusPage
         detail={t('app.status.sessionUnavailable.detail')}
@@ -59,9 +42,9 @@ function App() {
     );
   }
 
-  const session = sessionQuery.data;
+  if (appSession.status === 'ownerWorkspace') {
+    const { session } = appSession;
 
-  if (session.authenticated && session.ownerProfile) {
     return (
       <OwnerWorkspacePreview
         defaultCurrency={session.ownerProfile.defaultCurrency}
@@ -71,7 +54,7 @@ function App() {
     );
   }
 
-  if (session.authenticated && !session.ownerProfile) {
+  if (appSession.status === 'ownerSetupIncomplete') {
     return (
       <StatusPage
         detail={t('app.status.ownerSetupIncomplete.detail')}
