@@ -11,8 +11,13 @@ import type {
 } from '@collectify/contracts';
 
 import App from './App';
+import { sessionQueryKey } from './features/auth/session/sessionQueries';
 import { getBackendUrl } from './shared/api/http';
-import { renderWithAppProviders } from './shared/test/render';
+import { localeStorageKey } from './shared/localization';
+import {
+  createTestQueryClient,
+  renderWithAppProviders,
+} from './shared/test/render';
 import { server } from './shared/test/server';
 
 const unauthenticatedSession: SessionResponse = {
@@ -140,7 +145,46 @@ describe('App', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows protected owner context with a success toast after sign-in', async () => {
+  it('uses the authenticated owner profile language after session load', async () => {
+    mockSession(ownerSession);
+
+    renderApp();
+
+    expect(
+      await screen.findByText('Korunan Collectify \u00e7al\u0131\u015fma alan\u0131'),
+    ).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute('lang', 'tr');
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the workspace hidden while the profile language is pending', async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(sessionQueryKey, ownerSession);
+    mockSession(ownerSession);
+
+    renderWithAppProviders(<App />, { queryClient });
+
+    expect(
+      screen.getByRole('heading', {
+        name: /Checking session|Oturum kontrol ediliyor/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Korunan Collectify \u00e7al\u0131\u015fma alan\u0131'),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Korunan Collectify \u00e7al\u0131\u015fma alan\u0131'),
+    ).toBeInTheDocument();
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+  });
+
+  it('shows protected owner context with the profile language after sign-in', async () => {
     const user = userEvent.setup();
     mockOwnerSignInSuccess(ownerSession);
     renderApp();
@@ -151,13 +195,17 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Enter workspace' }));
 
     expect(
-      await screen.findByText('Protected Collectify workspace'),
+      await screen.findByText('Korunan Collectify \u00e7al\u0131\u015fma alan\u0131'),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('status', { name: 'Signed in' }),
-    ).toHaveTextContent('Welcome back to Collectify.');
+      await screen.findByRole('status', { name: 'Giri\u015f yap\u0131ld\u0131' }),
+    ).toHaveTextContent('Collectify\u2019a tekrar ho\u015f geldiniz.');
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
     expect(screen.getByText('TRY')).toBeInTheDocument();
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows sign-in errors accessibly without entering the workspace', async () => {
@@ -259,7 +307,7 @@ describe('App', () => {
     expect(screen.queryByText('500')).not.toBeInTheDocument();
   });
 
-  it('shows protected owner context with a success toast after sign-up', async () => {
+  it('shows protected owner context with the returned profile language after sign-up', async () => {
     const user = userEvent.setup();
     mockOwnerSignUpSuccess(ownerSession);
     renderApp();
@@ -268,8 +316,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Email address'), 'owner@example.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
     await user.selectOptions(screen.getByLabelText('Default currency'), 'TRY');
-    await user.selectOptions(screen.getByLabelText('Interface language'), 'tr');
-    await user.click(screen.getByRole('button', { name: 'Hesap oluştur' }));
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
 
     expect(
       await screen.findByText('Korunan Collectify çalışma alanı'),
@@ -279,6 +326,10 @@ describe('App', () => {
     ).toHaveTextContent('Collectify çalışma alanınız hazır.');
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
     expect(screen.getByText('TRY')).toBeInTheDocument();
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows known sign-up API errors as localized toasts', async () => {

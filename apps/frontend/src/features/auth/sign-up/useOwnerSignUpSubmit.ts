@@ -10,20 +10,23 @@ import { resolveApiErrorDescription } from '../../../shared/api/http';
 import { useToast } from '../../../shared/ui/toast/toastContext';
 import { signUpOwner } from '../api/sign-up-owner';
 import { sessionQueryKey } from '../session/sessionQueries';
+import { useOwnerProfileLanguageSync } from '../session/useOwnerProfileLanguageSync';
 
 export function useOwnerSignUpSubmit() {
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { showToast } = useToast();
+  const { syncOwnerProfileLanguage } = useOwnerProfileLanguageSync();
 
   const signUpMutation = useMutation({
     mutationFn: signUpOwner,
-    onSuccess: (session) => {
+    onSuccess: async (session) => {
+      await syncOwnerProfileLanguage(session.ownerProfile);
       queryClient.setQueryData(sessionQueryKey, session);
       showToast({
         variant: 'success',
-        title: t('auth.toast.signUp.successTitle'),
-        description: t('auth.toast.signUp.successDescription'),
+        title: i18n.t('auth.toast.signUp.successTitle'),
+        description: i18n.t('auth.toast.signUp.successDescription'),
       });
     },
     onError: (error) => {
