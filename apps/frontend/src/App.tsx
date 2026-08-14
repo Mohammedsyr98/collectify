@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
 import { useSessionQuery } from './features/auth/session/sessionQueries';
+import { useOwnerProfileLanguageSync } from './features/auth/session/useOwnerProfileLanguageSync';
 import {
   isSupportedLocale,
   type SupportedLocale,
@@ -21,8 +23,23 @@ const localeNameTranslationKeys = {
 function App() {
   const { t } = useTranslation();
   const sessionQuery = useSessionQuery();
+  const { isOwnerProfileLanguageSynced, syncOwnerProfileLanguage } =
+    useOwnerProfileLanguageSync();
+  const ownerProfile = sessionQuery.data?.authenticated
+    ? sessionQuery.data.ownerProfile
+    : null;
+  const isOwnerProfileLanguagePending =
+    !!ownerProfile && !isOwnerProfileLanguageSynced(ownerProfile);
 
-  if (sessionQuery.isPending) {
+  useEffect(() => {
+    if (!ownerProfile || !isOwnerProfileLanguagePending) {
+      return;
+    }
+
+    void syncOwnerProfileLanguage(ownerProfile);
+  }, [isOwnerProfileLanguagePending, ownerProfile, syncOwnerProfileLanguage]);
+
+  if (sessionQuery.isPending || isOwnerProfileLanguagePending) {
     return (
       <StatusPage
         detail={t('app.status.checkingSession.detail')}
