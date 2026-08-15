@@ -47,6 +47,8 @@ export function FormInput<
   onBlur,
   onChange,
   className,
+  dir,
+  type,
   'aria-describedby': ariaDescribedBy,
   ...inputProps
 }: FormInputProps<TFieldValues, TName>) {
@@ -60,12 +62,13 @@ export function FormInput<
     .join(' ');
   const inputClassName = [
     'min-h-10 w-full border-0 bg-transparent py-0 text-foreground outline-none placeholder:text-muted-foreground/70',
-    icon ? 'pl-9' : 'pl-3.5',
-    endAdornment ? 'pr-[42px]' : 'pr-3.5',
+    icon ? 'ps-9' : 'ps-3.5',
+    endAdornment ? 'pe-[42px]' : 'pe-3.5',
     className,
   ]
     .filter(Boolean)
     .join(' ');
+  const inputDirection = dir ?? (type === 'email' ? 'ltr' : undefined);
 
   return (
     <FormField
@@ -79,6 +82,7 @@ export function FormInput<
         {...inputProps}
         aria-describedby={describedBy || undefined}
         className={inputClassName}
+        dir={inputDirection}
         id={id}
         name={field.name}
         onBlur={(event) => {
@@ -90,9 +94,14 @@ export function FormInput<
           onChange?.(event);
         }}
         ref={field.ref}
+        type={type}
         value={(field.value ?? '') as InputValue}
       />
-      {endAdornment}
+      {endAdornment ? (
+        <span className="absolute end-[5px] top-1/2 inline-flex -translate-y-1/2">
+          {endAdornment}
+        </span>
+      ) : null}
     </FormField>
   );
 }

@@ -65,8 +65,8 @@ export function FormSelect<
     .filter(Boolean)
     .join(' ');
   const selectClassName = [
-    'min-h-10 w-full cursor-pointer appearance-none border-0 bg-transparent py-0 pr-3 text-foreground outline-none',
-    icon ? 'pl-9' : 'pl-3.5',
+    'min-h-10 w-full cursor-pointer appearance-none border-0 bg-transparent py-0 pe-3 text-foreground outline-none',
+    icon ? 'ps-9' : 'ps-3.5',
     className,
   ]
     .filter(Boolean)

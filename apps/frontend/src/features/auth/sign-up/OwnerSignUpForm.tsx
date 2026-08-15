@@ -85,7 +85,7 @@ export function OwnerSignUpForm({
                   ? t('auth.togglePassword.hide')
                   : t('auth.togglePassword.show')
               }
-              className="absolute right-[5px] inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => setIsPasswordVisible((current) => !current)}
               title={
                 isPasswordVisible

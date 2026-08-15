@@ -1,6 +1,6 @@
 import {
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -42,7 +42,7 @@ export function LocalizationProvider({
   });
   const [locale, setActiveLocale] = useState(initialLocale);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyDocumentLocale(locale);
   }, [locale]);
 

@@ -34,7 +34,7 @@ export function FormField({
       </label>
       <div className={inputFrameClassName}>
         {icon ? (
-          <span className="pointer-events-none absolute left-3 inline-flex text-muted-foreground">
+          <span className="pointer-events-none absolute start-3 inline-flex text-muted-foreground">
             {icon}
           </span>
         ) : null}
