@@ -41,7 +41,7 @@ describe('OwnerSignUpForm', () => {
     renderOwnerSignUpForm();
 
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
-    expect(screen.getByLabelText('Email address')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email address')).toHaveAttribute('dir', 'ltr');
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByLabelText('Interface language')).toBeInTheDocument();
     expect(screen.getByLabelText('Default currency')).toBeInTheDocument();

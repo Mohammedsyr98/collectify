@@ -40,7 +40,7 @@ describe('OwnerSignInForm', () => {
   it('shows the owner sign-in controls', () => {
     renderOwnerSignInForm();
 
-    expect(screen.getByLabelText('Email address')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email address')).toHaveAttribute('dir', 'ltr');
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Enter workspace' }),

@@ -113,6 +113,7 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute('lang', 'tr');
     expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(screen.getByText('owner@example.com')).toHaveAttribute('dir', 'ltr');
     expect(
       screen.queryByText('Protected Collectify workspace'),
     ).not.toBeInTheDocument();

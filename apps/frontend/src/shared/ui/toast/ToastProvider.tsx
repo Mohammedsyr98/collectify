@@ -50,7 +50,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-label="Notifications"
-        className="fixed right-[18px] top-[18px] z-20 grid max-w-[min(360px,calc(100vw-32px))] gap-2.5"
+        className="fixed end-[18px] top-[18px] z-20 grid max-w-[min(360px,calc(100vw-32px))] gap-2.5"
         aria-live="polite"
       >
         {toasts.map((toast) => {

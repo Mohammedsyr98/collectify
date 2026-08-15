@@ -127,7 +127,7 @@ function OwnerWorkspacePreview({
             <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
               {t('app.workspace.emailLabel')}
             </dt>
-            <dd className="m-0 break-words">{email}</dd>
+            <dd className="m-0 break-words" dir="ltr">{email}</dd>
           </div>
           <div className="grid gap-[3px] border-t border-border pt-3">
             <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
