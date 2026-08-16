@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -159,6 +160,57 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { name: 'Owner setup incomplete' }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Protected Collectify workspace'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('signs out the restored owner session and returns to the auth gate', async () => {
+    const user = userEvent.setup();
+    const englishOwnerSession: SessionResponse = {
+      authenticated: true,
+      user: {
+        id: 'user_123',
+        email: 'owner@example.com',
+        name: 'Owner',
+      },
+      ownerProfile: {
+        preferredLanguage: 'en',
+        defaultCurrency: 'USD',
+      },
+    };
+    let currentSession: SessionResponse = englishOwnerSession;
+    let signOutRequested = false;
+    let sessionProbeCount = 0;
+    server.use(
+      http.get(`${getBackendUrl()}/session`, () => {
+        sessionProbeCount += 1;
+        return HttpResponse.json(currentSession);
+      }),
+      http.post(`${getBackendUrl()}/owner/sign-out`, () => {
+        signOutRequested = true;
+        currentSession = unauthenticatedSession;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+
+    renderApp();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Owner session active' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Owner')).toBeInTheDocument();
+    expect(screen.getByText('owner@example.com')).toBeInTheDocument();
+    expect(screen.getByText('English')).toBeInTheDocument();
+    expect(screen.getByText('USD')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    await waitFor(() => expect(signOutRequested).toBe(true));
+    expect(
+      await screen.findByRole('heading', { name: 'Create account' }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(sessionProbeCount).toBeGreaterThanOrEqual(2));
     expect(
       screen.queryByText('Protected Collectify workspace'),
     ).not.toBeInTheDocument();

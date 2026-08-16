@@ -1,4 +1,7 @@
-import type { OwnerSignInRequest, OwnerSignUpRequest } from '@collectify/contracts';
+import type {
+  OwnerSignInRequest,
+  OwnerSignUpRequest,
+} from '@collectify/contracts';
 
 import { getSetCookie, toCookieHeader } from './http-cookies';
 
@@ -17,6 +20,14 @@ export function createOwnerAuthClient(baseUrl: string): OwnerAuthClient {
         },
       });
     },
+    signOutOwner(headers) {
+      return fetch(`${baseUrl}/owner/sign-out`, {
+        method: 'POST',
+        headers: {
+          cookie: toCookieHeader(getSetCookie(headers)),
+        },
+      });
+    },
   };
 }
 
@@ -24,6 +35,7 @@ interface OwnerAuthClient {
   signUpOwner(request: OwnerSignUpRequest): Promise<Response>;
   signInOwner(request: OwnerSignInRequest): Promise<Response>;
   getSession(headers: Headers): Promise<Response>;
+  signOutOwner(headers: Headers): Promise<Response>;
 }
 
 function postJson(url: string, body: unknown): Promise<Response> {
