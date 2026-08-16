@@ -15,6 +15,7 @@
 - Ask: "Would a staff engineer approve this?"
 - Run the narrowest meaningful tests, typecheck, lint, or logs needed to demonstrate correctness.
 - If verification cannot be run, state why and describe the remaining risk.
+- If Docker/Testcontainers is unavailable, ask the user to start Docker instead of adding mocked duplicate coverage.
 
 ## Demand Elegance
 
