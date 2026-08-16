@@ -1,7 +1,9 @@
+import { LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
 import { useAppSessionState } from './features/auth/session/useAppSessionState';
+import { useOwnerSignOut } from './features/auth/sign-out/useOwnerSignOut';
 import {
   isSupportedLocale,
   type SupportedLocale,
@@ -49,6 +51,7 @@ function App() {
       <OwnerWorkspacePreview
         defaultCurrency={session.ownerProfile.defaultCurrency}
         email={session.user.email}
+        name={session.user.name}
         preferredLanguage={session.ownerProfile.preferredLanguage}
       />
     );
@@ -99,13 +102,16 @@ function StatusPage({
 function OwnerWorkspacePreview({
   defaultCurrency,
   email,
+  name,
   preferredLanguage,
 }: {
   defaultCurrency: string;
   email: string;
+  name: string | null;
   preferredLanguage: string;
 }) {
   const { t } = useTranslation();
+  const { isSigningOut, signOut } = useOwnerSignOut();
   const preferredLanguageLabel = isSupportedLocale(preferredLanguage)
     ? t(localeNameTranslationKeys[preferredLanguage])
     : preferredLanguage;
@@ -123,6 +129,14 @@ function OwnerWorkspacePreview({
         <p className="m-0 text-muted-foreground">{t('app.workspace.subtitle')}</p>
 
         <dl className="mt-1 grid gap-3">
+          {name ? (
+            <div className="grid gap-[3px] border-t border-border pt-3">
+              <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
+                {t('app.workspace.nameLabel')}
+              </dt>
+              <dd className="m-0 break-words">{name}</dd>
+            </div>
+          ) : null}
           <div className="grid gap-[3px] border-t border-border pt-3">
             <dt className="text-[0.72rem] font-extrabold tracking-normal text-muted-foreground">
               {t('app.workspace.emailLabel')}
@@ -142,6 +156,17 @@ function OwnerWorkspacePreview({
             <dd className="m-0 break-words">{defaultCurrency}</dd>
           </div>
         </dl>
+        <button
+          className="mt-1 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+          disabled={isSigningOut}
+          onClick={signOut}
+          type="button"
+        >
+          <LogOut aria-hidden="true" size={16} strokeWidth={2.5} />
+          {isSigningOut
+            ? t('app.workspace.signingOut')
+            : t('app.workspace.signOut')}
+        </button>
       </section>
     </main>
   );
