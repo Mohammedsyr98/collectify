@@ -4,6 +4,7 @@ import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 import type { SessionResponse } from '@collectify/contracts';
 
 import { applyBetterAuthResponseHeaders } from '../auth/better-auth-response-headers';
+import { PublicRoute } from '../auth/public-route.decorator';
 import { SessionService } from './session.service';
 
 @Controller('session')
@@ -11,6 +12,7 @@ export class SessionController {
   constructor(private readonly sessionService: SessionService) {}
 
   @Get()
+  @PublicRoute()
   async getSession(
     @Headers() headers: IncomingHttpHeaders,
     @Res({ passthrough: true }) response: ServerResponse,

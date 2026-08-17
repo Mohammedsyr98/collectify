@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { CollectifyBetterAuth } from '../auth/better-auth';
-import { DatabaseService } from '../database/database.service';
+import { OwnerContextService } from '../auth/owner-context.service';
 import { HealthController } from '../health.controller';
 import { getSetCookie } from '../test-support/http-cookies';
 import { SessionController } from './session.controller';
@@ -59,9 +59,9 @@ describe('SessionController', () => {
           })),
         },
         {
-          provide: DatabaseService,
+          provide: OwnerContextService,
           useValue: {
-            db: {},
+            findOwnerProfileForUser: async () => null,
           },
         },
       ],

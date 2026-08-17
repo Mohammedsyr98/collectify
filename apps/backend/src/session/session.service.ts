@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import { fromNodeHeaders } from 'better-auth/node';
-import { eq } from 'drizzle-orm';
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { OwnerProfile, SessionResponse } from '@collectify/contracts';
+import type { SessionResponse } from '@collectify/contracts';
 
 import type { CollectifyBetterAuth } from '../auth/better-auth';
-import { DatabaseService } from '../database/database.service';
-import { ownerProfiles } from '../database/schema';
+import {
+  toOwnerProfileResponse,
+  type AuthenticatedOwnerProfile,
+} from '../auth/owner-context';
+import { OwnerContextService } from '../auth/owner-context.service';
 
 export interface CurrentSessionResult {
   body: SessionResponse;
@@ -40,7 +42,7 @@ const signedOutSession: SessionResponse = {
 export class SessionService {
   constructor(
     private readonly authService: AuthService<CollectifyBetterAuth>,
-    private readonly databaseService: DatabaseService,
+    private readonly ownerContextService: OwnerContextService,
   ) {}
 
   async getCurrentSession(
@@ -48,8 +50,7 @@ export class SessionService {
   ): Promise<CurrentSessionResult> {
     const authSessionRead = await readAuthSession(this.authService, headers);
     const ownerProfile = authSessionRead.session
-      ? await readOwnerProfile(
-          this.databaseService,
+      ? await this.ownerContextService.findOwnerProfileForUser(
           authSessionRead.session.user.id,
         )
       : null;
@@ -78,7 +79,7 @@ async function readAuthSession(
 
 function toSessionResponse(
   authSession: AuthSessionResult | null,
-  ownerProfile: OwnerProfile | null,
+  ownerProfile: AuthenticatedOwnerProfile | null,
 ): SessionResponse {
   if (!authSession) {
     return signedOutSession;
@@ -91,22 +92,6 @@ function toSessionResponse(
       email: authSession.user.email,
       name: authSession.user.name ?? null,
     },
-    ownerProfile,
+    ownerProfile: ownerProfile ? toOwnerProfileResponse(ownerProfile) : null,
   };
-}
-
-async function readOwnerProfile(
-  databaseService: DatabaseService,
-  userId: string,
-): Promise<OwnerProfile | null> {
-  const [ownerProfile] = await databaseService.db
-    .select({
-      preferredLanguage: ownerProfiles.preferredLanguage,
-      defaultCurrency: ownerProfiles.defaultCurrency,
-    })
-    .from(ownerProfiles)
-    .where(eq(ownerProfiles.userId, userId))
-    .limit(1);
-
-  return ownerProfile ?? null;
 }

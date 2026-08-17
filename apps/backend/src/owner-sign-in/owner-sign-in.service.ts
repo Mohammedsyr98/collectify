@@ -2,17 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import {
   authApiErrorCode,
-  type OwnerProfile,
   type OwnerSignInRequest,
   type OwnerSignInResponse,
 } from '@collectify/contracts';
-import { eq } from 'drizzle-orm';
 import type { IncomingHttpHeaders } from 'node:http';
 import { fromNodeHeaders } from 'better-auth/node';
 
 import type { CollectifyBetterAuth } from '../auth/better-auth';
-import { DatabaseService } from '../database/database.service';
-import { ownerProfiles } from '../database/schema';
+import { toOwnerProfileResponse } from '../auth/owner-context';
+import { OwnerContextService } from '../auth/owner-context.service';
 import { ownerSignInException } from './owner-sign-in.errors';
 
 export interface OwnerSignInResult {
@@ -36,7 +34,7 @@ interface BetterAuthSignInResult {
 export class OwnerSignInService {
   constructor(
     private readonly authService: AuthService<CollectifyBetterAuth>,
-    private readonly databaseService: DatabaseService,
+    private readonly ownerContextService: OwnerContextService,
   ) {}
 
   async signInOwner(
@@ -44,24 +42,19 @@ export class OwnerSignInService {
     headers: IncomingHttpHeaders,
   ): Promise<OwnerSignInResult> {
     const signInResult = await this.authenticateOwner(request, headers);
-    const ownerProfile = await findOwnerProfile(
-      this.databaseService,
-      signInResult.response.user.id,
+    const owner = await this.ownerContextService.requireOwnerContext(
+      signInResult.response.user,
     );
-
-    if (!ownerProfile) {
-      throw ownerSignInException(authApiErrorCode.ownerProfileMissing);
-    }
 
     return {
       body: {
         authenticated: true,
         user: {
-          id: signInResult.response.user.id,
-          email: signInResult.response.user.email,
-          name: signInResult.response.user.name ?? null,
+          id: owner.user.id,
+          email: owner.user.email,
+          name: owner.user.name,
         },
-        ownerProfile,
+        ownerProfile: toOwnerProfileResponse(owner.ownerProfile),
       },
       responseHeaders: signInResult.headers,
     };
@@ -84,20 +77,4 @@ export class OwnerSignInService {
       throw ownerSignInException(authApiErrorCode.invalidCredentials);
     }
   }
-}
-
-async function findOwnerProfile(
-  databaseService: DatabaseService,
-  userId: string,
-): Promise<OwnerProfile | null> {
-  const [ownerProfile] = await databaseService.db
-    .select({
-      preferredLanguage: ownerProfiles.preferredLanguage,
-      defaultCurrency: ownerProfiles.defaultCurrency,
-    })
-    .from(ownerProfiles)
-    .where(eq(ownerProfiles.userId, userId))
-    .limit(1);
-
-  return ownerProfile ?? null;
 }
