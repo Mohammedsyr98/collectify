@@ -5,12 +5,12 @@ import type { IncomingHttpHeaders } from 'node:http';
 
 import type { SessionResponse } from '@collectify/contracts';
 
-import type { CollectifyBetterAuth } from '../auth/better-auth';
+import type { CollectifyBetterAuth } from '../auth/better-auth/better-auth.factory';
 import {
   toOwnerProfileResponse,
   type AuthenticatedOwnerProfile,
-} from '../auth/owner-context';
-import { OwnerContextService } from '../auth/owner-context.service';
+} from '../auth/owner-context/owner-context';
+import { OwnerContextService } from '../auth/owner-context/owner-context.service';
 
 export interface CurrentSessionResult {
   body: SessionResponse;

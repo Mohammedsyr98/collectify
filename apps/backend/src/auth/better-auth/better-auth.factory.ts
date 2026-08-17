@@ -1,9 +1,9 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 
-import { readRuntimeConfig, type RuntimeConfig } from '../config/runtime-config';
-import type { Database } from '../database/database.service';
-import * as schema from '../database/schema';
+import { readRuntimeConfig, type RuntimeConfig } from '../../config/runtime-config';
+import type { Database } from '../../database/database.service';
+import * as schema from '../../database/schema';
 
 type BetterAuthDatabase = NonNullable<BetterAuthOptions['database']>;
 

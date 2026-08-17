@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 
 import type { HealthResponse } from '@collectify/contracts';
 
-import { PublicRoute } from './auth/public-route.decorator';
+import { PublicRoute } from './auth';
 
 @Controller('health')
 export class HealthController {

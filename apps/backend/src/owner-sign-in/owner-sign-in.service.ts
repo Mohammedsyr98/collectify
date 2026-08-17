@@ -8,9 +8,9 @@ import {
 import type { IncomingHttpHeaders } from 'node:http';
 import { fromNodeHeaders } from 'better-auth/node';
 
-import type { CollectifyBetterAuth } from '../auth/better-auth';
-import { toOwnerProfileResponse } from '../auth/owner-context';
-import { OwnerContextService } from '../auth/owner-context.service';
+import type { CollectifyBetterAuth } from '../auth/better-auth/better-auth.factory';
+import { toOwnerProfileResponse } from '../auth/owner-context/owner-context';
+import { OwnerContextService } from '../auth/owner-context/owner-context.service';
 import { ownerSignInException } from './owner-sign-in.errors';
 
 export interface OwnerSignInResult {

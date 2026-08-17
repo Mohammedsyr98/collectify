@@ -2,8 +2,8 @@ import type { AuthService } from '@thallesp/nestjs-better-auth';
 import type { IncomingHttpHeaders } from 'node:http';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CollectifyBetterAuth } from '../auth/better-auth';
-import type { OwnerContextService } from '../auth/owner-context.service';
+import type { CollectifyBetterAuth } from '../auth/better-auth/better-auth.factory';
+import type { OwnerContextService } from '../auth/owner-context/owner-context.service';
 import { SessionService } from './session.service';
 
 interface AuthSessionResult {

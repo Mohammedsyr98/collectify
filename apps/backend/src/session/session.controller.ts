@@ -3,8 +3,8 @@ import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
 import type { SessionResponse } from '@collectify/contracts';
 
-import { applyBetterAuthResponseHeaders } from '../auth/better-auth-response-headers';
-import { PublicRoute } from '../auth/public-route.decorator';
+import { PublicRoute } from '../auth';
+import { applyBetterAuthResponseHeaders } from '../auth/better-auth/better-auth-response-headers';
 import { SessionService } from './session.service';
 
 @Controller('session')

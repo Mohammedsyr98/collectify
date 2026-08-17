@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../auth';
 import { OwnerSignInController } from './owner-sign-in.controller';
 import { OwnerSignInService } from './owner-sign-in.service';
 

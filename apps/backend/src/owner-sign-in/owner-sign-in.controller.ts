@@ -3,8 +3,8 @@ import type { OwnerSignInRequest, OwnerSignInResponse } from '@collectify/contra
 import { ownerSignInRequestSchema } from '@collectify/contracts';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
-import { applyBetterAuthResponseHeaders } from '../auth/better-auth-response-headers';
-import { PublicRoute } from '../auth/public-route.decorator';
+import { PublicRoute } from '../auth';
+import { applyBetterAuthResponseHeaders } from '../auth/better-auth/better-auth-response-headers';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { resolveOwnerSignInValidationMessage } from './owner-sign-in.errors';
 import { OwnerSignInService } from './owner-sign-in.service';
