@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Observable } from 'rxjs';
 
-import { isPublicRoute } from './public-route.decorator';
+import { isPublicRoute } from '../decorators/public-route.decorator';
 import type { OwnerContextRequest } from './owner-context';
 import { OwnerContextService } from './owner-context.service';
 

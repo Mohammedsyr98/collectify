@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
-import { DatabaseService } from '../database/database.service';
-import { ownerProfiles } from '../database/schema';
+import { DatabaseService } from '../../database/database.service';
+import { ownerProfiles } from '../../database/schema';
 import { ownerProfileMissingException } from './owner-context.errors';
 import type {
   AuthenticatedOwner,

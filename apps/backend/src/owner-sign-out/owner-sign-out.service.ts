@@ -4,7 +4,7 @@ import type { OwnerSignOutResponse } from '@collectify/contracts';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { CollectifyBetterAuth } from '../auth/better-auth';
+import type { CollectifyBetterAuth } from '../auth/better-auth/better-auth.factory';
 
 export interface OwnerSignOutResult {
   body: OwnerSignOutResponse;

@@ -7,7 +7,7 @@ import { AppModule } from '../app.module';
 import {
   CurrentOwner,
   type AuthenticatedOwner,
-} from './current-owner.decorator';
+} from './index';
 import { getSetCookie, toCookieHeader } from '../test-support/http-cookies';
 import {
   startIntegrationPostgres,

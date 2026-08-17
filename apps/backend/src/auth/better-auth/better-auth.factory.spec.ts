@@ -1,10 +1,10 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { RuntimeConfig } from '../config/runtime-config';
-import type { Database } from '../database/database.service';
-import * as schema from '../database/schema';
-import { createCollectifyBetterAuth } from './better-auth';
+import type { RuntimeConfig } from '../../config/runtime-config';
+import type { Database } from '../../database/database.service';
+import * as schema from '../../database/schema';
+import { createCollectifyBetterAuth } from './better-auth.factory';
 
 const mocks = vi.hoisted(() => ({
   betterAuth: vi.fn(),

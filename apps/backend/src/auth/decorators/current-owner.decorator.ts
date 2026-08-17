@@ -7,9 +7,9 @@ import {
 import type {
   AuthenticatedOwner,
   OwnerContextRequest,
-} from './owner-context';
+} from '../owner-context/owner-context';
 
-export type { AuthenticatedOwner } from './owner-context';
+export type { AuthenticatedOwner } from '../owner-context/owner-context';
 
 export const CurrentOwner = createParamDecorator(
   (_data: unknown, context: ExecutionContext): AuthenticatedOwner => {
