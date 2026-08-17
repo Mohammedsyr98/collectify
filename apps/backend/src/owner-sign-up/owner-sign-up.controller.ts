@@ -4,6 +4,7 @@ import { ownerSignUpRequestSchema } from '@collectify/contracts';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
 import { applyBetterAuthResponseHeaders } from '../auth/better-auth-response-headers';
+import { PublicRoute } from '../auth/public-route.decorator';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { resolveOwnerSignUpValidationMessage } from './owner-sign-up.errors';
 import { OwnerSignUpService } from './owner-sign-up.service';
@@ -18,6 +19,7 @@ export class OwnerSignUpController {
 
   @Post('sign-up')
   @HttpCode(200)
+  @PublicRoute()
   async signUp(
     @Body(ownerSignUpValidationPipe) body: OwnerSignUpRequest,
     @Headers() headers: IncomingHttpHeaders,

@@ -3,7 +3,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CollectifyBetterAuth } from '../auth/better-auth';
-import type { DatabaseService } from '../database/database.service';
+import type { OwnerContextService } from '../auth/owner-context.service';
 import { SessionService } from './session.service';
 
 interface AuthSessionResult {
@@ -48,14 +48,15 @@ describe('SessionService', () => {
         };
       },
     );
+    const findOwnerProfileForUser = vi.fn(async () => ({
+      id: 'profile_123',
+      userId: 'user_123',
+      preferredLanguage: 'tr' as const,
+      defaultCurrency: 'TRY' as const,
+    }));
     const service = new SessionService(
       createAuthService(getSession),
-      createDatabaseService([
-        {
-          preferredLanguage: 'tr',
-          defaultCurrency: 'TRY',
-        },
-      ]),
+      createOwnerContextService(findOwnerProfileForUser),
     );
 
     await expect(service.getCurrentSession(nodeHeaders)).resolves.toEqual({
@@ -81,12 +82,14 @@ describe('SessionService', () => {
     expect(context?.headers.get('cookie')).toBe(
       'better-auth.session_token=valid',
     );
+    expect(findOwnerProfileForUser).toHaveBeenCalledWith('user_123');
   });
 
   it('returns a signed-out session when Better Auth returns no result', async () => {
+    const findOwnerProfileForUser = vi.fn();
     const service = new SessionService(
       createAuthService(async () => null),
-      createDatabaseService([]),
+      createOwnerContextService(findOwnerProfileForUser),
     );
 
     await expect(service.getCurrentSession({})).resolves.toEqual({
@@ -97,6 +100,7 @@ describe('SessionService', () => {
       },
       responseHeaders: new Headers(),
     });
+    expect(findOwnerProfileForUser).not.toHaveBeenCalled();
   });
 });
 
@@ -110,26 +114,10 @@ function createAuthService(
   } as unknown as AuthService<CollectifyBetterAuth>;
 }
 
-function createDatabaseService(
-  ownerProfileRows: Array<{
-    preferredLanguage: 'en' | 'tr';
-    defaultCurrency: 'TRY' | 'USD' | 'EUR';
-  }>,
-): DatabaseService {
-  const limit = vi.fn(async () => ownerProfileRows);
-  const where = vi.fn(() => ({
-    limit,
-  }));
-  const from = vi.fn(() => ({
-    where,
-  }));
-  const select = vi.fn(() => ({
-    from,
-  }));
-
+function createOwnerContextService(
+  findOwnerProfileForUser: (userId: string) => Promise<unknown>,
+): OwnerContextService {
   return {
-    db: {
-      select,
-    },
-  } as unknown as DatabaseService;
+    findOwnerProfileForUser,
+  } as unknown as OwnerContextService;
 }
