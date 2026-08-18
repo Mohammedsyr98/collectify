@@ -11,12 +11,6 @@ import {
 import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
 
-const statusDotClassName = {
-  error: 'bg-status-overdue-border',
-  loading: 'bg-status-due-border',
-  warning: 'bg-status-due-border',
-};
-
 const localeNameTranslationKeys = {
   en: 'locale.english',
   tr: 'locale.turkish',
@@ -57,9 +51,8 @@ function App() {
 
   if (appSession.status === 'ownerSetupIncomplete') {
     return (
-      <StatusPage
+      <OwnerSetupNoticePage
         detail={t('app.status.ownerSetupIncomplete.detail')}
-        tone="warning"
         title={t('app.status.ownerSetupIncomplete.title')}
       />
     );
@@ -68,28 +61,26 @@ function App() {
   return <AuthEntryPage />;
 }
 
-function StatusPage({
+function OwnerSetupNoticePage({
   detail,
   title,
-  tone,
 }: {
   detail: string;
   title: string;
-  tone: 'error' | 'loading' | 'warning';
 }) {
   return (
     <main className="flex min-h-screen items-center bg-background p-7">
       <section
         className="mx-auto grid w-full max-w-[460px] gap-3.5 rounded-md border border-border bg-card p-7 shadow-[var(--shadow-sm)]"
-        aria-labelledby="app-title"
+        aria-labelledby="owner-setup-notice-title"
       >
         <p className="m-0 text-[0.76rem] font-[850] tracking-normal text-primary">Collectify</p>
-        <h1 className="m-0 text-[1.6rem] leading-[1.15] tracking-normal" id="app-title">
+        <h1 className="m-0 text-[1.6rem] leading-[1.15] tracking-normal" id="owner-setup-notice-title">
           {title}
         </h1>
         <p className="m-0 text-muted-foreground">{detail}</p>
         <span
-          className={`h-2.5 w-2.5 rounded-full ${statusDotClassName[tone]}`}
+          className="h-2.5 w-2.5 rounded-full bg-status-due-border"
           aria-hidden="true"
         />
       </section>
