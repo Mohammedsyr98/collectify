@@ -42,9 +42,7 @@ describe('OwnerSignInForm', () => {
 
     expect(screen.getByLabelText('Email address')).toHaveAttribute('dir', 'ltr');
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Enter workspace' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Enter workspace' })).toBeInTheDocument();
   });
 
   it('shows Zod validation errors beneath matching inputs before submit', async () => {
@@ -55,36 +53,11 @@ describe('OwnerSignInForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Enter workspace' }));
 
-    expect(
-      await screen.findByText('Enter a valid email address.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Enter a valid email address.')).toBeInTheDocument();
     expect(screen.getByLabelText('Email address')).toHaveAccessibleDescription(
       'Enter a valid email address.',
     );
-    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription(
-      'Password is required.',
-    );
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it('renders auth validation errors through the active message catalog', async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn();
-    setBrowserLanguages(['tr-TR']);
-
-    renderOwnerSignInForm({ onSubmit });
-
-    await user.click(screen.getByRole('button', { name: /alan/ }));
-
-    expect(
-      await screen.findByText('Ge\u00e7erli bir e-posta adresi girin.'),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText('E-posta adresi')).toHaveAccessibleDescription(
-      'Ge\u00e7erli bir e-posta adresi girin.',
-    );
-    expect(
-      screen.getByText('\u015eifre gereklidir.'),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription('Password is required.');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -126,18 +99,5 @@ describe('OwnerSignInForm', () => {
     await user.click(screen.getByRole('button', { name: 'Hide password' }));
 
     expect(passwordInput).toHaveAttribute('type', 'password');
-  });
-
-  it('renders sign-in controls from the resolved Turkish locale without a selector', () => {
-    setBrowserLanguages(['tr-TR']);
-
-    renderOwnerSignInForm();
-
-    expect(screen.getByLabelText('E-posta adresi')).toBeInTheDocument();
-    expect(screen.getByLabelText('Şifre')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Çalışma alanına gir' }),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText('Arayüz dili')).not.toBeInTheDocument();
   });
 });

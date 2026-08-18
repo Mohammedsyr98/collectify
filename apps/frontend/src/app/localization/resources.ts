@@ -1,7 +1,5 @@
-import type { Resource } from 'i18next';
-
 import { authResources } from '../../features/auth/localization/resources';
-import { sharedLocalizationResources } from '../../shared/localization';
+import { sharedLocalizationResources, type SupportedLocale } from '../../shared/localization';
 
 import { appShellResources } from './appShellResources';
 
@@ -20,4 +18,4 @@ export const appI18nResources = {
       ...sharedLocalizationResources.tr.common,
     },
   },
-} satisfies Resource;
+} satisfies Record<SupportedLocale, { common: Record<string, unknown> }>;
