@@ -34,7 +34,7 @@ describe('Postgres migrations', () => {
       FROM pg_enum
       JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
       WHERE pg_type.typname = 'owner_language'
-      ORDER BY enumlabel
+      ORDER BY pg_enum.enumsortorder
     `);
 
     expect(tables.map((table) => table.table_name)).toEqual([
@@ -51,7 +51,30 @@ describe('Postgres migrations', () => {
         'user_email_key',
       ]),
     );
-    expect(languages.map((language) => language.enumlabel)).toEqual(['en', 'tr']);
+    expect(languages.map((language) => language.enumlabel)).toEqual([
+      'en',
+      'tr',
+      'ar',
+    ]);
+  });
+
+  it('accepts Arabic as a persisted owner profile language', async () => {
+    await postgres!.query(`
+      INSERT INTO "user" ("id", "name", "email", "email_verified", "created_at", "updated_at")
+      VALUES ('user_arabic_language', 'Owner', 'arabic-language@example.test', false, now(), now())
+    `);
+    await postgres!.query(`
+      INSERT INTO "owner_profiles" ("id", "user_id", "preferred_language", "default_currency", "created_at", "updated_at")
+      VALUES ('profile_arabic_language', 'user_arabic_language', 'ar', 'USD', now(), now())
+    `);
+
+    const profiles = await postgres!.query<{ preferred_language: string }>(`
+      SELECT "preferred_language"
+      FROM "owner_profiles"
+      WHERE "id" = 'profile_arabic_language'
+    `);
+
+    expect(profiles).toEqual([{ preferred_language: 'ar' }]);
   });
 
   it('enforces owner profile cascades through real foreign keys', async () => {

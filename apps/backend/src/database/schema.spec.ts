@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   account,
+  ownerLanguageEnum,
   ownerProfiles,
   session,
   user,
@@ -14,6 +15,10 @@ function columnNames(table: PgTable): string[] {
 }
 
 describe('database schema', () => {
+  it('declares the supported owner profile languages', () => {
+    expect(ownerLanguageEnum.enumValues).toEqual(['en', 'tr', 'ar']);
+  });
+
   it('defines the Better Auth persistence tables', () => {
     expect(getTableConfig(user).name).toBe('user');
     expect(columnNames(user)).toEqual([

@@ -1,0 +1,1 @@
+ALTER TYPE "owner_language" ADD VALUE 'ar';
