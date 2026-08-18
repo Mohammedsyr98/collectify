@@ -128,8 +128,8 @@ describe('App', () => {
     renderWithAppProviders(<App />, { queryClient });
 
     expect(
-      screen.getByRole('heading', {
-        name: /Checking session|Oturum kontrol ediliyor/,
+      screen.getByRole('status', {
+        name: /Loading Collectify|Collectify y\u00fckleniyor/,
       }),
     ).toBeInTheDocument();
     expect(

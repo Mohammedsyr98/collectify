@@ -4,6 +4,9 @@ export const appShellResources = {
   en: {
     common: {
       app: {
+        loading: {
+          ariaLabel: 'Loading Collectify',
+        },
         status: {
           checkingSession: {
             detail: 'Looking for an active owner session.',
@@ -35,6 +38,9 @@ export const appShellResources = {
   tr: {
     common: {
       app: {
+        loading: {
+          ariaLabel: 'Collectify y\u00fckleniyor',
+        },
         status: {
           checkingSession: {
             detail: 'Etkin bir sahip oturumu aran\u0131yor.',

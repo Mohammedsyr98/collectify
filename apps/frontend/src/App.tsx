@@ -8,6 +8,7 @@ import {
   isSupportedLocale,
   type SupportedLocale,
 } from './shared/localization';
+import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
 
 const statusDotClassName = {
   error: 'bg-status-overdue-border',
@@ -25,13 +26,7 @@ function App() {
   const appSession = useAppSessionState();
 
   if (appSession.status === 'loading') {
-    return (
-      <StatusPage
-        detail={t('app.status.checkingSession.detail')}
-        tone="loading"
-        title={t('app.status.checkingSession.title')}
-      />
-    );
+    return <LoadingScreen ariaLabel={t('app.loading.ariaLabel')} />;
   }
 
   if (appSession.status === 'sessionUnavailable') {

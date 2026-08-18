@@ -22,3 +22,41 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+@keyframes collectify-loading-mark {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+
+  50% {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@keyframes collectify-loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.collectify-loading-mark {
+  animation: collectify-loading-mark 1.6s ease-in-out infinite;
+}
+
+.collectify-loading-bar {
+  animation: collectify-loading-bar 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collectify-loading-mark,
+  .collectify-loading-bar {
+    animation: none;
+  }
+}
