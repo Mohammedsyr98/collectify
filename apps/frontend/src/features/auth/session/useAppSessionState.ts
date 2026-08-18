@@ -12,7 +12,11 @@ type OwnerWorkspaceSession = AuthenticatedSession & {
 
 export type AppSessionState =
   | { status: 'loading' }
-  | { status: 'sessionUnavailable' }
+  | {
+      isRetrying: boolean;
+      retry: () => void;
+      status: 'sessionUnavailable';
+    }
   | { status: 'signedOut' }
   | { status: 'ownerSetupIncomplete' }
   | { session: OwnerWorkspaceSession; status: 'ownerWorkspace' };
@@ -43,7 +47,13 @@ export function useAppSessionState(): AppSessionState {
   }
 
   if (sessionQuery.isError) {
-    return { status: 'sessionUnavailable' };
+    return {
+      isRetrying: sessionQuery.isFetching,
+      retry: () => {
+        void sessionQuery.refetch();
+      },
+      status: 'sessionUnavailable',
+    };
   }
 
   if (!session) {

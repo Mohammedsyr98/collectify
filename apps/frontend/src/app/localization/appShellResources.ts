@@ -4,18 +4,20 @@ export const appShellResources = {
   en: {
     common: {
       app: {
-        status: {
-          checkingSession: {
-            detail: 'Looking for an active owner session.',
-            title: 'Checking session',
+        loading: {
+          ariaLabel: 'Loading Collectify',
+        },
+        error: {
+          retry: 'Try again',
+          sessionUnavailable: {
+            detail: 'Try again in a moment.',
+            title: "We couldn't load Collectify",
           },
+        },
+        status: {
           ownerSetupIncomplete: {
             detail: 'Complete owner setup before entering the workspace.',
             title: 'Owner setup incomplete',
-          },
-          sessionUnavailable: {
-            detail: 'Unable to reach backend.',
-            title: 'Session unavailable',
           },
         },
         workspace: {
@@ -35,19 +37,21 @@ export const appShellResources = {
   tr: {
     common: {
       app: {
-        status: {
-          checkingSession: {
-            detail: 'Etkin bir sahip oturumu aran\u0131yor.',
-            title: 'Oturum kontrol ediliyor',
+        loading: {
+          ariaLabel: 'Collectify y\u00fckleniyor',
+        },
+        error: {
+          retry: 'Tekrar dene',
+          sessionUnavailable: {
+            detail: 'Birazdan tekrar deneyin.',
+            title: 'Collectify y\u00fcklenemedi',
           },
+        },
+        status: {
           ownerSetupIncomplete: {
             detail:
               '\u00c7al\u0131\u015fma alan\u0131na girmeden \u00f6nce sahip kurulumunu tamamlay\u0131n.',
             title: 'Sahip kurulumu eksik',
-          },
-          sessionUnavailable: {
-            detail: 'Arka u\u00e7 servisine ula\u015f\u0131lam\u0131yor.',
-            title: 'Oturum kullan\u0131lam\u0131yor',
           },
         },
         workspace: {
