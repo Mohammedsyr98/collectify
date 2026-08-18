@@ -1,3 +1,4 @@
+import { ownerLanguageSchema } from '@collectify/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSetCookie } from '../test-support/http-cookies';
@@ -28,10 +29,58 @@ describe('POST /owner/sign-up', () => {
     await postgres?.stop();
   });
 
-  it('creates an authenticated owner session', async () => {
+  it.each(ownerLanguageSchema.options)(
+    'creates an authenticated owner session with supported language %s',
+    async (preferredLanguage) => {
+      const email = `owner-${preferredLanguage}@example.com`;
+
+      const response = await ownerAuth!.signUpOwner({
+        name: 'Owner',
+        email,
+        password: 'password123',
+        preferredLanguage,
+        defaultCurrency: 'USD',
+      });
+
+      expect(response.status).toBe(200);
+      expect(getSetCookie(response.headers)).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('better-auth.session_token='),
+        ]),
+      );
+      await expect(response.json()).resolves.toMatchObject({
+        authenticated: true,
+        user: {
+          email,
+          name: 'Owner',
+        },
+        ownerProfile: {
+          preferredLanguage,
+          defaultCurrency: 'USD',
+        },
+      });
+
+      const sessionResponse = await ownerAuth!.getSession(response.headers);
+
+      expect(sessionResponse.status).toBe(200);
+      await expect(sessionResponse.json()).resolves.toMatchObject({
+        authenticated: true,
+        user: {
+          email,
+          name: 'Owner',
+        },
+        ownerProfile: {
+          preferredLanguage,
+          defaultCurrency: 'USD',
+        },
+      });
+    },
+  );
+
+  it('normalizes owner signup input before creating the session', async () => {
     const response = await ownerAuth!.signUpOwner({
-      name: 'Owner',
-      email: 'owner@example.com',
+      name: '  Owner  ',
+      email: '  OWNER@EXAMPLE.COM  ',
       password: 'password123',
       preferredLanguage: 'en',
       defaultCurrency: 'USD',
@@ -52,44 +101,6 @@ describe('POST /owner/sign-up', () => {
       ownerProfile: {
         preferredLanguage: 'en',
         defaultCurrency: 'USD',
-      },
-    });
-
-    const sessionResponse = await ownerAuth!.getSession(response.headers);
-
-    expect(sessionResponse.status).toBe(200);
-    await expect(sessionResponse.json()).resolves.toMatchObject({
-      authenticated: true,
-      user: {
-        email: 'owner@example.com',
-        name: 'Owner',
-      },
-      ownerProfile: {
-        preferredLanguage: 'en',
-        defaultCurrency: 'USD',
-      },
-    });
-  });
-
-  it('normalizes owner signup input before creating the session', async () => {
-    const response = await ownerAuth!.signUpOwner({
-      name: '  Owner  ',
-      email: '  OWNER@EXAMPLE.COM  ',
-      password: 'password123',
-      preferredLanguage: 'tr',
-      defaultCurrency: 'TRY',
-    });
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      authenticated: true,
-      user: {
-        email: 'owner@example.com',
-        name: 'Owner',
-      },
-      ownerProfile: {
-        preferredLanguage: 'tr',
-        defaultCurrency: 'TRY',
       },
     });
   });
@@ -139,8 +150,8 @@ describe('POST /owner/sign-up', () => {
       name: 'Second Owner',
       email: '  OWNER@EXAMPLE.COM  ',
       password: 'password123',
-      preferredLanguage: 'tr',
-      defaultCurrency: 'TRY',
+      preferredLanguage: 'en',
+      defaultCurrency: 'USD',
     });
 
     expect(duplicateResponse.status).toBe(409);
