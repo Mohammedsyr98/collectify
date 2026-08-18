@@ -93,15 +93,50 @@ describe('App', () => {
     renderApp();
 
     expect(
-      await screen.findByRole('heading', { name: 'Session unavailable' }),
+      await screen.findByRole('heading', {
+        name: "We couldn't load Collectify",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Unable to reach backend.')).toBeInTheDocument();
+    expect(screen.getByText('Try again in a moment.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: 'Create account' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText('Protected Collectify workspace'),
     ).not.toBeInTheDocument();
+  });
+
+  it('retries session loading from the generic error state', async () => {
+    const user = userEvent.setup();
+    let sessionProbeCount = 0;
+    server.use(
+      http.get(`${getBackendUrl()}/session`, () => {
+        sessionProbeCount += 1;
+
+        if (sessionProbeCount === 1) {
+          return HttpResponse.json(
+            { message: 'Backend unavailable.' },
+            { status: 503 },
+          );
+        }
+
+        return HttpResponse.json(unauthenticatedSession);
+      }),
+    );
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Try again' }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Create account' }),
+    ).toBeInTheDocument();
+    expect(sessionProbeCount).toBeGreaterThanOrEqual(2);
   });
 
   it('uses the authenticated owner profile language after session load', async () => {

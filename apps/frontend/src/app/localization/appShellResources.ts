@@ -7,6 +7,13 @@ export const appShellResources = {
         loading: {
           ariaLabel: 'Loading Collectify',
         },
+        error: {
+          retry: 'Try again',
+          sessionUnavailable: {
+            detail: 'Try again in a moment.',
+            title: "We couldn't load Collectify",
+          },
+        },
         status: {
           checkingSession: {
             detail: 'Looking for an active owner session.',
@@ -40,6 +47,13 @@ export const appShellResources = {
       app: {
         loading: {
           ariaLabel: 'Collectify y\u00fckleniyor',
+        },
+        error: {
+          retry: 'Tekrar dene',
+          sessionUnavailable: {
+            detail: 'Birazdan tekrar deneyin.',
+            title: 'Collectify y\u00fcklenemedi',
+          },
         },
         status: {
           checkingSession: {

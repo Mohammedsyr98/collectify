@@ -8,6 +8,7 @@ import {
   isSupportedLocale,
   type SupportedLocale,
 } from './shared/localization';
+import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
 
 const statusDotClassName = {
@@ -31,10 +32,12 @@ function App() {
 
   if (appSession.status === 'sessionUnavailable') {
     return (
-      <StatusPage
-        detail={t('app.status.sessionUnavailable.detail')}
-        tone="error"
-        title={t('app.status.sessionUnavailable.title')}
+      <ErrorStatePage
+        actionLabel={t('app.error.retry')}
+        detail={t('app.error.sessionUnavailable.detail')}
+        isActionPending={appSession.isRetrying}
+        onAction={appSession.retry}
+        title={t('app.error.sessionUnavailable.title')}
       />
     );
   }
