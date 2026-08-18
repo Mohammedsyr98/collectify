@@ -6,7 +6,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 
-export const ownerLanguageEnum = pgEnum('owner_language', ['en', 'tr']);
+export const ownerLanguageEnum = pgEnum('owner_language', ['en', 'tr', 'ar']);
 export const currencyEnum = pgEnum('currency', ['TRY', 'USD', 'EUR']);
 
 export const user = pgTable('user', {
