@@ -10,6 +10,9 @@ import {
 } from './owner-sign-up.js';
 import { authValidationCode } from './validation-codes.js';
 
+const unsupportedOwnerLanguage = '__unsupported_owner_language__';
+const unsupportedCurrency = '__unsupported_currency__';
+
 describe('owner sign-up contracts', () => {
   it('accepts a valid owner sign-up request and normalizes text inputs', () => {
     expect(
@@ -35,8 +38,8 @@ describe('owner sign-up contracts', () => {
         name: '',
         email: 'not-an-email',
         password: 'short',
-        preferredLanguage: 'fr',
-        defaultCurrency: 'GBP',
+        preferredLanguage: unsupportedOwnerLanguage,
+        defaultCurrency: unsupportedCurrency,
       }),
     ).toThrow();
   });
@@ -46,8 +49,8 @@ describe('owner sign-up contracts', () => {
       name: '',
       email: 'not-an-email',
       password: 'short',
-      preferredLanguage: 'fr',
-      defaultCurrency: 'GBP',
+      preferredLanguage: unsupportedOwnerLanguage,
+      defaultCurrency: unsupportedCurrency,
     });
 
     expect(result.success).toBe(false);
