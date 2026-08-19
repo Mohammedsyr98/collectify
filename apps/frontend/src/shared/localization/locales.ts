@@ -23,6 +23,11 @@ export const localeMetadata = {
     direction: 'ltr',
     label: 'Turkish',
   },
+  ar: {
+    code: 'ar',
+    direction: 'rtl',
+    label: 'Arabic',
+  },
 } satisfies Record<SupportedLocale, LocaleMetadata>;
 
 export const supportedLocales = Object.keys(localeMetadata) as SupportedLocale[];

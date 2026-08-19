@@ -18,6 +18,9 @@ const testI18nResources = {
   tr: {
     common: {},
   },
+  ar: {
+    common: {},
+  },
 };
 
 function createTestI18nInstance(initialLocale: SupportedLocale) {
@@ -35,6 +38,9 @@ function LocaleProbe() {
       <p>{locale}</p>
       <button onClick={() => void setLocale('tr')} type="button">
         Use Turkish
+      </button>
+      <button onClick={() => void setLocale('ar')} type="button">
+        Use Arabic
       </button>
     </>
   );
@@ -83,12 +89,12 @@ describe('LocalizationProvider', () => {
 
     renderWithLocalization(<LocaleProbe />);
 
-    await user.click(screen.getByRole('button', { name: 'Use Turkish' }));
+    await user.click(screen.getByRole('button', { name: 'Use Arabic' }));
 
     await waitFor(() => {
-      expect(document.documentElement).toHaveAttribute('lang', 'tr');
+      expect(document.documentElement).toHaveAttribute('lang', 'ar');
     });
-    expect(document.documentElement).toHaveAttribute('dir', 'ltr');
-    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('ar');
   });
 });

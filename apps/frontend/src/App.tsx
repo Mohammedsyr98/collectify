@@ -12,6 +12,7 @@ import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
 
 const localeNameTranslationKeys = {
+  ar: 'locale.arabic',
   en: 'locale.english',
   tr: 'locale.turkish',
 } satisfies Record<SupportedLocale, string>;

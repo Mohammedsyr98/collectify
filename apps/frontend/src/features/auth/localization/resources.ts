@@ -72,8 +72,7 @@ export const authResources = {
           createAccountTab: 'Hesap olu\u015ftur',
           showCreateAccountForm: 'Hesap olu\u015fturma formunu g\u00f6ster',
           signIn: {
-            subtitle:
-              'Collectify\u2019a girmek i\u00e7in sahip bilgilerinizi kullan\u0131n.',
+            subtitle: 'Collectify\u2019a girmek i\u00e7in sahip bilgilerinizi kullan\u0131n.',
             title: 'Giri\u015f yap',
           },
           signInTab: 'Giri\u015f yap',
@@ -84,8 +83,7 @@ export const authResources = {
           },
         },
         shell: {
-          secureSession:
-            'Verileriniz \u015fifreli oturum \u00e7erezleriyle korunur.',
+          secureSession: 'Verileriniz \u015fifreli oturum \u00e7erezleriyle korunur.',
         },
         signIn: {
           emailLabel: 'E-posta adresi',
@@ -115,8 +113,7 @@ export const authResources = {
           },
           signUp: {
             errorTitle: 'Hesap olu\u015fturulamad\u0131',
-            successDescription:
-              'Collectify \u00e7al\u0131\u015fma alan\u0131n\u0131z haz\u0131r.',
+            successDescription: 'Collectify \u00e7al\u0131\u015fma alan\u0131n\u0131z haz\u0131r.',
             successTitle: 'Hesap olu\u015fturuldu',
           },
         },
@@ -128,7 +125,64 @@ export const authResources = {
       },
     },
   },
-} satisfies Record<
-  SupportedLocale,
-  { common: { auth: Record<string, unknown> } }
->;
+  ar: {
+    common: {
+      auth: {
+        errors: authApiErrorTranslations.ar,
+        entry: {
+          createAccountTab: 'إنشاء حساب',
+          showCreateAccountForm: 'عرض نموذج إنشاء الحساب',
+          signIn: {
+            subtitle: 'استخدم بيانات اعتماد المالك للدخول إلى Collectify.',
+            title: 'تسجيل الدخول',
+          },
+          signInTab: 'تسجيل الدخول',
+          signUp: {
+            subtitle: 'أنشئ ملف المالك لمساحة عمل Collectify.',
+            title: 'إنشاء حساب',
+          },
+        },
+        shell: {
+          secureSession: 'تتم حماية بياناتك باستخدام ملفات تعريف ارتباط جلسة مشفرة.',
+        },
+        signIn: {
+          emailLabel: 'البريد الإلكتروني',
+          emailPlaceholder: 'owner@example.com',
+          passwordLabel: 'كلمة المرور',
+          passwordPlaceholder: 'كلمة المرور',
+          submit: 'دخول مساحة العمل',
+          submitting: 'جارٍ تسجيل الدخول',
+        },
+        signUp: {
+          currencyLabel: 'العملة الافتراضية',
+          emailLabel: 'البريد الإلكتروني',
+          emailPlaceholder: 'owner@example.com',
+          languageLabel: 'لغة الواجهة',
+          nameLabel: 'الاسم',
+          namePlaceholder: 'أحمد يمان',
+          passwordLabel: 'كلمة المرور',
+          passwordPlaceholder: '8 أحرف على الأقل',
+          submit: 'إنشاء حساب',
+          submitting: 'جارٍ إنشاء الحساب',
+        },
+        toast: {
+          signIn: {
+            errorTitle: 'تعذر تسجيل الدخول',
+            successDescription: 'مرحبًا بعودتك إلى Collectify.',
+            successTitle: 'تم تسجيل الدخول',
+          },
+          signUp: {
+            errorTitle: 'تعذر إنشاء الحساب',
+            successDescription: 'مساحة عمل Collectify جاهزة.',
+            successTitle: 'تم إنشاء الحساب',
+          },
+        },
+        togglePassword: {
+          hide: 'إخفاء كلمة المرور',
+          show: 'إظهار كلمة المرور',
+        },
+        validation: authValidationTranslations.ar,
+      },
+    },
+  },
+} satisfies Record<SupportedLocale, { common: { auth: Record<string, unknown> } }>;

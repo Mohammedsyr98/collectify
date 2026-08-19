@@ -18,4 +18,11 @@ export const appI18nResources = {
       ...sharedLocalizationResources.tr.common,
     },
   },
+  ar: {
+    common: {
+      ...appShellResources.ar.common,
+      ...authResources.ar.common,
+      ...sharedLocalizationResources.ar.common,
+    },
+  },
 } satisfies Record<SupportedLocale, { common: Record<string, unknown> }>;

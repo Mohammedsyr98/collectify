@@ -68,6 +68,39 @@ export const appShellResources = {
       },
     },
   },
+  ar: {
+    common: {
+      app: {
+        loading: {
+          ariaLabel: 'جارٍ تحميل Collectify',
+        },
+        error: {
+          retry: 'حاول مرة أخرى',
+          sessionUnavailable: {
+            detail: 'حاول مرة أخرى بعد قليل.',
+            title: 'تعذر تحميل Collectify',
+          },
+        },
+        status: {
+          ownerSetupIncomplete: {
+            detail: 'أكمل إعداد المالك قبل الدخول إلى مساحة العمل.',
+            title: 'إعداد المالك غير مكتمل',
+          },
+        },
+        workspace: {
+          currencyLabel: 'العملة',
+          emailLabel: 'البريد الإلكتروني',
+          languageLabel: 'اللغة',
+          nameLabel: 'الاسم',
+          signOut: 'تسجيل الخروج',
+          signOutErrorTitle: 'تعذر تسجيل الخروج',
+          signingOut: 'جارٍ تسجيل الخروج',
+          subtitle: 'مساحة عمل Collectify المحمية',
+          title: 'جلسة المالك نشطة',
+        },
+      },
+    },
+  },
 } satisfies Record<
   SupportedLocale,
   { common: { app: Record<string, unknown> } }

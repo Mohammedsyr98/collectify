@@ -17,7 +17,7 @@ describe('owner sign-up errors', () => {
     );
     expect(
       resolveOwnerSignUpValidationMessage(authValidationCode.authPreferredLanguageUnsupported),
-    ).toBe('Choose English or Turkish.');
+    ).toBe('Choose English, Turkish, or Arabic.');
     expect(resolveOwnerSignUpValidationMessage(authValidationCode.authSignUpPasswordLength)).toBe(
       'Password must be between 8 and 128 characters.',
     );

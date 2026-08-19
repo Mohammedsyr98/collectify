@@ -17,6 +17,7 @@ import { FormInput } from '../../../shared/ui/form/FormInput';
 import { FormSelect } from '../../../shared/ui/form/FormSelect';
 
 const localeNameTranslationKeys = {
+  ar: 'locale.arabic',
   en: 'locale.english',
   tr: 'locale.turkish',
 } satisfies Record<SupportedLocale, string>;

@@ -37,9 +37,7 @@ export function toOwnerProfileResponse(
   ownerProfile: AuthenticatedOwnerProfile,
 ): OwnerProfile {
   return {
-    // Storage accepts Arabic before the shared public contract exposes it.
-    preferredLanguage:
-      ownerProfile.preferredLanguage as OwnerProfile['preferredLanguage'],
+    preferredLanguage: ownerProfile.preferredLanguage,
     defaultCurrency: ownerProfile.defaultCurrency,
   };
 }
