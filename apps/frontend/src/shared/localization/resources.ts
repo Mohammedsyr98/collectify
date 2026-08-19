@@ -4,6 +4,7 @@ export const sharedLocalizationResources = {
   en: {
     common: {
       locale: {
+        arabic: 'Arabic',
         english: 'English',
         turkish: 'Turkish',
       },
@@ -15,11 +16,24 @@ export const sharedLocalizationResources = {
   tr: {
     common: {
       locale: {
+        arabic: 'Arap\u00e7a',
         english: '\u0130ngilizce',
         turkish: 'T\u00fcrk\u00e7e',
       },
       errors: {
         genericDescription: 'Bir \u015feyler ters gitti. Tekrar deneyin.',
+      },
+    },
+  },
+  ar: {
+    common: {
+      locale: {
+        arabic: 'العربية',
+        english: 'الإنجليزية',
+        turkish: 'التركية',
+      },
+      errors: {
+        genericDescription: 'حدث خطأ ما. حاول مرة أخرى.',
       },
     },
   },

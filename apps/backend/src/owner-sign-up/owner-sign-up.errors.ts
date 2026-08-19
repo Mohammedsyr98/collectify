@@ -17,7 +17,8 @@ const ownerSignUpValidationMessages = {
   [authValidationCode.authDefaultCurrencyUnsupported]: 'Choose TRY, USD, or EUR.',
   [authValidationCode.authEmailInvalid]: 'Enter a valid email address.',
   [authValidationCode.authNameRequired]: 'Name is required.',
-  [authValidationCode.authPreferredLanguageUnsupported]: 'Choose English or Turkish.',
+  [authValidationCode.authPreferredLanguageUnsupported]:
+    'Choose English, Turkish, or Arabic.',
   [authValidationCode.authSignUpPasswordLength]: 'Password must be between 8 and 128 characters.',
 } satisfies Record<OwnerSignUpValidationCode, string>;
 

@@ -27,4 +27,14 @@ export const authApiErrorTranslations = {
     [authApiErrorCode.profileSetupFailed]:
       'Sahip kurulumu tamamlanamad\u0131. Tekrar deneyin.',
   },
+  ar: {
+    [authApiErrorCode.validationError]: 'تحقق من الحقول المحددة.',
+    [authApiErrorCode.invalidCredentials]:
+      'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+    [authApiErrorCode.ownerProfileMissing]: 'إعداد ملف المالك غير مكتمل.',
+    [authApiErrorCode.accountAlreadyExists]:
+      'يوجد حساب بالفعل بهذا البريد الإلكتروني.',
+    [authApiErrorCode.profileSetupFailed]:
+      'لم نتمكن من إكمال إعداد المالك. حاول مرة أخرى.',
+  },
 } satisfies Record<SupportedLocale, AuthApiErrorTranslationMessages>;

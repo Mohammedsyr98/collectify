@@ -129,7 +129,7 @@ describe('POST /owner/sign-up', () => {
         name: ['Name is required.'],
         email: ['Enter a valid email address.'],
         password: ['Password must be between 8 and 128 characters.'],
-        preferredLanguage: ['Choose English or Turkish.'],
+        preferredLanguage: ['Choose English, Turkish, or Arabic.'],
         defaultCurrency: ['Choose TRY, USD, or EUR.'],
       },
     });

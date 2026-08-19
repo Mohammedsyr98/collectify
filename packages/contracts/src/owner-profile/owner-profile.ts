@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authValidationCode } from '../auth/validation-codes.js';
 
 export const ownerLanguageSchema = z.enum(
-  ['en', 'tr'],
+  ['en', 'tr', 'ar'],
   authValidationCode.authPreferredLanguageUnsupported,
 );
 export const currencySchema = z.enum(
