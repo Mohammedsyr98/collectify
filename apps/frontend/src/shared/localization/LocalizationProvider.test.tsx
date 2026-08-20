@@ -7,21 +7,26 @@ import {
   createI18nInstance,
   LocalizationProvider,
   localeStorageKey,
+  supportedLocales,
   type SupportedLocale,
   useLocalization,
 } from './index';
 
-const testI18nResources = {
-  en: {
-    common: {},
+type TestI18nResources = Record<
+  SupportedLocale,
+  { common: Record<string, never> }
+>;
+
+const testI18nResources = supportedLocales.reduce<TestI18nResources>(
+  (resources, locale) => {
+    resources[locale] = {
+      common: {},
+    };
+
+    return resources;
   },
-  tr: {
-    common: {},
-  },
-  ar: {
-    common: {},
-  },
-};
+  {} as TestI18nResources,
+);
 
 function createTestI18nInstance(initialLocale: SupportedLocale) {
   return createI18nInstance({
