@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { SessionResponse } from '@collectify/contracts';
 
 import App from './App';
+import { createAppI18nInstance } from './app/localization/i18n';
 import { getBackendUrl } from './shared/api/http';
 import { renderWithAppProviders } from './shared/test/render';
 import { server } from './shared/test/server';
@@ -31,18 +32,13 @@ const ownerSession: SessionResponse = {
 };
 
 function mockSession(response: SessionResponse) {
-  server.use(
-    http.get(`${getBackendUrl()}/session`, () => HttpResponse.json(response)),
-  );
+  server.use(http.get(`${getBackendUrl()}/session`, () => HttpResponse.json(response)));
 }
 
 function mockSessionError() {
   server.use(
     http.get(`${getBackendUrl()}/session`, () =>
-      HttpResponse.json(
-        { message: 'Backend unavailable.' },
-        { status: 503 },
-      ),
+      HttpResponse.json({ message: 'Backend unavailable.' }, { status: 503 }),
     ),
   );
 }
@@ -61,6 +57,8 @@ function setBrowserLanguages(languages: readonly string[]) {
 describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    document.documentElement.lang = '';
+    document.documentElement.removeAttribute('dir');
     setBrowserLanguages(['en-US']);
     mockSession(unauthenticatedSession);
   });
@@ -72,12 +70,8 @@ describe('App', () => {
   it('renders the signed-out auth entry without protected content', async () => {
     renderApp();
 
-    expect(
-      await screen.findByRole('heading', { name: 'Create account' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('Protected Collectify workspace'),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Create account' })).toBeInTheDocument();
+    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
   });
 
   it('renders the session-unavailable state when session loading fails', async () => {
@@ -91,15 +85,9 @@ describe('App', () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText('Try again in a moment.')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Try again' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: 'Create account' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Protected Collectify workspace'),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Create account' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
   });
 
   it('retries session loading from the generic error state', async () => {
@@ -110,10 +98,7 @@ describe('App', () => {
         sessionProbeCount += 1;
 
         if (sessionProbeCount === 1) {
-          return HttpResponse.json(
-            { message: 'Backend unavailable.' },
-            { status: 503 },
-          );
+          return HttpResponse.json({ message: 'Backend unavailable.' }, { status: 503 });
         }
 
         return HttpResponse.json(unauthenticatedSession);
@@ -122,13 +107,9 @@ describe('App', () => {
 
     renderApp();
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Try again' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'Try again' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Create account' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Create account' })).toBeInTheDocument();
   });
 
   it('renders the owner workspace for an authenticated owner profile', async () => {
@@ -140,6 +121,39 @@ describe('App', () => {
       await screen.findByRole('heading', { name: 'Owner session active' }),
     ).toBeInTheDocument();
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
+  });
+
+  it('renders Arabic owner workspace copy while preserving technical values', async () => {
+    const arabicI18n = createAppI18nInstance('ar');
+    mockSession({
+      authenticated: true,
+      user: {
+        id: 'user_123',
+        email: 'owner@example.com',
+        name: 'Owner',
+      },
+      ownerProfile: {
+        preferredLanguage: 'ar',
+        defaultCurrency: 'USD',
+      },
+    });
+
+    renderApp();
+
+    expect(
+      await screen.findByRole('heading', {
+        name: arabicI18n.t('app.workspace.title'),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(arabicI18n.t('app.workspace.subtitle'))).toBeInTheDocument();
+    expect(screen.getByText(arabicI18n.t('app.workspace.emailLabel'))).toBeInTheDocument();
+    expect(screen.getByText(arabicI18n.t('app.workspace.languageLabel'))).toBeInTheDocument();
+    expect(screen.getByText(arabicI18n.t('locale.arabic'))).toBeInTheDocument();
+    expect(screen.getByText('Collectify')).toBeInTheDocument();
+    expect(screen.getByText('USD')).toBeInTheDocument();
+    expect(screen.getByText('owner@example.com')).toHaveAttribute('dir', 'ltr');
+    expect(document.documentElement).toHaveAttribute('lang', 'ar');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
   });
 
   it('does not show protected UI for an auth session missing owner profile', async () => {
@@ -158,9 +172,6 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { name: 'Owner setup incomplete' }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText('Protected Collectify workspace'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
   });
-
 });

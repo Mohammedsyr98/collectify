@@ -8,10 +8,7 @@ import type { SessionResponse } from '@collectify/contracts';
 
 import { getBackendUrl } from '../../../shared/api/http';
 import { localeStorageKey } from '../../../shared/localization';
-import {
-  createTestQueryClient,
-  renderWithAppProviders,
-} from '../../../shared/test/render';
+import { createTestQueryClient, renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { sessionQueryKey } from './sessionQueries';
 import { useAppSessionState } from './useAppSessionState';
@@ -22,7 +19,7 @@ const signedOutSession: SessionResponse = {
   ownerProfile: null,
 };
 
-const ownerSession: SessionResponse = {
+const arabicOwnerSession: SessionResponse = {
   authenticated: true,
   user: {
     id: 'user_123',
@@ -30,24 +27,19 @@ const ownerSession: SessionResponse = {
     name: 'Owner',
   },
   ownerProfile: {
-    preferredLanguage: 'tr',
-    defaultCurrency: 'TRY',
+    preferredLanguage: 'ar',
+    defaultCurrency: 'USD',
   },
 };
 
 function mockSession(response: SessionResponse) {
-  server.use(
-    http.get(`${getBackendUrl()}/session`, () => HttpResponse.json(response)),
-  );
+  server.use(http.get(`${getBackendUrl()}/session`, () => HttpResponse.json(response)));
 }
 
 function mockSessionError() {
   server.use(
     http.get(`${getBackendUrl()}/session`, () =>
-      HttpResponse.json(
-        { message: 'Backend unavailable.' },
-        { status: 503 },
-      ),
+      HttpResponse.json({ message: 'Backend unavailable.' }, { status: 503 }),
     ),
   );
 }
@@ -122,10 +114,7 @@ describe('useAppSessionState', () => {
         if (shouldFail) {
           shouldFail = false;
 
-          return HttpResponse.json(
-            { message: 'Backend unavailable.' },
-            { status: 503 },
-          );
+          return HttpResponse.json({ message: 'Backend unavailable.' }, { status: 503 });
         }
 
         return HttpResponse.json(signedOutSession);
@@ -154,34 +143,35 @@ describe('useAppSessionState', () => {
 
     renderProbe();
 
-    expect(
-      await screen.findByText('ownerSetupIncomplete'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('ownerSetupIncomplete')).toBeInTheDocument();
   });
 
-  it('reports owner workspace after syncing the owner profile language', async () => {
-    mockSession(ownerSession);
+  it('reports owner workspace after syncing an RTL owner profile language', async () => {
+    mockSession(arabicOwnerSession);
 
     renderProbe();
 
     expect(await screen.findByText('Owner workspace')).toBeInTheDocument();
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
-    expect(screen.getByText('tr')).toBeInTheDocument();
-    expect(document.documentElement).toHaveAttribute('lang', 'tr');
-    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(screen.getByText('ar')).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute('lang', 'ar');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('ar');
   });
 
-  it('keeps the owner workspace pending while the profile language is unsynced', async () => {
+  it('keeps the owner workspace pending while the RTL profile language is unsynced', async () => {
     const queryClient = createTestQueryClient();
-    queryClient.setQueryData(sessionQueryKey, ownerSession);
-    mockSession(ownerSession);
+    queryClient.setQueryData(sessionQueryKey, arabicOwnerSession);
+    mockSession(arabicOwnerSession);
 
     renderWithAppProviders(<AppSessionStateProbe />, { queryClient });
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading session');
     expect(screen.queryByText('Owner workspace')).not.toBeInTheDocument();
     expect(await screen.findByText('Owner workspace')).toBeInTheDocument();
-    expect(window.localStorage.getItem(localeStorageKey)).toBe('tr');
+    expect(document.documentElement).toHaveAttribute('lang', 'ar');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+    expect(window.localStorage.getItem(localeStorageKey)).toBe('ar');
   });
 
   it('continues loading until the session query has data', () => {
