@@ -71,7 +71,7 @@ describe('App', () => {
     renderApp();
 
     expect(await screen.findByRole('heading', { name: 'Create account' })).toBeInTheDocument();
-    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
+    expect(screen.queryByRole('main', { name: 'Panel' })).not.toBeInTheDocument();
   });
 
   it('renders the session-unavailable state when session loading fails', async () => {
@@ -87,7 +87,7 @@ describe('App', () => {
     expect(screen.getByText('Try again in a moment.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Create account' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
+    expect(screen.queryByRole('main', { name: 'Panel' })).not.toBeInTheDocument();
   });
 
   it('retries session loading from the generic error state', async () => {
@@ -117,13 +117,13 @@ describe('App', () => {
 
     renderApp();
 
-    expect(
-      await screen.findByRole('heading', { name: 'Owner session active' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('owner@example.com')).toBeInTheDocument();
+    expect(await screen.findByRole('main', { name: 'Panel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Panel', current: 'page' })).toBeInTheDocument();
+    expect(screen.queryByText('Owner session active')).not.toBeInTheDocument();
+    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
   });
 
-  it('renders Arabic owner workspace copy while preserving technical values', async () => {
+  it('renders Arabic owner workspace sidebar copy while preserving document direction', async () => {
     const arabicI18n = createAppI18nInstance('ar');
     mockSession({
       authenticated: true,
@@ -141,17 +141,17 @@ describe('App', () => {
     renderApp();
 
     expect(
-      await screen.findByRole('heading', {
-        name: arabicI18n.t('app.workspace.title'),
+      await screen.findByRole('main', {
+        name: arabicI18n.t('app.workspace.navigation.panel'),
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText(arabicI18n.t('app.workspace.subtitle'))).toBeInTheDocument();
-    expect(screen.getByText(arabicI18n.t('app.workspace.emailLabel'))).toBeInTheDocument();
-    expect(screen.getByText(arabicI18n.t('app.workspace.languageLabel'))).toBeInTheDocument();
-    expect(screen.getByText(arabicI18n.t('locale.arabic'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: arabicI18n.t('app.workspace.navigation.panel'),
+        current: 'page',
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Collectify')).toBeInTheDocument();
-    expect(screen.getByText('USD')).toBeInTheDocument();
-    expect(screen.getByText('owner@example.com')).toHaveAttribute('dir', 'ltr');
     expect(document.documentElement).toHaveAttribute('lang', 'ar');
     expect(document.documentElement).toHaveAttribute('dir', 'rtl');
   });
@@ -172,6 +172,6 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { name: 'Owner setup incomplete' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
+    expect(screen.queryByRole('main', { name: 'Panel' })).not.toBeInTheDocument();
   });
 });
