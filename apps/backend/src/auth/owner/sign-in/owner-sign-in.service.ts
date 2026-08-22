@@ -1,39 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { AuthService } from '@thallesp/nestjs-better-auth';
 import {
   authApiErrorCode,
   type OwnerSignInRequest,
   type OwnerSignInResponse,
 } from '@collectify/contracts';
 import type { IncomingHttpHeaders } from 'node:http';
-import { fromNodeHeaders } from 'better-auth/node';
 
 import { OwnerContextService } from '../context/owner-context.service';
-import { toOwnerProfileResponse } from '../context/owner-context.types';
-import type { CollectifyBetterAuth } from '../../provider/better-auth.factory';
+import { toOwnerProfileResponse } from '../context/owner-context';
+import { AuthProviderService } from '../../provider/auth-provider.service';
+import type { AuthResponseHeaders } from '../../provider/auth-provider.types';
 import { ownerSignInException } from './owner-sign-in.errors';
 
 export interface OwnerSignInResult {
   body: OwnerSignInResponse;
-  responseHeaders: Headers;
-}
-
-interface BetterAuthSignInResult {
-  response: {
-    token: string | null;
-    user: {
-      id: string;
-      email: string;
-      name?: string | null;
-    };
-  };
-  headers: Headers;
+  responseHeaders: AuthResponseHeaders;
 }
 
 @Injectable()
 export class OwnerSignInService {
   constructor(
-    private readonly authService: AuthService<CollectifyBetterAuth>,
+    private readonly authProvider: AuthProviderService,
     private readonly ownerContextService: OwnerContextService,
   ) {}
 
@@ -41,9 +28,18 @@ export class OwnerSignInService {
     request: OwnerSignInRequest,
     headers: IncomingHttpHeaders,
   ): Promise<OwnerSignInResult> {
-    const signInResult = await this.authenticateOwner(request, headers);
+    const signInResult = await this.authProvider.signInWithEmail({
+      email: request.email,
+      password: request.password,
+      requestHeaders: headers,
+    });
+
+    if (signInResult.outcome === 'invalidCredentials') {
+      throw ownerSignInException(authApiErrorCode.invalidCredentials);
+    }
+
     const owner = await this.ownerContextService.requireOwnerContext(
-      signInResult.response.user,
+      signInResult.user,
     );
 
     return {
@@ -56,25 +52,7 @@ export class OwnerSignInService {
         },
         ownerProfile: toOwnerProfileResponse(owner.ownerProfile),
       },
-      responseHeaders: signInResult.headers,
+      responseHeaders: signInResult.responseHeaders,
     };
-  }
-
-  private async authenticateOwner(
-    request: OwnerSignInRequest,
-    headers: IncomingHttpHeaders,
-  ): Promise<BetterAuthSignInResult> {
-    try {
-      return (await this.authService.api.signInEmail({
-        headers: fromNodeHeaders(headers),
-        returnHeaders: true,
-        body: {
-          email: request.email,
-          password: request.password,
-        },
-      })) as BetterAuthSignInResult;
-    } catch {
-      throw ownerSignInException(authApiErrorCode.invalidCredentials);
-    }
   }
 }

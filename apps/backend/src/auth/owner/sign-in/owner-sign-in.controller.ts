@@ -4,7 +4,7 @@ import { ownerSignInRequestSchema } from '@collectify/contracts';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
 import { PublicRoute } from '../../index';
-import { applyBetterAuthResponseHeaders } from '../../provider/better-auth-response-headers';
+import { applyAuthResponseHeaders } from '../../provider/auth-response-headers';
 import { ZodValidationPipe } from '../../../validation/zod-validation.pipe';
 import { resolveOwnerSignInValidationMessage } from './owner-sign-in.errors';
 import { OwnerSignInService } from './owner-sign-in.service';
@@ -27,7 +27,7 @@ export class OwnerSignInController {
   ): Promise<OwnerSignInResponse> {
     const signInResult = await this.ownerSignInService.signInOwner(body, headers);
 
-    applyBetterAuthResponseHeaders(signInResult.responseHeaders, response);
+    applyAuthResponseHeaders(signInResult.responseHeaders, response);
 
     return signInResult.body;
   }

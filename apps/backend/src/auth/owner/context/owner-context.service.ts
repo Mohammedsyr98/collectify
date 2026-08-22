@@ -8,7 +8,7 @@ import type {
   AuthenticatedOwner,
   AuthenticatedOwnerProfile,
   OwnerContextAuthUser,
-} from './owner-context.types';
+} from './owner-context';
 
 @Injectable()
 export class OwnerContextService {

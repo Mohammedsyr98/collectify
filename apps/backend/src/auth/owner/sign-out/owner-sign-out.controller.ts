@@ -3,7 +3,7 @@ import type { OwnerSignOutResponse } from '@collectify/contracts';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
 import { PublicRoute } from '../../index';
-import { applyBetterAuthResponseHeaders } from '../../provider/better-auth-response-headers';
+import { applyAuthResponseHeaders } from '../../provider/auth-response-headers';
 import { OwnerSignOutService } from './owner-sign-out.service';
 
 @Controller('owner')
@@ -19,7 +19,7 @@ export class OwnerSignOutController {
   ): Promise<OwnerSignOutResponse> {
     const signOutResult = await this.ownerSignOutService.signOutOwner(headers);
 
-    applyBetterAuthResponseHeaders(signOutResult.responseHeaders, response);
+    applyAuthResponseHeaders(signOutResult.responseHeaders, response);
 
     return signOutResult.body;
   }

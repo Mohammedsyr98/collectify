@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { AuthService } from '@thallesp/nestjs-better-auth';
-import { fromNodeHeaders } from 'better-auth/node';
 import type { IncomingHttpHeaders } from 'node:http';
 
 import type { SessionResponse } from '@collectify/contracts';
@@ -9,27 +7,16 @@ import { OwnerContextService } from '../context/owner-context.service';
 import {
   toOwnerProfileResponse,
   type AuthenticatedOwnerProfile,
-} from '../context/owner-context.types';
-import type { CollectifyBetterAuth } from '../../provider/better-auth.factory';
+} from '../context/owner-context';
+import { AuthProviderService } from '../../provider/auth-provider.service';
+import type {
+  AuthProviderSession,
+  AuthResponseHeaders,
+} from '../../provider/auth-provider.types';
 
 export interface CurrentSessionResult {
   body: SessionResponse;
-  responseHeaders: Headers;
-}
-
-interface AuthSessionUser {
-  id: string;
-  email: string;
-  name?: string | null;
-}
-
-interface AuthSessionResult {
-  user: AuthSessionUser;
-}
-
-interface AuthSessionReadResult {
-  session: AuthSessionResult | null;
-  responseHeaders: Headers;
+  responseHeaders: AuthResponseHeaders;
 }
 
 const signedOutSession: SessionResponse = {
@@ -41,14 +28,14 @@ const signedOutSession: SessionResponse = {
 @Injectable()
 export class SessionService {
   constructor(
-    private readonly authService: AuthService<CollectifyBetterAuth>,
+    private readonly authProvider: AuthProviderService,
     private readonly ownerContextService: OwnerContextService,
   ) {}
 
   async getCurrentSession(
     headers: IncomingHttpHeaders,
   ): Promise<CurrentSessionResult> {
-    const authSessionRead = await readAuthSession(this.authService, headers);
+    const authSessionRead = await this.authProvider.readSession(headers);
     const ownerProfile = authSessionRead.session
       ? await this.ownerContextService.findOwnerProfileForUser(
           authSessionRead.session.user.id,
@@ -62,23 +49,8 @@ export class SessionService {
   }
 }
 
-async function readAuthSession(
-  authService: AuthService<CollectifyBetterAuth>,
-  headers: IncomingHttpHeaders,
-): Promise<AuthSessionReadResult> {
-  const result = await authService.api.getSession({
-    headers: fromNodeHeaders(headers),
-    returnHeaders: true,
-  });
-
-  return {
-    session: result?.response ?? null,
-    responseHeaders: result?.headers ?? new Headers(),
-  };
-}
-
 function toSessionResponse(
-  authSession: AuthSessionResult | null,
+  authSession: AuthProviderSession | null,
   ownerProfile: AuthenticatedOwnerProfile | null,
 ): SessionResponse {
   if (!authSession) {

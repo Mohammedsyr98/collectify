@@ -1,36 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { AuthService } from '@thallesp/nestjs-better-auth';
 import type { OwnerSignOutResponse } from '@collectify/contracts';
-import { fromNodeHeaders } from 'better-auth/node';
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { CollectifyBetterAuth } from '../../provider/better-auth.factory';
+import { AuthProviderService } from '../../provider/auth-provider.service';
+import type { AuthResponseHeaders } from '../../provider/auth-provider.types';
 
 export interface OwnerSignOutResult {
   body: OwnerSignOutResponse;
-  responseHeaders: Headers;
-}
-
-interface BetterAuthSignOutResult {
-  response: OwnerSignOutResponse;
-  headers: Headers;
+  responseHeaders: AuthResponseHeaders;
 }
 
 @Injectable()
 export class OwnerSignOutService {
-  constructor(private readonly authService: AuthService<CollectifyBetterAuth>) {}
+  constructor(private readonly authProvider: AuthProviderService) {}
 
   async signOutOwner(
     headers: IncomingHttpHeaders,
   ): Promise<OwnerSignOutResult> {
-    const signOutResult = (await this.authService.api.signOut({
-      headers: fromNodeHeaders(headers),
-      returnHeaders: true,
-    })) as BetterAuthSignOutResult;
+    const signOutResult = await this.authProvider.signOut(headers);
 
     return {
-      body: signOutResult.response,
-      responseHeaders: signOutResult.headers,
+      body: {
+        success: true,
+      },
+      responseHeaders: signOutResult.responseHeaders,
     };
   }
 }
