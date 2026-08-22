@@ -11,9 +11,9 @@ import type { IncomingHttpHeaders } from 'node:http';
 import { isAPIError } from 'better-auth/api';
 import { fromNodeHeaders } from 'better-auth/node';
 
-import type { CollectifyBetterAuth } from '../auth/better-auth/better-auth.factory';
-import { DatabaseService } from '../database/database.service';
-import { ownerProfiles, user as authUsers } from '../database/schema';
+import { DatabaseService } from '../../../database/database.service';
+import { ownerProfiles, user as authUsers } from '../../../database/schema';
+import type { CollectifyBetterAuth } from '../../provider/better-auth.factory';
 import { ownerSignUpException } from './owner-sign-up.errors';
 
 export interface OwnerSignUpResult {

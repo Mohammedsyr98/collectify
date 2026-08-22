@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { getSetCookie } from '../test-support/http-cookies';
+import { getSetCookie } from '../../../test-support/http-cookies';
 import {
   startIntegrationPostgres,
   type IntegrationBackend,
   type IntegrationPostgres,
-} from '../test-support/integration-postgres';
-import { createOwnerAuthClient } from '../test-support/owner-auth-client';
+} from '../../../test-support/integration-postgres';
+import { createOwnerAuthClient } from '../../../test-support/owner-auth-client';
 
 describe('POST /owner/sign-out', () => {
   let postgres: IntegrationPostgres | undefined;

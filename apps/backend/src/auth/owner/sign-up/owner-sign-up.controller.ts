@@ -3,9 +3,9 @@ import type { OwnerSignUpRequest, OwnerSignUpResponse } from '@collectify/contra
 import { ownerSignUpRequestSchema } from '@collectify/contracts';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 
-import { PublicRoute } from '../auth';
-import { applyBetterAuthResponseHeaders } from '../auth/better-auth/better-auth-response-headers';
-import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { PublicRoute } from '../../index';
+import { applyBetterAuthResponseHeaders } from '../../provider/better-auth-response-headers';
+import { ZodValidationPipe } from '../../../validation/zod-validation.pipe';
 import { resolveOwnerSignUpValidationMessage } from './owner-sign-up.errors';
 import { OwnerSignUpService } from './owner-sign-up.service';
 

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from '../auth';
-import { DatabaseModule } from '../database/database.module';
+import { DatabaseModule } from '../../../database/database.module';
+import { AuthModule } from '../../index';
 import { OwnerSignUpController } from './owner-sign-up.controller';
 import { OwnerSignUpService } from './owner-sign-up.service';
 
