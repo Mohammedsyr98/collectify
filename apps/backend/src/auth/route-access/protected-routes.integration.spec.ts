@@ -3,17 +3,17 @@ import { Test } from '@nestjs/testing';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { AppModule } from '../app.module';
+import { AppModule } from '../../app.module';
 import {
   CurrentOwner,
   type AuthenticatedOwner,
-} from './index';
-import { getSetCookie, toCookieHeader } from '../test-support/http-cookies';
+} from '../index';
+import { getSetCookie, toCookieHeader } from '../../test-support/http-cookies';
 import {
   startIntegrationPostgres,
   type IntegrationPostgres,
-} from '../test-support/integration-postgres';
-import { createOwnerAuthClient } from '../test-support/owner-auth-client';
+} from '../../test-support/integration-postgres';
+import { createOwnerAuthClient } from '../../test-support/owner-auth-client';
 
 @Controller('protected-probe')
 class ProtectedProbeController {

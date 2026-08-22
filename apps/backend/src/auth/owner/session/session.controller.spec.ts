@@ -4,10 +4,10 @@ import { Test } from '@nestjs/testing';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { CollectifyBetterAuth } from '../auth/better-auth/better-auth.factory';
-import { OwnerContextService } from '../auth/owner-context/owner-context.service';
-import { HealthController } from '../health.controller';
-import { getSetCookie } from '../test-support/http-cookies';
+import { OwnerContextService } from '../context/owner-context.service';
+import type { CollectifyBetterAuth } from '../../provider/better-auth.factory';
+import { HealthController } from '../../../health.controller';
+import { getSetCookie } from '../../../test-support/http-cookies';
 import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
 

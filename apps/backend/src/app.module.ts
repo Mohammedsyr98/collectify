@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from './database/database.module';
 import { HealthController } from './health.controller';
-import { OwnerSignInModule } from './owner-sign-in/owner-sign-in.module';
-import { OwnerSignOutModule } from './owner-sign-out/owner-sign-out.module';
-import { OwnerSignUpModule } from './owner-sign-up/owner-sign-up.module';
-import { SessionModule } from './session/session.module';
+import { OwnerSignInModule } from './auth/owner/sign-in/owner-sign-in.module';
+import { OwnerSignOutModule } from './auth/owner/sign-out/owner-sign-out.module';
+import { OwnerSignUpModule } from './auth/owner/sign-up/owner-sign-up.module';
+import { SessionModule } from './auth/owner/session/session.module';
 
 @Module({
   imports: [

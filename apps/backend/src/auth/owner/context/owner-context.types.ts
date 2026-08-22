@@ -1,6 +1,6 @@
 import type { OwnerProfile } from '@collectify/contracts';
 
-import type { ownerLanguageEnum } from '../../database/schema';
+import type { ownerLanguageEnum } from '../../../database/schema';
 
 type PersistedOwnerLanguage = (typeof ownerLanguageEnum.enumValues)[number];
 
