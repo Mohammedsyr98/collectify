@@ -1,52 +1,32 @@
-import type { AuthService } from '@thallesp/nestjs-better-auth';
 import type { IncomingHttpHeaders } from 'node:http';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { OwnerContextService } from '../context/owner-context.service';
-import type { CollectifyBetterAuth } from '../../provider/better-auth.factory';
+import type { AuthProviderService } from '../../provider/auth-provider.service';
+import type { AuthProviderReadSessionResult } from '../../provider/auth-provider.types';
 import { SessionService } from './session.service';
-
-interface AuthSessionResult {
-  user: {
-    id: string;
-    email: string;
-    name?: string | null;
-  };
-}
-
-interface GetSessionContext {
-  headers: Headers;
-  returnHeaders: true;
-}
-
-interface GetSessionResult {
-  response: AuthSessionResult | null;
-  headers: Headers;
-}
 
 describe('SessionService', () => {
   it('maps an authenticated auth session with owner profile and preserves response headers', async () => {
     const nodeHeaders: IncomingHttpHeaders = {
       cookie: 'better-auth.session_token=valid',
     };
-    const responseHeaders = new Headers({
-      'cache-control': 'no-store',
-    });
+    const responseHeaders = {
+      cacheControl: 'no-store',
+      setCookies: [],
+    };
     const authSession = {
       user: {
         id: 'user_123',
         email: 'owner@example.test',
+        name: null,
       },
     };
-    const getSession = vi.fn(
-      async (context: GetSessionContext): Promise<GetSessionResult> => {
-        expect(context.returnHeaders).toBe(true);
-
-        return {
-          response: authSession,
-          headers: responseHeaders,
-        };
-      },
+    const readSession = vi.fn(
+      async (): Promise<AuthProviderReadSessionResult> => ({
+        session: authSession,
+        responseHeaders,
+      }),
     );
     const findOwnerProfileForUser = vi.fn(async () => ({
       id: 'profile_123',
@@ -55,7 +35,7 @@ describe('SessionService', () => {
       defaultCurrency: 'TRY' as const,
     }));
     const service = new SessionService(
-      createAuthService(getSession),
+      createAuthProvider(readSession),
       createOwnerContextService(findOwnerProfileForUser),
     );
 
@@ -74,21 +54,21 @@ describe('SessionService', () => {
       },
       responseHeaders,
     });
-    expect(getSession).toHaveBeenCalledWith({
-      headers: expect.any(Headers) as Headers,
-      returnHeaders: true,
-    });
-    const context = getSession.mock.calls[0]?.[0];
-    expect(context?.headers.get('cookie')).toBe(
-      'better-auth.session_token=valid',
-    );
+    expect(readSession).toHaveBeenCalledWith(nodeHeaders);
     expect(findOwnerProfileForUser).toHaveBeenCalledWith('user_123');
   });
 
   it('returns a signed-out session when Better Auth returns no result', async () => {
     const findOwnerProfileForUser = vi.fn();
+    const responseHeaders = {
+      cacheControl: null,
+      setCookies: [],
+    };
     const service = new SessionService(
-      createAuthService(async () => null),
+      createAuthProvider(async () => ({
+        session: null,
+        responseHeaders,
+      })),
       createOwnerContextService(findOwnerProfileForUser),
     );
 
@@ -98,20 +78,20 @@ describe('SessionService', () => {
         user: null,
         ownerProfile: null,
       },
-      responseHeaders: new Headers(),
+      responseHeaders,
     });
     expect(findOwnerProfileForUser).not.toHaveBeenCalled();
   });
 });
 
-function createAuthService(
-  getSession: (context: GetSessionContext) => Promise<GetSessionResult | null>,
-): AuthService<CollectifyBetterAuth> {
+function createAuthProvider(
+  readSession: (
+    headers: IncomingHttpHeaders,
+  ) => Promise<AuthProviderReadSessionResult>,
+): AuthProviderService {
   return {
-    api: {
-      getSession,
-    },
-  } as unknown as AuthService<CollectifyBetterAuth>;
+    readSession,
+  } as unknown as AuthProviderService;
 }
 
 function createOwnerContextService(

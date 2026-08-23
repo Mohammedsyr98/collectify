@@ -4,7 +4,7 @@ import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 import type { SessionResponse } from '@collectify/contracts';
 
 import { PublicRoute } from '../../index';
-import { applyBetterAuthResponseHeaders } from '../../provider/better-auth-response-headers';
+import { applyAuthResponseHeaders } from '../../provider/auth-response-headers';
 import { SessionService } from './session.service';
 
 @Controller('session')
@@ -19,7 +19,7 @@ export class SessionController {
   ): Promise<SessionResponse> {
     const currentSession = await this.sessionService.getCurrentSession(headers);
 
-    applyBetterAuthResponseHeaders(currentSession.responseHeaders, response);
+    applyAuthResponseHeaders(currentSession.responseHeaders, response);
 
     return currentSession.body;
   }
