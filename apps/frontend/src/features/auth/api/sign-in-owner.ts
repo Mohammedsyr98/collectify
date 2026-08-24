@@ -4,40 +4,16 @@ import {
   type OwnerSignInResponse,
 } from '@collectify/contracts';
 
-import {
-  createApiError,
-  createApiErrorFromResponseBody,
-  getBackendUrl,
-  readJsonResponse,
-} from '../../../shared/api/http';
+import { fetchBackend } from '../../../shared/api/fetch-backend';
 
 export async function signInOwner(
   request: OwnerSignInRequest,
 ): Promise<OwnerSignInResponse> {
-  const response = await fetch(`${getBackendUrl()}/owner/sign-in`, {
+  return fetchBackend({
+    path: '/owner/sign-in',
     method: 'POST',
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(request),
+    body: request,
+    responseSchema: ownerSignInResponseSchema,
+    unexpectedMessage: 'Owner sign-in returned an unexpected response.',
   });
-
-  const responseBody = await readJsonResponse(response);
-
-  if (!response.ok) {
-    throw createApiErrorFromResponseBody(responseBody, {
-      status: response.status,
-    });
-  }
-
-  const signInResult = ownerSignInResponseSchema.safeParse(responseBody);
-
-  if (!signInResult.success) {
-    throw createApiError('Owner sign-in returned an unexpected response.', {
-      status: response.status,
-    });
-  }
-
-  return signInResult.data;
 }
