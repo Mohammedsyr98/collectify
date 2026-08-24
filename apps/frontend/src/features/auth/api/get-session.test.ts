@@ -28,6 +28,7 @@ describe('session API', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(`${getBackendUrl()}/session`, {
+      method: 'GET',
       credentials: 'include',
     });
   });
