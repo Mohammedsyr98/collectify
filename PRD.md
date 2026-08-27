@@ -74,12 +74,12 @@ The default account currency should be used as the default when creating new deb
 
 A customer is a person or entity that owes money to the owner.
 
-Required customer fields:
+Customer fields:
 
 - Customer name.
 - Customer code.
 - Phone number.
-- Address.
+- Optional address.
 
 ### Debt
 
@@ -124,7 +124,7 @@ A recorded payment can be corrected or deleted. Correcting or deleting a payment
 1. As a business owner, I want to create my owner account, so that I can manage my customer debts in Collectify.
 2. As a business owner, I want to choose English or Turkish during setup, so that I can use the app in my preferred language.
 3. As a business owner, I want to choose my default account currency during setup, so that new debts can start with the currency I normally use.
-4. As a business owner, I want to add a customer with name, code, phone number, and address, so that I can identify who owes money.
+4. As a business owner, I want to add a customer with name, code, and phone number, so that I can identify who owes money.
 5. As a business owner, I want to edit customer details, so that customer information stays accurate.
 6. As a business owner, I want to view my customer list, so that I can find customers quickly.
 7. As a business owner, I want to open a customer record, so that I can see that customer's debts and payments.
@@ -165,7 +165,10 @@ A recorded payment can be corrected or deleted. Correcting or deleting a payment
 ### Customer Management
 
 - The owner must be able to create customers.
-- The owner must provide customer name, customer code, phone number, and address when creating a customer.
+- The owner must provide customer name, customer code, and phone number when creating a customer.
+- The owner may provide an optional customer address.
+- Customer code must be unique per owner after trimming and case-insensitive comparison.
+- Customer phone number must be required but must not enforce a specific phone-number format.
 - The owner must be able to view customers.
 - The customer list must help the owner find customers and understand their remaining debt, overdue amount, and next due date.
 - The owner must be able to open a dedicated customer details page.
