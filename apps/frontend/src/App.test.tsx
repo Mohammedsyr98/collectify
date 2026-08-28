@@ -43,8 +43,8 @@ function mockSessionError() {
   );
 }
 
-function renderApp() {
-  return renderWithAppProviders(<App />);
+function renderApp(initialEntries: string[] = ['/']) {
+  return renderWithAppProviders(<App />, { initialEntries });
 }
 
 function setBrowserLanguages(languages: readonly string[]) {
@@ -115,15 +115,47 @@ describe('App', () => {
   it('renders the owner workspace for an authenticated owner profile', async () => {
     mockSession(ownerSession);
 
-    renderApp();
+    renderApp(['/panel']);
 
     expect(await screen.findByRole('main', { name: 'Panel' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Panel', current: 'page' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Panel', current: 'page' })).toBeInTheDocument();
     expect(screen.queryByText('Owner session active')).not.toBeInTheDocument();
     expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
   });
 
-  it('renders Arabic owner workspace sidebar copy while preserving document direction', async () => {
+  it('redirects authenticated owners from / to /panel', async () => {
+    mockSession(ownerSession);
+
+    renderApp(['/']);
+
+    expect(await screen.findByRole('main', { name: 'Panel' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Panel', current: 'page' })).toBeInTheDocument();
+  });
+
+  it('renders the authenticated customers route without enabling future sections', async () => {
+    mockSession(ownerSession);
+
+    renderApp(['/customers']);
+
+    expect(await screen.findByRole('main', { name: 'Customers' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Customers', current: 'page' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Debts' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Payments' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('applies owner preferred language to the authenticated workspace', async () => {
     const arabicI18n = createAppI18nInstance('ar');
     mockSession({
       authenticated: true,
@@ -138,7 +170,7 @@ describe('App', () => {
       },
     });
 
-    renderApp();
+    renderApp(['/panel']);
 
     expect(
       await screen.findByRole('main', {
@@ -146,7 +178,7 @@ describe('App', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', {
+      screen.getByRole('link', {
         name: arabicI18n.t('app.workspace.navigation.panel'),
         current: 'page',
       }),

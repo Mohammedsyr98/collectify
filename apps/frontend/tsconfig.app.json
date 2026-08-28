@@ -1,7 +1,10 @@
 {
   "extends": "@collectify/typescript-config/react.json",
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "react-i18next": ["./node_modules/react-i18next/index.d.ts"]
+    }
   },
   "include": ["src"]
 }

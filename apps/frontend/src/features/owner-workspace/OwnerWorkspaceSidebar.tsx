@@ -1,5 +1,14 @@
-import { CreditCard, LayoutDashboard, LogOut, ReceiptText, Settings, Users } from 'lucide-react';
+import {
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
+  ReceiptText,
+  Settings,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { NavLink } from 'react-router';
 
 import type { SessionResponse } from '@collectify/contracts';
 
@@ -11,21 +20,28 @@ export type OwnerWorkspaceSession = AuthenticatedSession & {
   ownerProfile: NonNullable<AuthenticatedSession['ownerProfile']>;
 };
 
+type NavigationItem = {
+  Icon: LucideIcon;
+  label: string;
+  to?: '/customers' | '/panel';
+};
+
 export function OwnerWorkspaceSidebar({ session }: { session: OwnerWorkspaceSession }) {
   const { t } = useTranslation();
   const { isSigningOut, signOut } = useOwnerSignOut();
 
   const ownerDisplayName = session.user.name ?? session.user.email;
   const signOutLabel = isSigningOut ? t('app.workspace.signingOut') : t('app.workspace.signOut');
-  const navigationItems = [
+  const navigationItems: NavigationItem[] = [
     {
       Icon: LayoutDashboard,
-      isCurrent: true,
       label: t('app.workspace.navigation.panel'),
+      to: '/panel',
     },
     {
       Icon: Users,
       label: t('app.workspace.navigation.customers'),
+      to: '/customers',
     },
     {
       Icon: ReceiptText,
@@ -49,18 +65,29 @@ export function OwnerWorkspaceSidebar({ session }: { session: OwnerWorkspaceSess
       <p className="m-0 text-[0.76rem] font-[850] tracking-normal text-primary">Collectify</p>
 
       <nav className="mt-7 grid gap-1" aria-label={t('app.workspace.navigationLabel')}>
-        {navigationItems.map(({ Icon, isCurrent = false, label }) => (
-          <button
-            aria-current={isCurrent ? 'page' : undefined}
-            aria-disabled={isCurrent ? undefined : true}
-            className={workspaceNavigationButtonClassName(isCurrent)}
-            key={label}
-            type="button"
-          >
-            <Icon aria-hidden="true" className="shrink-0" size={15} strokeWidth={2.4} />
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-          </button>
-        ))}
+        {navigationItems.map(({ Icon, label, to }) =>
+          to ? (
+            <NavLink
+              className={({ isActive }) => workspaceNavigationButtonClassName(isActive)}
+              end={to === '/panel'}
+              key={label}
+              to={to}
+            >
+              <Icon aria-hidden="true" className="shrink-0" size={15} strokeWidth={2.4} />
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+            </NavLink>
+          ) : (
+            <button
+              aria-disabled="true"
+              className={workspaceNavigationButtonClassName(false)}
+              key={label}
+              type="button"
+            >
+              <Icon aria-hidden="true" className="shrink-0" size={15} strokeWidth={2.4} />
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+            </button>
+          ),
+        )}
       </nav>
 
       <div className="mt-auto rounded-[5px] border border-border bg-background p-2">

@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
+import { Navigate, Route, Routes } from 'react-router';
 
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
 import { useAppSessionState } from './features/auth/session/useAppSessionState';
+import { CustomerDetailsPage } from './features/customers/CustomerDetailsPage';
+import { CustomersPage } from './features/customers/CustomersPage';
+import { PanelPage } from './features/owner-workspace/PanelPage';
 import { OwnerWorkspaceSidebar } from './features/owner-workspace/OwnerWorkspaceSidebar';
 import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
@@ -30,10 +34,13 @@ function App() {
     return (
       <div className="flex min-h-screen bg-background">
         <OwnerWorkspaceSidebar session={appSession.session} />
-        <main
-          aria-label={t('app.workspace.navigation.panel')}
-          className="min-h-screen flex-1 bg-background"
-        />
+        <Routes>
+          <Route element={<Navigate replace to="/panel" />} path="/" />
+          <Route element={<PanelPage />} path="/panel" />
+          <Route element={<CustomersPage />} path="/customers" />
+          <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
+          <Route element={<Navigate replace to="/panel" />} path="*" />
+        </Routes>
       </div>
     );
   }

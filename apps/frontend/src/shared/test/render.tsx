@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
+import { MemoryRouter } from 'react-router';
 
 import { AppProviders } from '../../app/AppProviders';
 
@@ -16,18 +17,25 @@ export function createTestQueryClient() {
 
 export function renderWithAppProviders(
   ui: ReactElement,
-  options?: RenderOptions & { queryClient?: QueryClient },
+  options?: RenderOptions & { initialEntries?: string[]; queryClient?: QueryClient },
 ) {
-  const queryClient = options?.queryClient ?? createTestQueryClient();
+  const { initialEntries: explicitInitialEntries, queryClient: explicitQueryClient, ...renderOptions } =
+    options ?? {};
+  const queryClient = explicitQueryClient ?? createTestQueryClient();
+  const initialEntries = explicitInitialEntries ?? ['/'];
 
   function Wrapper({ children }: { children: ReactNode }) {
-    return <AppProviders queryClient={queryClient}>{children}</AppProviders>;
+    return (
+      <MemoryRouter initialEntries={initialEntries}>
+        <AppProviders queryClient={queryClient}>{children}</AppProviders>
+      </MemoryRouter>
+    );
   }
 
   return {
     queryClient,
     ...render(ui, {
-      ...options,
+      ...renderOptions,
       wrapper: Wrapper,
     }),
   };

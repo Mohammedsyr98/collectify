@@ -4,7 +4,9 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const ownerLanguageEnum = pgEnum('owner_language', ['en', 'tr', 'ar']);
 export const currencyEnum = pgEnum('currency', ['TRY', 'USD', 'EUR']);
@@ -70,3 +72,29 @@ export const ownerProfiles = pgTable('owner_profiles', {
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull(),
 });
+
+export const customerConstraints = {
+  ownerProfileLowerCodeUnique: 'customers_owner_profile_lower_code_unique',
+} as const;
+
+export const customers = pgTable(
+  'customers',
+  {
+    id: text('id').primaryKey(),
+    ownerProfileId: text('owner_profile_id')
+      .notNull()
+      .references(() => ownerProfiles.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    phoneNumber: text('phone_number').notNull(),
+    address: text('address'),
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex(customerConstraints.ownerProfileLowerCodeUnique).on(
+      table.ownerProfileId,
+      sql`lower(${table.code})`,
+    ),
+  ],
+);
