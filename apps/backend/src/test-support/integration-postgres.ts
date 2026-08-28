@@ -129,7 +129,7 @@ async function isFile(path: string): Promise<boolean> {
 async function resetDatabase(connectionUri: string): Promise<void> {
   await queryRows(
     connectionUri,
-    'TRUNCATE TABLE "account", "owner_profiles", "session", "user", "verification" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "account", "customers", "owner_profiles", "session", "user", "verification" RESTART IDENTITY CASCADE',
   );
 }
 

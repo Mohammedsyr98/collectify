@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   account,
+  customerConstraints,
+  customers,
   ownerLanguageEnum,
   ownerProfiles,
   session,
@@ -60,5 +62,25 @@ describe('database schema', () => {
     expect(
       ownerProfileConfig.columns.find((column) => column.name === 'user_id')?.isUnique,
     ).toBe(true);
+  });
+
+  it('defines owner-scoped customers with case-insensitive code uniqueness', () => {
+    const customerConfig = getTableConfig(customers);
+
+    expect(customerConfig.name).toBe('customers');
+    expect(columnNames(customers)).toEqual([
+      'id',
+      'owner_profile_id',
+      'name',
+      'code',
+      'phone_number',
+      'address',
+      'created_at',
+      'updated_at',
+    ]);
+    expect(customerConfig.foreignKeys).toHaveLength(1);
+    expect(customerConfig.indexes.map((index) => index.config.name)).toContain(
+      customerConstraints.ownerProfileLowerCodeUnique,
+    );
   });
 });

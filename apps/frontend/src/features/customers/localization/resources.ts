@@ -1,0 +1,183 @@
+import type { SupportedLocale } from '../../../shared/localization';
+import { customerApiErrorTranslations } from './customerApiErrorTranslations';
+import { customerValidationTranslations } from './customerValidationTranslations';
+
+export const customerResources = {
+  en: {
+    common: {
+      customers: {
+        actions: {
+          addDebt: 'Add debt',
+          create: 'Create customer',
+          recordPayment: 'Record payment',
+          save: 'Save customer',
+          saving: 'Saving',
+        },
+        create: {
+          addressLabel: 'Address',
+          addressPlaceholder: 'Optional address',
+          cancel: 'Cancel',
+          close: 'Close customer form',
+          codeLabel: 'Code',
+          codePlaceholder: 'ACME-001',
+          nameLabel: 'Name',
+          namePlaceholder: 'Acme Market',
+          phoneNumberLabel: 'Phone number',
+          phoneNumberPlaceholder: '+90 555 123 45 67',
+          title: 'Create customer',
+        },
+        details: {
+          address: 'Address',
+          balance: 'Balance',
+          code: 'Code',
+          debts: 'Debts',
+          debtsEmpty: 'No debts yet.',
+          financialSummary: 'Financial summary',
+          noAddress: 'No address',
+          payments: 'Payments',
+          paymentsEmpty: 'No payments yet.',
+          phoneNumber: 'Phone',
+          totalDebt: 'Total debt',
+          totalPaid: 'Total paid',
+        },
+        errors: customerApiErrorTranslations.en,
+        notFound: {
+          action: 'Back to Customers',
+          detail: 'This customer may have been removed or belongs to another owner.',
+          title: 'Customer not found',
+        },
+        page: {
+          empty: 'Create your first customer to start tracking debts.',
+          title: 'Customers',
+        },
+        toast: {
+          create: {
+            errorTitle: 'Could not create customer',
+            successDescription: '{{name}} is ready for debt tracking.',
+            successTitle: 'Customer created',
+          },
+        },
+        validation: customerValidationTranslations.en,
+      },
+    },
+  },
+  tr: {
+    common: {
+      customers: {
+        actions: {
+          addDebt: 'Borc ekle',
+          create: 'Musteri olustur',
+          recordPayment: 'Odeme kaydet',
+          save: 'Musteriyi kaydet',
+          saving: 'Kaydediliyor',
+        },
+        create: {
+          addressLabel: 'Adres',
+          addressPlaceholder: 'Istege bagli adres',
+          cancel: 'Iptal',
+          close: 'Musteri formunu kapat',
+          codeLabel: 'Kod',
+          codePlaceholder: 'ACME-001',
+          nameLabel: 'Ad',
+          namePlaceholder: 'Acme Market',
+          phoneNumberLabel: 'Telefon numarasi',
+          phoneNumberPlaceholder: '+90 555 123 45 67',
+          title: 'Musteri olustur',
+        },
+        details: {
+          address: 'Adres',
+          balance: 'Bakiye',
+          code: 'Kod',
+          debts: 'Borclar',
+          debtsEmpty: 'Henuz borc yok.',
+          financialSummary: 'Finansal ozet',
+          noAddress: 'Adres yok',
+          payments: 'Odemeler',
+          paymentsEmpty: 'Henuz odeme yok.',
+          phoneNumber: 'Telefon',
+          totalDebt: 'Toplam borc',
+          totalPaid: 'Toplam odenen',
+        },
+        errors: customerApiErrorTranslations.tr,
+        notFound: {
+          action: 'Musterilere don',
+          detail: 'Bu musteri silinmis veya baska bir sahibe ait olabilir.',
+          title: 'Musteri bulunamadi',
+        },
+        page: {
+          empty: 'Borc takibine baslamak icin ilk musteriyi olusturun.',
+          title: 'Musteriler',
+        },
+        toast: {
+          create: {
+            errorTitle: 'Musteri olusturulamadi',
+            successDescription: '{{name}} borc takibi icin hazir.',
+            successTitle: 'Musteri olusturuldu',
+          },
+        },
+        validation: customerValidationTranslations.tr,
+      },
+    },
+  },
+  ar: {
+    common: {
+      customers: {
+        actions: {
+          addDebt: 'أضف دينًا',
+          create: 'أنشئ عميلًا',
+          recordPayment: 'سجل دفعة',
+          save: 'احفظ العميل',
+          saving: 'جارٍ الحفظ',
+        },
+        create: {
+          addressLabel: 'العنوان',
+          addressPlaceholder: 'عنوان اختياري',
+          cancel: 'إلغاء',
+          close: 'أغلق نموذج العميل',
+          codeLabel: 'الرمز',
+          codePlaceholder: 'ACME-001',
+          nameLabel: 'الاسم',
+          namePlaceholder: 'سوق أكمي',
+          phoneNumberLabel: 'رقم الهاتف',
+          phoneNumberPlaceholder: '+90 555 123 45 67',
+          title: 'أنشئ عميلًا',
+        },
+        details: {
+          address: 'العنوان',
+          balance: 'الرصيد',
+          code: 'الرمز',
+          debts: 'الديون',
+          debtsEmpty: 'لا توجد ديون بعد.',
+          financialSummary: 'الملخص المالي',
+          noAddress: 'لا يوجد عنوان',
+          payments: 'الدفعات',
+          paymentsEmpty: 'لا توجد دفعات بعد.',
+          phoneNumber: 'الهاتف',
+          totalDebt: 'إجمالي الدين',
+          totalPaid: 'إجمالي المدفوع',
+        },
+        errors: customerApiErrorTranslations.ar,
+        notFound: {
+          action: 'العودة إلى العملاء',
+          detail: 'قد يكون هذا العميل محذوفًا أو يخص مالكًا آخر.',
+          title: 'لم يتم العثور على العميل',
+        },
+        page: {
+          empty: 'أنشئ أول عميل لبدء متابعة الديون.',
+          title: 'العملاء',
+        },
+        toast: {
+          create: {
+            errorTitle: 'تعذر إنشاء العميل',
+            successDescription: '{{name}} جاهز لمتابعة الديون.',
+            successTitle: 'تم إنشاء العميل',
+          },
+        },
+        validation: customerValidationTranslations.ar,
+      },
+    },
+  },
+} satisfies Record<
+  SupportedLocale,
+  { common: { customers: Record<string, unknown> } }
+>;
