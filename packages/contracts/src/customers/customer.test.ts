@@ -4,6 +4,7 @@ import {
   createCustomerRequestSchema,
   customerDetailsResponseSchema,
   customerErrorResponseSchema,
+  customerListResponseSchema,
 } from './customer.js';
 import { customerApiErrorCode } from './api-error-codes.js';
 import { customerValidationCode } from './validation-codes.js';
@@ -103,6 +104,52 @@ describe('customer contracts', () => {
         totalPaidAmount: '0.00',
         balanceAmount: '0.00',
       },
+    });
+  });
+
+  it('accepts customer list responses with per-currency decimal summaries', () => {
+    expect(
+      customerListResponseSchema.parse({
+        items: [
+          {
+            id: 'customer_123',
+            name: 'Acme Market',
+            code: 'ACME-001',
+            phoneNumber: '+90 555 123 45 67',
+            createdAt: '2026-08-28T12:00:00.000Z',
+            updatedAt: '2026-08-28T12:00:00.000Z',
+            financialSummary: {
+              balancesByCurrency: [
+                {
+                  currency: 'USD',
+                  remainingAmount: '125.50',
+                  overdueAmount: '25.00',
+                },
+              ],
+              nextDueDate: '2026-09-15',
+            },
+          },
+        ],
+        page: 1,
+        pageSize: 25,
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    ).toMatchObject({
+      items: [
+        {
+          financialSummary: {
+            balancesByCurrency: [
+              {
+                currency: 'USD',
+                remainingAmount: '125.50',
+                overdueAmount: '25.00',
+              },
+            ],
+            nextDueDate: '2026-09-15',
+          },
+        },
+      ],
     });
   });
 
