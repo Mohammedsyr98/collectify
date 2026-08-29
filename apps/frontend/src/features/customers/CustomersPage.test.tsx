@@ -189,4 +189,33 @@ describe('CustomersPage', () => {
       '+90 555 123 45 67',
     );
   });
+
+  it('keeps entered values and shows the generic toast when creation fails unexpectedly', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.text('Internal server error', { status: 500 }),
+      ),
+    );
+
+    renderCustomerRoutes();
+
+    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
+    await user.type(screen.getByLabelText('Name'), 'Acme Market');
+    await user.type(screen.getByLabelText('Code'), 'ACME-001');
+    await user.type(screen.getByLabelText('Phone number'), '+90 555 123 45 67');
+    await user.type(screen.getByLabelText('Address'), '42 Market Street');
+    await user.click(screen.getByRole('button', { name: 'Save customer' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not create customer' }),
+    ).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
+    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
+    expect(screen.getByLabelText('Phone number')).toHaveValue(
+      '+90 555 123 45 67',
+    );
+    expect(screen.getByLabelText('Address')).toHaveValue('42 Market Street');
+  });
 });
