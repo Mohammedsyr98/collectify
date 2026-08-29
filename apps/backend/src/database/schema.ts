@@ -94,7 +94,7 @@ export const customers = pgTable(
   (table) => [
     uniqueIndex(customerConstraints.ownerProfileLowerCodeUnique).on(
       table.ownerProfileId,
-      sql`lower(${table.code})`,
+      sql`lower(trim(${table.code}))`,
     ),
   ],
 );
