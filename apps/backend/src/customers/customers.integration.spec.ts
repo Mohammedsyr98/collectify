@@ -231,6 +231,40 @@ describe('customer routes', () => {
     ]);
   });
 
+  it('caps the customer list to the first page and returns truthful page metadata', async () => {
+    const owner = await signUpOwner('owner@example.com');
+
+    for (let index = 1; index <= 26; index += 1) {
+      const suffix = index.toString().padStart(3, '0');
+
+      await insertCustomer({
+        ownerProfileId: owner.ownerProfileId,
+        id: `customer_page_${suffix}`,
+        name: `Page Customer ${suffix}`,
+        code: `PAGE-${suffix}`,
+        phoneNumber: `+90 555 200 ${suffix}`,
+        createdAt: `2026-08-29 11:${index.toString().padStart(2, '0')}:00`,
+      });
+    }
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items).toHaveLength(25);
+    expect(list).toMatchObject({
+      page: 1,
+      pageSize: 25,
+      totalItems: 26,
+      totalPages: 2,
+    });
+  });
+
   it('lists newest customers with identifier descending as the deterministic tie-breaker for matching creation times', async () => {
     const owner = await signUpOwner('owner@example.com');
 
