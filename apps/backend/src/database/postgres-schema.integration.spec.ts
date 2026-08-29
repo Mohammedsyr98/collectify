@@ -130,4 +130,48 @@ describe('Postgres migrations', () => {
       constraint: customerConstraints.ownerProfileLowerCodeUnique,
     });
   });
+
+  it('creates the customer code uniqueness index with trimmed comparison', async () => {
+    const indexes = await postgres!.query<{ definition: string }>(`
+      SELECT pg_get_indexdef(index_class.oid) AS definition
+      FROM pg_class index_class
+      JOIN pg_index ON pg_index.indexrelid = index_class.oid
+      JOIN pg_class table_class ON table_class.oid = pg_index.indrelid
+      WHERE table_class.relname = 'customers'
+        AND index_class.relname = '${customerConstraints.ownerProfileLowerCodeUnique}'
+    `);
+
+    expect(indexes).toHaveLength(1);
+    expect(indexes[0]!.definition).toContain('CREATE UNIQUE INDEX');
+    expect(indexes[0]!.definition).toContain('owner_profile_id');
+    expect(indexes[0]!.definition).toContain('lower(TRIM(BOTH FROM code))');
+  });
+
+  it('enforces trimmed customer code uniqueness without collapsing separators in Postgres', async () => {
+    await postgres!.query(`
+      INSERT INTO "user" ("id", "name", "email", "email_verified", "created_at", "updated_at")
+      VALUES ('user_customer_code_trim', 'Owner', 'trimmed-code@example.test', false, now(), now())
+    `);
+    await postgres!.query(`
+      INSERT INTO "owner_profiles" ("id", "user_id", "preferred_language", "default_currency", "created_at", "updated_at")
+      VALUES ('profile_customer_code_trim', 'user_customer_code_trim', 'en', 'USD', now(), now())
+    `);
+    await postgres!.query(`
+      INSERT INTO "customers" ("id", "owner_profile_id", "name", "code", "phone_number", "created_at", "updated_at")
+      VALUES
+        ('customer_code_space', 'profile_customer_code_trim', 'Customer Space', 'C 104', '+90 555 100 00 01', now(), now()),
+        ('customer_code_dash', 'profile_customer_code_trim', 'Customer Dash', 'C-104', '+90 555 100 00 02', now(), now()),
+        ('customer_code_plain', 'profile_customer_code_trim', 'Customer Plain', 'C104', '+90 555 100 00 03', now(), now())
+    `);
+
+    await expect(
+      postgres!.query(`
+        INSERT INTO "customers" ("id", "owner_profile_id", "name", "code", "phone_number", "created_at", "updated_at")
+        VALUES ('customer_code_trimmed_duplicate', 'profile_customer_code_trim', 'Customer Duplicate', ' c 104 ', '+90 555 100 00 04', now(), now())
+      `),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: customerConstraints.ownerProfileLowerCodeUnique,
+    });
+  });
 });

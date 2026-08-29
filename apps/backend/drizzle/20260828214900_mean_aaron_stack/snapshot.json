@@ -697,7 +697,7 @@
           "opclass": null
         },
         {
-          "value": "lower(\"code\")",
+          "value": "lower(trim(\"code\"))",
           "isExpression": true,
           "asc": true,
           "nullsFirst": false,
