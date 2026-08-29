@@ -67,7 +67,7 @@
 - Keep shared API and request/response types in `packages/contracts`.
 - Keep edits scoped to the task unless a broader change is necessary for correctness.
 - Run the narrowest relevant verification before finishing.
-- For non-trivial features, checkpoint after each layer or subsystem, such as contracts, backend, frontend, and verification. Summarize what changed and any design concerns before widening the work.
+- For non-trivial features, checkpoint before widening into another layer or subsystem, such as contracts, backend, frontend, persistence, localization, or verification scope. Summarize what changed and any design concerns before asking whether to proceed.
 - Treat unexpected diffs as user-owned work. Do not revert, overwrite, or label them as tool noise until you inspect the diff and ask the user when the origin is unclear.
 - If the user says something smells complex, stop implementation, inspect the design, and either simplify it or explain why the complexity is essential.
 - Use `grill-me` when product intent, design shape, or tradeoffs are unclear; ask one question at a time.
