@@ -196,6 +196,41 @@ describe('customer routes', () => {
     });
   });
 
+  it('lists only customers that belong to the authenticated owner', async () => {
+    const firstOwner = await signUpOwner('first-owner@example.com');
+    const secondOwner = await signUpOwner('second-owner@example.com');
+
+    await insertCustomer({
+      ownerProfileId: firstOwner.ownerProfileId,
+      id: 'customer_first_owner',
+      name: 'First Owner Customer',
+      code: 'FIRST',
+      phoneNumber: '+90 555 100 00 01',
+      createdAt: '2026-08-29 11:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: secondOwner.ownerProfileId,
+      id: 'customer_second_owner',
+      name: 'Second Owner Customer',
+      code: 'SECOND',
+      phoneNumber: '+90 555 100 00 02',
+      createdAt: '2026-08-29 12:00:00',
+    });
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: firstOwner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((customer) => customer.id)).toEqual([
+      'customer_first_owner',
+    ]);
+  });
+
   it('lists newest customers with identifier descending as the deterministic tie-breaker for matching creation times', async () => {
     const owner = await signUpOwner('owner@example.com');
 
