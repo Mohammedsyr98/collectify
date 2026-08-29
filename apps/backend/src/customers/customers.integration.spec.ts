@@ -196,6 +196,41 @@ describe('customer routes', () => {
     });
   });
 
+  it('lists customers using the directory item response shape', async () => {
+    const owner = await signUpOwner('owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME',
+      phoneNumber: '+90 555 111 11 11',
+      address: 'Main Street 42',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items).toEqual([
+      {
+        id: created.id,
+        name: 'Acme Market',
+        code: 'ACME',
+        phoneNumber: '+90 555 111 11 11',
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+        financialSummary: {
+          balancesByCurrency: [],
+          nextDueDate: null,
+        },
+      },
+    ]);
+  });
+
   it('lists only customers that belong to the authenticated owner', async () => {
     const firstOwner = await signUpOwner('first-owner@example.com');
     const secondOwner = await signUpOwner('second-owner@example.com');
