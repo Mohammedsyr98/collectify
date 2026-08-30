@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   createCustomerRequestSchema,
   type CustomerDetailsResponse,
+  type CustomerListResponse,
 } from '@collectify/contracts';
 
 import { getBackendUrl } from '../../shared/api/http';
@@ -29,6 +30,47 @@ const baseCustomer: CustomerDetailsResponse = {
     totalPaidAmount: '0.00',
     balanceAmount: '0.00',
   },
+};
+
+const customerList: CustomerListResponse = {
+  items: [
+    {
+      id: 'customer_123',
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      createdAt: '2026-08-28T12:00:00.000Z',
+      updatedAt: '2026-08-28T12:00:00.000Z',
+      financialSummary: {
+        balancesByCurrency: [],
+        nextDueDate: null,
+      },
+    },
+    {
+      id: 'customer_456',
+      name: 'North Star Cafe',
+      code: 'NSC-002',
+      phoneNumber: '+90 555 456 78 90',
+      createdAt: '2026-08-29T12:00:00.000Z',
+      updatedAt: '2026-08-29T12:00:00.000Z',
+      financialSummary: {
+        balancesByCurrency: [],
+        nextDueDate: null,
+      },
+    },
+  ],
+  page: 1,
+  pageSize: 25,
+  totalItems: 2,
+  totalPages: 1,
+};
+
+const emptyCustomerList: CustomerListResponse = {
+  items: [],
+  page: 1,
+  pageSize: 25,
+  totalItems: 0,
+  totalPages: 0,
 };
 
 function renderCustomerRoutes(initialEntries: string[] = ['/customers']) {
@@ -54,10 +96,58 @@ describe('CustomersPage', () => {
     document.documentElement.lang = '';
     document.documentElement.removeAttribute('dir');
     setBrowserLanguages(['en-US']);
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json(emptyCustomerList),
+      ),
+    );
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('renders the customer directory table from the list response', async () => {
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json(customerList),
+      ),
+    );
+
+    renderCustomerRoutes();
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'Name' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Code' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Phone' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Remaining debt' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Overdue amount' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Next due date' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Actions' }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'ACME-001' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('cell', { name: '+90 555 123 45 67' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'NSC-002' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('cell', { name: '+90 555 456 78 90' }),
+    ).toBeInTheDocument();
   });
 
   it('closes the create modal without posting and clears draft values', async () => {

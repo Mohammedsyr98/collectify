@@ -46,6 +46,29 @@ export const customerResources = {
           detail: 'This customer may have been removed or belongs to another owner.',
           title: 'Customer not found',
         },
+        list: {
+          actions: {
+            openMenu: 'Open actions for {{name}}',
+          },
+          columns: {
+            actions: 'Actions',
+            code: 'Code',
+            name: 'Name',
+            nextDueDate: 'Next due date',
+            overdueAmount: 'Overdue amount',
+            phone: 'Phone',
+            remainingDebt: 'Remaining debt',
+          },
+          emptyFinancial: {
+            nextDueDate: 'No due date',
+            overdueAmount: 'No overdue',
+            remainingDebt: 'No debt',
+          },
+          error: {
+            title: 'Could not load customers',
+          },
+          loading: 'Loading customers',
+        },
         page: {
           empty: 'Create your first customer to start tracking debts.',
           title: 'Customers',
@@ -104,6 +127,29 @@ export const customerResources = {
           detail: 'Bu musteri silinmis veya baska bir sahibe ait olabilir.',
           title: 'Musteri bulunamadi',
         },
+        list: {
+          actions: {
+            openMenu: '{{name}} icin islemleri ac',
+          },
+          columns: {
+            actions: 'Islemler',
+            code: 'Kod',
+            name: 'Ad',
+            nextDueDate: 'Sonraki vade',
+            overdueAmount: 'Geciken tutar',
+            phone: 'Telefon',
+            remainingDebt: 'Kalan borc',
+          },
+          emptyFinancial: {
+            nextDueDate: 'Vade yok',
+            overdueAmount: 'Geciken yok',
+            remainingDebt: 'Borc yok',
+          },
+          error: {
+            title: 'Musteriler yuklenemedi',
+          },
+          loading: 'Musteriler yukleniyor',
+        },
         page: {
           empty: 'Borc takibine baslamak icin ilk musteriyi olusturun.',
           title: 'Musteriler',
@@ -157,6 +203,29 @@ export const customerResources = {
           totalPaid: 'إجمالي المدفوع',
         },
         errors: customerApiErrorTranslations.ar,
+        list: {
+          actions: {
+            openMenu: 'فتح إجراءات {{name}}',
+          },
+          columns: {
+            actions: 'الإجراءات',
+            code: 'الرمز',
+            name: 'الاسم',
+            nextDueDate: 'تاريخ الاستحقاق التالي',
+            overdueAmount: 'المبلغ المتأخر',
+            phone: 'الهاتف',
+            remainingDebt: 'الدين المتبقي',
+          },
+          emptyFinancial: {
+            nextDueDate: 'لا يوجد تاريخ استحقاق',
+            overdueAmount: 'لا يوجد متأخرات',
+            remainingDebt: 'لا يوجد دين',
+          },
+          error: {
+            title: 'تعذر تحميل العملاء',
+          },
+          loading: 'جارٍ تحميل العملاء',
+        },
         notFound: {
           action: 'العودة إلى العملاء',
           detail: 'قد يكون هذا العميل محذوفًا أو يخص مالكًا آخر.',
