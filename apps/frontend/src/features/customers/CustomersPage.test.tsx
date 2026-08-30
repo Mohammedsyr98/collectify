@@ -156,6 +156,31 @@ describe('CustomersPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a loading status while the customer list request is pending', async () => {
+    let resolveCustomerListRequest!: () => void;
+    const pendingCustomerListRequest = new Promise<void>((resolve) => {
+      resolveCustomerListRequest = resolve;
+    });
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, async () => {
+        await pendingCustomerListRequest;
+
+        return HttpResponse.json(emptyCustomerList);
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Loading customers',
+    );
+
+    resolveCustomerListRequest();
+    await waitFor(() =>
+      expect(screen.queryByRole('status')).not.toBeInTheDocument(),
+    );
+  });
+
   it('opens a customer row actions menu and navigates to that customer details', async () => {
     const user = userEvent.setup();
     const northStarDetails: CustomerDetailsResponse = {
