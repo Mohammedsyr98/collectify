@@ -181,6 +181,20 @@ describe('CustomersPage', () => {
     );
   });
 
+  it('shows the empty state instead of the table when the customer list has no items', async () => {
+    renderCustomerRoutes();
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Create your first customer to start tracking debts.'),
+      ).toHaveLength(2),
+    );
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: 'Name' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('opens a customer row actions menu and navigates to that customer details', async () => {
     const user = userEvent.setup();
     const northStarDetails: CustomerDetailsResponse = {
