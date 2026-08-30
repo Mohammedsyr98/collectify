@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router';
@@ -148,6 +154,102 @@ describe('CustomersPage', () => {
     expect(
       screen.getByRole('cell', { name: '+90 555 456 78 90' }),
     ).toBeInTheDocument();
+  });
+
+  it('opens additional currency balances as a mobile-friendly popover', async () => {
+    const user = userEvent.setup();
+    const financialCustomerList: CustomerListResponse = {
+      items: [
+        {
+          id: 'customer_financial',
+          name: 'South Ledger',
+          code: 'SL-003',
+          phoneNumber: '+90 555 700 00 03',
+          createdAt: '2026-08-30T12:00:00.000Z',
+          updatedAt: '2026-08-30T12:00:00.000Z',
+          financialSummary: {
+            balancesByCurrency: [
+              {
+                currency: 'USD',
+                remainingAmount: '125.50',
+                overdueAmount: '5.00',
+              },
+              {
+                currency: 'EUR',
+                remainingAmount: '80.00',
+                overdueAmount: '0.00',
+              },
+              {
+                currency: 'TRY',
+                remainingAmount: '12.30',
+                overdueAmount: '2.00',
+              },
+            ],
+            nextDueDate: '2026-09-15',
+          },
+        },
+      ],
+      page: 1,
+      pageSize: 25,
+      totalItems: 1,
+      totalPages: 1,
+    };
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json(financialCustomerList),
+      ),
+    );
+
+    renderCustomerRoutes();
+
+    const customerRow = await screen.findByRole('row', {
+      name: /South Ledger/,
+    });
+    expect(within(customerRow).getByText(/125\.50 USD/)).toBeInTheDocument();
+    expect(within(customerRow).queryByText(/80\.00 EUR/)).not.toBeInTheDocument();
+    expect(within(customerRow).queryByText(/12\.30 TRY/)).not.toBeInTheDocument();
+
+    const remainingExtraCurrencies = within(customerRow).getByRole('button', {
+      name: 'Show 2 more remaining debt currencies for South Ledger',
+    });
+    expect(remainingExtraCurrencies).toHaveTextContent('+2 currencies');
+
+    await user.click(remainingExtraCurrencies);
+
+    const currencyPopover = await screen.findByRole('dialog', {
+      name: 'Remaining debt currencies for South Ledger',
+    });
+    expect(
+      within(currencyPopover).getByRole('heading', { name: 'Remaining debt' }),
+    ).toBeInTheDocument();
+
+    const currencyRows = within(currencyPopover).getAllByRole('listitem');
+    expect(currencyRows).toHaveLength(2);
+    expect(currencyRows[0]).toHaveTextContent('EUR');
+    expect(currencyRows[0]).toHaveTextContent('80.00');
+    expect(currencyRows[1]).toHaveTextContent('TRY');
+    expect(currencyRows[1]).toHaveTextContent('12.30');
+
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Remaining debt currencies for South Ledger',
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(remainingExtraCurrencies);
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Remaining debt currencies for South Ledger',
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('heading', { name: 'Customers' }));
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Remaining debt currencies for South Ledger',
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('closes the create modal without posting and clears draft values', async () => {

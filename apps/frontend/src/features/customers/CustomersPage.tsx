@@ -1,6 +1,15 @@
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import { MoreHorizontal, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -20,6 +29,15 @@ const customerColumnHelper = createColumnHelper<
   CustomerListItem
 >();
 const emptyCustomers: CustomerListItem[] = [];
+const currencyPopoverGap = 8;
+const currencyPopoverEstimatedHeight = 128;
+const currencyPopoverWidth = 232;
+
+type CurrencyPopoverPosition = {
+  insetInlineStart: number;
+  placement: 'bottom' | 'top';
+  top: number;
+};
 
 export function CustomersPage() {
   const { t } = useTranslation();
@@ -43,22 +61,38 @@ export function CustomersPage() {
         customerColumnHelper.display({
           id: 'remainingDebt',
           header: t('customers.list.columns.remainingDebt'),
-          cell: ({ row }) =>
-            formatCurrencyBalances({
-              balances: row.original.financialSummary.balancesByCurrency,
-              amountKey: 'remainingAmount',
-              emptyText: t('customers.list.emptyFinancial.remainingDebt'),
-            }),
+          cell: ({ row }) => (
+            <CurrencyBalancesCell
+              amountKey="remainingAmount"
+              balances={row.original.financialSummary.balancesByCurrency}
+              customerName={row.original.name}
+              dialogLabel={t('customers.list.extraCurrencies.remainingDialogLabel', {
+                name: row.original.name,
+              })}
+              emptyText={t('customers.list.emptyFinancial.remainingDebt')}
+              multipleExtraLabelKey="customers.list.extraCurrencies.remainingAriaLabelPlural"
+              singleExtraLabelKey="customers.list.extraCurrencies.remainingAriaLabel"
+              title={t('customers.list.columns.remainingDebt')}
+            />
+          ),
         }),
         customerColumnHelper.display({
           id: 'overdueAmount',
           header: t('customers.list.columns.overdueAmount'),
-          cell: ({ row }) =>
-            formatCurrencyBalances({
-              balances: row.original.financialSummary.balancesByCurrency,
-              amountKey: 'overdueAmount',
-              emptyText: t('customers.list.emptyFinancial.overdueAmount'),
-            }),
+          cell: ({ row }) => (
+            <CurrencyBalancesCell
+              amountKey="overdueAmount"
+              balances={row.original.financialSummary.balancesByCurrency}
+              customerName={row.original.name}
+              dialogLabel={t('customers.list.extraCurrencies.overdueDialogLabel', {
+                name: row.original.name,
+              })}
+              emptyText={t('customers.list.emptyFinancial.overdueAmount')}
+              multipleExtraLabelKey="customers.list.extraCurrencies.overdueAriaLabelPlural"
+              singleExtraLabelKey="customers.list.extraCurrencies.overdueAriaLabel"
+              title={t('customers.list.columns.overdueAmount')}
+            />
+          ),
         }),
         customerColumnHelper.display({
           id: 'nextDueDate',
@@ -211,21 +245,220 @@ export function CustomersPage() {
   );
 }
 
-function formatCurrencyBalances({
+function CurrencyBalancesCell({
   amountKey,
   balances,
+  customerName,
+  dialogLabel,
   emptyText,
+  multipleExtraLabelKey,
+  singleExtraLabelKey,
+  title,
 }: {
   amountKey: 'overdueAmount' | 'remainingAmount';
   balances: CustomerListCurrencyBalance[];
+  customerName: string;
+  dialogLabel: string;
   emptyText: string;
-}): string {
+  multipleExtraLabelKey: string;
+  singleExtraLabelKey: string;
+  title: string;
+}) {
+  const { t } = useTranslation();
+  const popoverId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] =
+    useState<CurrencyPopoverPosition | null>(null);
+
+  const closePopover = useCallback(() => {
+    setIsPopoverOpen(false);
+  }, []);
+
+  const updatePopoverPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+
+    if (!trigger) {
+      return;
+    }
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const inlineStart =
+      document.documentElement.dir === 'rtl'
+        ? window.innerWidth - (triggerRect.x + triggerRect.width)
+        : triggerRect.x;
+    const popoverHeight =
+      popoverRef.current?.getBoundingClientRect().height ??
+      currencyPopoverEstimatedHeight;
+    const shouldPlaceAbove =
+      triggerRect.bottom + currencyPopoverGap + popoverHeight >
+        window.innerHeight && triggerRect.top > popoverHeight;
+
+    setPopoverPosition({
+      insetInlineStart: Math.max(
+        currencyPopoverGap,
+        Math.min(
+          inlineStart,
+          window.innerWidth - currencyPopoverWidth - currencyPopoverGap,
+        ),
+      ),
+      placement: shouldPlaceAbove ? 'top' : 'bottom',
+      top: shouldPlaceAbove
+        ? triggerRect.top - currencyPopoverGap
+        : triggerRect.bottom + currencyPopoverGap,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isPopoverOpen) {
+      return undefined;
+    }
+
+    updatePopoverPosition();
+    window.addEventListener('resize', updatePopoverPosition);
+    window.addEventListener('scroll', updatePopoverPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('scroll', updatePopoverPosition, true);
+    };
+  }, [isPopoverOpen, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      return undefined;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closePopover();
+        triggerRef.current?.focus();
+      }
+    };
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (
+        triggerRef.current?.contains(target) ||
+        popoverRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      closePopover();
+    };
+
+    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+    };
+  }, [closePopover, isPopoverOpen]);
+
   if (balances.length === 0) {
     return emptyText;
   }
 
-  return balances
-    .slice(0, 2)
-    .map((balance) => `${balance[amountKey]} ${balance.currency}`)
-    .join(', ');
+  const visibleBalances = balances.slice(0, 1);
+  const extraBalances = balances.slice(1);
+  const extraAriaLabelKey =
+    extraBalances.length === 1 ? singleExtraLabelKey : multipleExtraLabelKey;
+  const extraCountLabelKey =
+    extraBalances.length === 1
+      ? 'customers.list.extraCurrencies.countSingular'
+      : 'customers.list.extraCurrencies.count';
+
+  const togglePopover = () => {
+    if (isPopoverOpen) {
+      closePopover();
+    } else {
+      updatePopoverPosition();
+      setIsPopoverOpen(true);
+    }
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>
+        {visibleBalances
+          .map((balance) => formatCurrencyBalance(balance, amountKey))
+          .join(', ')}
+      </span>
+      {extraBalances.length > 0 ? (
+        <>
+          <button
+            aria-controls={isPopoverOpen ? popoverId : undefined}
+            aria-expanded={isPopoverOpen}
+            aria-haspopup="dialog"
+            aria-label={t(extraAriaLabelKey, {
+              count: extraBalances.length,
+              name: customerName,
+            })}
+            className="inline-flex min-h-7 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-background px-2 text-[0.72rem] font-black text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            onClick={togglePopover}
+            ref={triggerRef}
+            type="button"
+          >
+            {t(extraCountLabelKey, {
+              count: extraBalances.length,
+            })}
+          </button>
+          {isPopoverOpen && popoverPosition
+            ? createPortal(
+                <div
+                  aria-label={dialogLabel}
+                  className={`fixed z-50 grid w-[232px] gap-2 rounded-[5px] border border-border bg-card p-3 text-foreground shadow-md ${
+                    popoverPosition.placement === 'top'
+                      ? '-translate-y-full'
+                      : ''
+                  }`}
+                  id={popoverId}
+                  ref={popoverRef}
+                  role="dialog"
+                  style={{
+                    insetInlineStart: popoverPosition.insetInlineStart,
+                    top: popoverPosition.top,
+                  }}
+                >
+                  <h2 className="m-0 text-[0.72rem] font-black uppercase text-muted-foreground">
+                    {title}
+                  </h2>
+                  <ul className="m-0 grid list-none gap-1 p-0">
+                    {extraBalances.map((balance) => (
+                      <li
+                        className="grid grid-cols-[auto_1fr] items-center gap-4 text-[0.8rem]"
+                        key={balance.currency}
+                      >
+                        <span className="font-black text-muted-foreground">
+                          {balance.currency}
+                        </span>
+                        <span className="text-end font-black">
+                          {balance[amountKey]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>,
+                document.body,
+              )
+            : null}
+        </>
+      ) : null}
+    </span>
+  );
+}
+
+function formatCurrencyBalance(
+  balance: CustomerListCurrencyBalance,
+  amountKey: 'overdueAmount' | 'remainingAmount',
+): string {
+  return `${balance[amountKey]} ${balance.currency}`;
 }
