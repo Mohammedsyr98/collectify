@@ -48,6 +48,8 @@ export const customerResources = {
         },
         list: {
           actions: {
+            menuLabel: 'Actions for {{name}}',
+            openDetails: 'Open details',
             openMenu: 'Open actions for {{name}}',
           },
           columns: {
@@ -139,6 +141,8 @@ export const customerResources = {
         },
         list: {
           actions: {
+            menuLabel: '{{name}} icin islemler',
+            openDetails: 'Detaylari ac',
             openMenu: '{{name}} icin islemleri ac',
           },
           columns: {
@@ -225,6 +229,8 @@ export const customerResources = {
         errors: customerApiErrorTranslations.ar,
         list: {
           actions: {
+            menuLabel: 'إجراءات {{name}}',
+            openDetails: 'افتح التفاصيل',
             openMenu: 'فتح إجراءات {{name}}',
           },
           columns: {

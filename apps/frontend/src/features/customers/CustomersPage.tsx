@@ -1,5 +1,5 @@
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { ArrowUpRight, MoreHorizontal, Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 
 import type {
   CustomerListCurrencyBalance,
@@ -32,8 +33,17 @@ const emptyCustomers: CustomerListItem[] = [];
 const currencyPopoverGap = 8;
 const currencyPopoverEstimatedHeight = 128;
 const currencyPopoverWidth = 232;
+const actionsMenuGap = 8;
+const actionsMenuEstimatedHeight = 48;
+const actionsMenuWidth = 176;
 
 type CurrencyPopoverPosition = {
+  insetInlineStart: number;
+  placement: 'bottom' | 'top';
+  top: number;
+};
+
+type ActionsMenuPosition = {
   insetInlineStart: number;
   placement: 'bottom' | 'top';
   top: number;
@@ -104,17 +114,7 @@ export function CustomersPage() {
         customerColumnHelper.display({
           id: 'actions',
           header: t('customers.list.columns.actions'),
-          cell: ({ row }) => (
-            <button
-              aria-label={t('customers.list.actions.openMenu', {
-                name: row.original.name,
-              })}
-              className="inline-flex size-8 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground"
-              type="button"
-            >
-              <MoreHorizontal aria-hidden="true" size={17} strokeWidth={2.5} />
-            </button>
-          ),
+          cell: ({ row }) => <CustomerActionsCell customer={row.original} />,
         }),
       ]),
     [t],
@@ -242,6 +242,173 @@ export function CustomersPage() {
         />
       ) : null}
     </main>
+  );
+}
+
+function CustomerActionsCell({ customer }: { customer: CustomerListItem }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const menuId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const openDetailsRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<ActionsMenuPosition | null>(
+    null,
+  );
+
+  const closeMenu = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
+
+  const updateMenuPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+
+    if (!trigger) {
+      return;
+    }
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const inlineStart =
+      document.documentElement.dir === 'rtl'
+        ? window.innerWidth - (triggerRect.x + triggerRect.width)
+        : triggerRect.x + triggerRect.width - actionsMenuWidth;
+    const menuHeight =
+      menuRef.current?.getBoundingClientRect().height ??
+      actionsMenuEstimatedHeight;
+    const shouldPlaceAbove =
+      triggerRect.bottom + actionsMenuGap + menuHeight > window.innerHeight &&
+      triggerRect.top > menuHeight;
+
+    setMenuPosition({
+      insetInlineStart: Math.max(
+        actionsMenuGap,
+        Math.min(
+          inlineStart,
+          window.innerWidth - actionsMenuWidth - actionsMenuGap,
+        ),
+      ),
+      placement: shouldPlaceAbove ? 'top' : 'bottom',
+      top: shouldPlaceAbove
+        ? triggerRect.top - actionsMenuGap
+        : triggerRect.bottom + actionsMenuGap,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isMenuOpen) {
+      return undefined;
+    }
+
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [isMenuOpen, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return undefined;
+    }
+
+    openDetailsRef.current?.focus();
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeMenu();
+        triggerRef.current?.focus();
+      }
+    };
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
+      }
+
+      closeMenu();
+    };
+
+    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+    };
+  }, [closeMenu, isMenuOpen]);
+
+  const toggleMenu = () => {
+    if (isMenuOpen) {
+      closeMenu();
+    } else {
+      updateMenuPosition();
+      setIsMenuOpen(true);
+    }
+  };
+
+  const openDetails = () => {
+    closeMenu();
+    void navigate(`/customers/${customer.id}`);
+  };
+
+  return (
+    <>
+      <button
+        aria-controls={isMenuOpen ? menuId : undefined}
+        aria-expanded={isMenuOpen}
+        aria-haspopup="menu"
+        aria-label={t('customers.list.actions.openMenu', {
+          name: customer.name,
+        })}
+        className="inline-flex size-8 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        onClick={toggleMenu}
+        ref={triggerRef}
+        type="button"
+      >
+        <MoreHorizontal aria-hidden="true" size={17} strokeWidth={2.5} />
+      </button>
+      {isMenuOpen && menuPosition
+        ? createPortal(
+            <div
+              aria-label={t('customers.list.actions.menuLabel', {
+                name: customer.name,
+              })}
+              className={`fixed z-50 w-[176px] rounded-[5px] border border-border bg-card p-1 text-foreground shadow-md ${
+                menuPosition.placement === 'top' ? '-translate-y-full' : ''
+              }`}
+              id={menuId}
+              ref={menuRef}
+              role="menu"
+              style={{
+                insetInlineStart: menuPosition.insetInlineStart,
+                top: menuPosition.top,
+              }}
+            >
+              <button
+                className="flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-[4px] border-0 bg-transparent px-2.5 text-start text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted focus:bg-muted focus:outline-none"
+                onClick={openDetails}
+                ref={openDetailsRef}
+                role="menuitem"
+                type="button"
+              >
+                <ArrowUpRight aria-hidden="true" size={15} strokeWidth={2.5} />
+                {t('customers.list.actions.openDetails')}
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

@@ -156,6 +156,64 @@ describe('CustomersPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('opens a customer row actions menu and navigates to that customer details', async () => {
+    const user = userEvent.setup();
+    const northStarDetails: CustomerDetailsResponse = {
+      ...baseCustomer,
+      id: 'customer_456',
+      name: 'North Star Cafe',
+      code: 'NSC-002',
+      phoneNumber: '+90 555 456 78 90',
+      createdAt: '2026-08-29T12:00:00.000Z',
+      updatedAt: '2026-08-29T12:00:00.000Z',
+    };
+    const requestedCustomerIds: string[] = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json(customerList),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+
+        if (params.customerId !== northStarDetails.id) {
+          return HttpResponse.json(
+            {
+              code: 'CUSTOMER_NOT_FOUND',
+              message: 'Customer was not found.',
+            },
+            { status: 404 },
+          );
+        }
+
+        return HttpResponse.json(northStarDetails);
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const northStarRow = await screen.findByRole('row', {
+      name: /North Star Cafe/,
+    });
+    await user.click(
+      within(northStarRow).getByRole('button', {
+        name: 'Open actions for North Star Cafe',
+      }),
+    );
+
+    const actionsMenu = await screen.findByRole('menu', {
+      name: 'Actions for North Star Cafe',
+    });
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', { name: 'Open details' }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Code: NSC-002')).toBeInTheDocument();
+    expect(requestedCustomerIds).toEqual(['customer_456']);
+  });
+
   it('opens additional currency balances as a mobile-friendly popover', async () => {
     const user = userEvent.setup();
     const financialCustomerList: CustomerListResponse = {
