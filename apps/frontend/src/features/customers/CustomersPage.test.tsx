@@ -195,6 +195,41 @@ describe('CustomersPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows a recoverable error and reloads customers on retry', async () => {
+    const user = userEvent.setup();
+    let customerListRequestCount = 0;
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => {
+        customerListRequestCount += 1;
+
+        if (customerListRequestCount === 1) {
+          return HttpResponse.text('Internal server error', { status: 500 });
+        }
+
+        return HttpResponse.json(customerList);
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const errorState = await screen.findByRole('alert', {
+      name: 'Could not load customers',
+    });
+    expect(errorState).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'NSC-002' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('alert', { name: 'Could not load customers' }),
+    ).not.toBeInTheDocument();
+    expect(customerListRequestCount).toBe(2);
+  });
+
   it('opens a customer row actions menu and navigates to that customer details', async () => {
     const user = userEvent.setup();
     const northStarDetails: CustomerDetailsResponse = {
