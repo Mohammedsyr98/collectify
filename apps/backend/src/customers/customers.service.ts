@@ -3,8 +3,11 @@ import {
   customerApiErrorCode,
   type CreateCustomerRequest,
   type CustomerDetailsResponse,
+  type CustomerListItem,
+  type CustomerListFinancialSummary,
+  type CustomerListResponse,
 } from '@collectify/contracts';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
@@ -13,6 +16,7 @@ import { customerConstraints, customers } from '../database/schema';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
+const customerListPageSize = 25;
 
 @Injectable()
 export class CustomersService {
@@ -70,6 +74,30 @@ export class CustomersService {
 
     return toCustomerDetailsResponse(customer);
   }
+
+  async listCustomers(
+    currentOwner: AuthenticatedOwner,
+  ): Promise<CustomerListResponse> {
+    const ownerProfileId = currentOwner.ownerProfile.id;
+    const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
+      .select({ totalItems: sql<number>`count(*)::int` })
+      .from(customers)
+      .where(eq(customers.ownerProfileId, ownerProfileId));
+    const customerRows = await this.databaseService.db
+      .select()
+      .from(customers)
+      .where(eq(customers.ownerProfileId, ownerProfileId))
+      .orderBy(desc(customers.createdAt), desc(customers.id))
+      .limit(customerListPageSize);
+
+    return {
+      items: customerRows.map(toCustomerListItemResponse),
+      page: 1,
+      pageSize: customerListPageSize,
+      totalItems,
+      totalPages: Math.ceil(totalItems / customerListPageSize),
+    };
+  }
 }
 
 function toCustomerDetailsResponse(
@@ -88,6 +116,25 @@ function toCustomerDetailsResponse(
       totalPaidAmount: '0.00',
       balanceAmount: '0.00',
     },
+  };
+}
+
+function toCustomerListItemResponse(customer: CustomerRow): CustomerListItem {
+  return {
+    id: customer.id,
+    name: customer.name,
+    code: customer.code,
+    phoneNumber: customer.phoneNumber,
+    createdAt: customer.createdAt.toISOString(),
+    updatedAt: customer.updatedAt.toISOString(),
+    financialSummary: neutralCustomerListFinancialSummary(),
+  };
+}
+
+function neutralCustomerListFinancialSummary(): CustomerListFinancialSummary {
+  return {
+    balancesByCurrency: [],
+    nextDueDate: null,
   };
 }
 

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { customerApiErrorCodes } from './api-error-codes.js';
+import { currencySchema } from '../owner-profile/owner-profile.js';
 import { customerValidationCode } from './validation-codes.js';
 
 export const createCustomerRequestSchema = z.object({
@@ -35,11 +36,39 @@ export const customerFinancialSummarySchema = z.object({
   balanceAmount: moneyAmountSchema,
 });
 
+export const customerListCurrencyBalanceSchema = z.object({
+  currency: currencySchema,
+  remainingAmount: moneyAmountSchema,
+  overdueAmount: moneyAmountSchema,
+});
+
+export const customerListFinancialSummarySchema = z.object({
+  balancesByCurrency: z.array(customerListCurrencyBalanceSchema),
+  nextDueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+});
+
 export const customerDetailsResponseSchema = customerSchema.extend({
   financialSummary: customerFinancialSummarySchema,
 });
 
 export const createCustomerResponseSchema = customerDetailsResponseSchema;
+
+export const customerListItemSchema = customerSchema
+  .omit({ address: true })
+  .extend({
+    financialSummary: customerListFinancialSummarySchema,
+  });
+
+export const customerListResponseSchema = z.object({
+  items: z.array(customerListItemSchema),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  totalItems: z.number().int().min(0),
+  totalPages: z.number().int().min(0),
+});
 
 export const customerFieldErrorsSchema = z
   .object({
@@ -63,6 +92,14 @@ export type Customer = z.infer<typeof customerSchema>;
 export type CustomerFinancialSummary = z.infer<typeof customerFinancialSummarySchema>;
 export type CustomerDetailsResponse = z.infer<typeof customerDetailsResponseSchema>;
 export type CreateCustomerResponse = z.infer<typeof createCustomerResponseSchema>;
+export type CustomerListCurrencyBalance = z.infer<
+  typeof customerListCurrencyBalanceSchema
+>;
+export type CustomerListFinancialSummary = z.infer<
+  typeof customerListFinancialSummarySchema
+>;
+export type CustomerListItem = z.infer<typeof customerListItemSchema>;
+export type CustomerListResponse = z.infer<typeof customerListResponseSchema>;
 export type CustomerFieldErrors = z.infer<typeof customerFieldErrorsSchema>;
 export type CustomerErrorCode = z.infer<typeof customerErrorCodeSchema>;
 export type CustomerErrorResponse = z.infer<typeof customerErrorResponseSchema>;

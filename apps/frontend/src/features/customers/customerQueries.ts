@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -11,9 +11,19 @@ import { resolveApiErrorDescription } from '../../shared/api/http';
 import { useToast } from '../../shared/ui/toast/toastContext';
 import { createCustomer } from './api/create-customer';
 import { getCustomer } from './api/get-customer';
+import { listCustomers } from './api/list-customers';
+
+export const customerListQueryKey = ['customers', 'list'] as const;
 
 export const customerDetailsQueryKey = (customerId: string) =>
   ['customers', customerId] as const;
+
+export function useCustomerListQuery() {
+  return useQuery({
+    queryKey: customerListQueryKey,
+    queryFn: listCustomers,
+  });
+}
 
 export function useCustomerDetailsQuery(customerId: string | undefined) {
   return useQuery({
@@ -29,12 +39,14 @@ export function useCreateCustomerMutation({
   onCreated?: () => void;
 } = {}) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
   const { showToast } = useToast();
 
   const mutation = useMutation({
     mutationFn: createCustomer,
     onSuccess: (customer) => {
+      void queryClient.invalidateQueries({ queryKey: customerListQueryKey });
       showToast({
         variant: 'success',
         title: t('customers.toast.create.successTitle'),

@@ -4,6 +4,7 @@ import {
   type CreateCustomerRequest,
   type CreateCustomerResponse,
   type CustomerDetailsResponse,
+  type CustomerListResponse,
 } from '@collectify/contracts';
 
 import { CurrentOwner, type AuthenticatedOwner } from '../auth';
@@ -29,6 +30,13 @@ export class CustomersController {
     @Body(createCustomerValidationPipe) body: CreateCustomerRequest,
   ): Promise<CreateCustomerResponse> {
     return this.customersService.createCustomer(currentOwner, body);
+  }
+
+  @Get()
+  listCustomers(
+    @CurrentOwner() currentOwner: AuthenticatedOwner,
+  ): Promise<CustomerListResponse> {
+    return this.customersService.listCustomers(currentOwner);
   }
 
   @Get(':customerId')

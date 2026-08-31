@@ -1,6 +1,7 @@
 import {
   createCustomerResponseSchema,
   customerDetailsResponseSchema,
+  customerListResponseSchema,
 } from '@collectify/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -195,7 +196,157 @@ describe('customer routes', () => {
     });
   });
 
-  async function signUpOwner(email: string): Promise<{ cookieHeader: string }> {
+  it('lists customers using the directory item response shape', async () => {
+    const owner = await signUpOwner('owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME',
+      phoneNumber: '+90 555 111 11 11',
+      address: 'Main Street 42',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items).toEqual([
+      {
+        id: created.id,
+        name: 'Acme Market',
+        code: 'ACME',
+        phoneNumber: '+90 555 111 11 11',
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+        financialSummary: {
+          balancesByCurrency: [],
+          nextDueDate: null,
+        },
+      },
+    ]);
+  });
+
+  it('lists only customers that belong to the authenticated owner', async () => {
+    const firstOwner = await signUpOwner('first-owner@example.com');
+    const secondOwner = await signUpOwner('second-owner@example.com');
+
+    await insertCustomer({
+      ownerProfileId: firstOwner.ownerProfileId,
+      id: 'customer_first_owner',
+      name: 'First Owner Customer',
+      code: 'FIRST',
+      phoneNumber: '+90 555 100 00 01',
+      createdAt: '2026-08-29 11:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: secondOwner.ownerProfileId,
+      id: 'customer_second_owner',
+      name: 'Second Owner Customer',
+      code: 'SECOND',
+      phoneNumber: '+90 555 100 00 02',
+      createdAt: '2026-08-29 12:00:00',
+    });
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: firstOwner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((customer) => customer.id)).toEqual([
+      'customer_first_owner',
+    ]);
+  });
+
+  it('caps the customer list to the first page and returns truthful page metadata', async () => {
+    const owner = await signUpOwner('owner@example.com');
+
+    for (let index = 1; index <= 26; index += 1) {
+      const suffix = index.toString().padStart(3, '0');
+
+      await insertCustomer({
+        ownerProfileId: owner.ownerProfileId,
+        id: `customer_page_${suffix}`,
+        name: `Page Customer ${suffix}`,
+        code: `PAGE-${suffix}`,
+        phoneNumber: `+90 555 200 ${suffix}`,
+        createdAt: `2026-08-29 11:${index.toString().padStart(2, '0')}:00`,
+      });
+    }
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items).toHaveLength(25);
+    expect(list).toMatchObject({
+      page: 1,
+      pageSize: 25,
+      totalItems: 26,
+      totalPages: 2,
+    });
+  });
+
+  it('lists newest customers with identifier descending as the deterministic tie-breaker for matching creation times', async () => {
+    const owner = await signUpOwner('owner@example.com');
+
+    await insertCustomer({
+      ownerProfileId: owner.ownerProfileId,
+      id: 'customer_older',
+      name: 'Older Customer',
+      code: 'OLDER',
+      phoneNumber: '+90 555 100 00 00',
+      createdAt: '2026-08-29 11:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: owner.ownerProfileId,
+      id: 'customer_tie_a',
+      name: 'Tie A Customer',
+      code: 'TIE-A',
+      phoneNumber: '+90 555 100 00 01',
+      createdAt: '2026-08-29 12:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: owner.ownerProfileId,
+      id: 'customer_tie_b',
+      name: 'Tie B Customer',
+      code: 'TIE-B',
+      phoneNumber: '+90 555 100 00 02',
+      createdAt: '2026-08-29 12:00:00',
+    });
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((customer) => customer.id)).toEqual([
+      'customer_tie_b',
+      'customer_tie_a',
+      'customer_older',
+    ]);
+  });
+
+  async function signUpOwner(
+    email: string,
+  ): Promise<{ cookieHeader: string; ownerProfileId: string }> {
     const response = await ownerAuth!.signUpOwner({
       name: 'Owner',
       email,
@@ -206,8 +357,21 @@ describe('customer routes', () => {
 
     expect(response.status).toBe(200);
 
+    const [ownerProfile] = await postgres!.query<{ id: string }>(
+      `
+        SELECT "owner_profiles"."id"
+        FROM "owner_profiles"
+        JOIN "user" ON "user"."id" = "owner_profiles"."user_id"
+        WHERE "user"."email" = $1
+      `,
+      [email],
+    );
+
+    expect(ownerProfile).toBeDefined();
+
     return {
       cookieHeader: toCookieHeader(getSetCookie(response.headers)),
+      ownerProfileId: ownerProfile!.id,
     };
   }
 
@@ -223,5 +387,37 @@ describe('customer routes', () => {
       },
       body: JSON.stringify(body),
     });
+  }
+
+  function insertCustomer({
+    code,
+    createdAt,
+    id,
+    name,
+    ownerProfileId,
+    phoneNumber,
+  }: {
+    code: string;
+    createdAt: string;
+    id: string;
+    name: string;
+    ownerProfileId: string;
+    phoneNumber: string;
+  }): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "customers" (
+          "id",
+          "owner_profile_id",
+          "name",
+          "code",
+          "phone_number",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, $4, $5, $6::timestamp, $6::timestamp)
+      `,
+      [id, ownerProfileId, name, code, phoneNumber, createdAt],
+    );
   }
 });
