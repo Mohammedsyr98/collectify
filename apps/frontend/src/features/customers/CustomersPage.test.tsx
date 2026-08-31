@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { Route, Routes } from 'react-router';
+import { Route, Routes, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -81,11 +81,25 @@ const emptyCustomerList: CustomerListResponse = {
 
 function renderCustomerRoutes(initialEntries: string[] = ['/customers']) {
   return renderWithAppProviders(
-    <Routes>
-      <Route element={<CustomersPage />} path="/customers" />
-      <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
-    </Routes>,
+    <>
+      <Routes>
+        <Route element={<CustomersPage />} path="/customers" />
+        <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
+      </Routes>
+      <RouterLocationProbe />
+    </>,
     { initialEntries },
+  );
+}
+
+function RouterLocationProbe() {
+  const location = useLocation();
+
+  return (
+    <div data-testid="router-location">
+      {location.pathname}
+      {location.search}
+    </div>
   );
 }
 
@@ -175,6 +189,24 @@ describe('CustomersPage', () => {
       await screen.findByRole('cell', { name: 'North Star Cafe' }),
     ).toBeInTheDocument();
     expect(requestedPages).toEqual(['2']);
+  });
+
+  it('normalizes an invalid customer page query to the first page URL', async () => {
+    const requestedPages: Array<string | null> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        requestedPages.push(new URL(request.url).searchParams.get('page'));
+
+        return HttpResponse.json(customerList);
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=invalid']);
+
+    await waitFor(() => expect(requestedPages).toEqual(['1']));
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1',
+    );
   });
 
   it('shows a loading status while the customer list request is pending', async () => {

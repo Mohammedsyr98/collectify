@@ -1,11 +1,12 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import {
   customerListQuerySchema,
   type CustomerListItem,
+  type CustomerListQuery,
 } from '@collectify/contracts';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
@@ -19,10 +20,11 @@ const emptyCustomers: CustomerListItem[] = [];
 
 export function CustomersPage() {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const customerListQueryParams = customerListQuerySchema.parse({
+  const [searchParams, setSearchParams] = useSearchParams();
+  const customerListQueryParams: CustomerListQuery = customerListQuerySchema.parse({
     page: searchParams.get('page') ?? undefined,
   });
+  const pageQuery = searchParams.get('page');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const { createCustomer, isCreating } = useCreateCustomerMutation({
@@ -30,6 +32,18 @@ export function CustomersPage() {
   });
   const customers = customerListQuery.data?.items ?? emptyCustomers;
   const hasCustomers = customers.length > 0;
+
+  useEffect(() => {
+    const normalizedPage = String(customerListQueryParams.page);
+
+    if (pageQuery === null || pageQuery === normalizedPage) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('page', normalizedPage);
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [customerListQueryParams.page, pageQuery, searchParams, setSearchParams]);
 
   return (
     <main
