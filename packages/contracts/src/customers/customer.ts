@@ -71,7 +71,7 @@ export const customerListResponseSchema = z.object({
 });
 
 export const customerListQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).catch(1),
 });
 
 export const customerFieldErrorsSchema = z
