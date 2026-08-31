@@ -300,6 +300,76 @@ describe('customer routes', () => {
     });
   });
 
+  it('returns the requested customer page with truthful pagination metadata', async () => {
+    const owner = await signUpOwner('owner@example.com');
+
+    for (let index = 1; index <= 26; index += 1) {
+      const suffix = index.toString().padStart(3, '0');
+
+      await insertCustomer({
+        ownerProfileId: owner.ownerProfileId,
+        id: `customer_requested_page_${suffix}`,
+        name: `Requested Page Customer ${suffix}`,
+        code: `REQUESTED-PAGE-${suffix}`,
+        phoneNumber: `+90 555 300 ${suffix}`,
+        createdAt: `2026-08-29 11:${index.toString().padStart(2, '0')}:00`,
+      });
+    }
+
+    const response = await fetch(`${backend!.baseUrl}/customers?page=2`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((customer) => customer.id)).toEqual([
+      'customer_requested_page_001',
+    ]);
+    expect(list).toMatchObject({
+      page: 2,
+      pageSize: 25,
+      totalItems: 26,
+      totalPages: 2,
+    });
+  });
+
+  it('keeps page boundaries stable when customers share the same creation time', async () => {
+    const owner = await signUpOwner('owner@example.com');
+
+    for (let index = 1; index <= 26; index += 1) {
+      const suffix = index.toString().padStart(3, '0');
+      const createdAt =
+        index <= 2
+          ? '2026-08-29 11:02:00'
+          : `2026-08-29 11:${index.toString().padStart(2, '0')}:00`;
+
+      await insertCustomer({
+        ownerProfileId: owner.ownerProfileId,
+        id: `customer_boundary_${suffix}`,
+        name: `Boundary Customer ${suffix}`,
+        code: `BOUNDARY-${suffix}`,
+        phoneNumber: `+90 555 310 ${suffix}`,
+        createdAt,
+      });
+    }
+
+    const response = await fetch(`${backend!.baseUrl}/customers?page=2`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((customer) => customer.id)).toEqual([
+      'customer_boundary_001',
+    ]);
+  });
+
   it('lists newest customers with identifier descending as the deterministic tie-breaker for matching creation times', async () => {
     const owner = await signUpOwner('owner@example.com');
 
