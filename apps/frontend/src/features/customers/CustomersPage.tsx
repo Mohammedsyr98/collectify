@@ -1,8 +1,12 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 
-import type { CustomerListItem } from '@collectify/contracts';
+import {
+  customerListQuerySchema,
+  type CustomerListItem,
+} from '@collectify/contracts';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
 import {
@@ -15,8 +19,12 @@ const emptyCustomers: CustomerListItem[] = [];
 
 export function CustomersPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const customerListQueryParams = customerListQuerySchema.parse({
+    page: searchParams.get('page') ?? undefined,
+  });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const customerListQuery = useCustomerListQuery();
+  const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });

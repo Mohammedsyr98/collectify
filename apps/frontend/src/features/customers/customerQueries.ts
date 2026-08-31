@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 import {
   isCustomerApiErrorCode,
   type CreateCustomerRequest,
+  type CustomerListQuery,
 } from '@collectify/contracts';
 
 import { resolveApiErrorDescription } from '../../shared/api/http';
@@ -15,13 +16,16 @@ import { listCustomers } from './api/list-customers';
 
 export const customerListQueryKey = ['customers', 'list'] as const;
 
+export const customerListPageQueryKey = (query: CustomerListQuery) =>
+  [...customerListQueryKey, query] as const;
+
 export const customerDetailsQueryKey = (customerId: string) =>
   ['customers', customerId] as const;
 
-export function useCustomerListQuery() {
+export function useCustomerListQuery(query: CustomerListQuery) {
   return useQuery({
-    queryKey: customerListQueryKey,
-    queryFn: listCustomers,
+    queryKey: customerListPageQueryKey(query),
+    queryFn: () => listCustomers(query),
   });
 }
 
