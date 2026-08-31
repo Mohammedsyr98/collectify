@@ -209,6 +209,51 @@ describe('CustomersPage', () => {
     );
   });
 
+  it('moves to the next customer page with pagination controls', async () => {
+    const user = userEvent.setup();
+    const requestedPages: Array<string | null> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        const requestedPage = new URL(request.url).searchParams.get('page');
+        requestedPages.push(requestedPage);
+
+        if (requestedPage === '2') {
+          return HttpResponse.json({
+            ...customerList,
+            items: [customerList.items[1]],
+            page: 2,
+            totalItems: 26,
+            totalPages: 2,
+          });
+        }
+
+        return HttpResponse.json({
+          ...customerList,
+          items: [customerList.items[0]],
+          page: 1,
+          totalItems: 26,
+          totalPages: 2,
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=1']);
+
+    expect(
+      await screen.findByRole('cell', { name: 'Acme Market' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+
+    await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=2',
+    );
+    expect(
+      await screen.findByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+  });
+
   it('shows a loading status while the customer list request is pending', async () => {
     let resolveCustomerListRequest!: () => void;
     const pendingCustomerListRequest = new Promise<void>((resolve) => {

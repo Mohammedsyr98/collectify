@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
@@ -21,17 +21,24 @@ const emptyCustomers: CustomerListItem[] = [];
 export function CustomersPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const customerListQueryParams: CustomerListQuery = customerListQuerySchema.parse({
-    page: searchParams.get('page') ?? undefined,
-  });
+  const customerListQueryParams: CustomerListQuery =
+    customerListQuerySchema.parse({
+      page: searchParams.get('page') ?? undefined,
+    });
   const pageQuery = searchParams.get('page');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
-  const customers = customerListQuery.data?.items ?? emptyCustomers;
+  const customerList = customerListQuery.data;
+  const customers = customerList?.items ?? emptyCustomers;
   const hasCustomers = customers.length > 0;
+  const currentPage = customerList?.page ?? customerListQueryParams.page;
+  const totalPages = customerList?.totalPages ?? 0;
+  const showsPagination = customerListQuery.isSuccess && totalPages > 1;
+  const canMoveToPreviousPage = currentPage > 1;
+  const canMoveToNextPage = currentPage < totalPages;
 
   useEffect(() => {
     const normalizedPage = String(customerListQueryParams.page);
@@ -44,6 +51,12 @@ export function CustomersPage() {
     nextSearchParams.set('page', normalizedPage);
     setSearchParams(nextSearchParams, { replace: true });
   }, [customerListQueryParams.page, pageQuery, searchParams, setSearchParams]);
+
+  function moveToCustomerPage(page: number) {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('page', String(page));
+    setSearchParams(nextSearchParams);
+  }
 
   return (
     <main
@@ -115,6 +128,32 @@ export function CustomersPage() {
         ) : null}
 
         {hasCustomers ? <CustomerTable customers={customers} /> : null}
+
+        {showsPagination ? (
+          <nav
+            aria-label={t('customers.list.pagination.label')}
+            className="flex items-center justify-end gap-2"
+          >
+            <button
+              aria-label={t('customers.list.pagination.previousPage')}
+              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canMoveToPreviousPage || customerListQuery.isFetching}
+              onClick={() => moveToCustomerPage(currentPage - 1)}
+              type="button"
+            >
+              <ChevronLeft aria-hidden="true" size={17} strokeWidth={2.5} />
+            </button>
+            <button
+              aria-label={t('customers.list.pagination.nextPage')}
+              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canMoveToNextPage || customerListQuery.isFetching}
+              onClick={() => moveToCustomerPage(currentPage + 1)}
+              type="button"
+            >
+              <ChevronRight aria-hidden="true" size={17} strokeWidth={2.5} />
+            </button>
+          </nav>
+        ) : null}
       </div>
 
       {isCreateModalOpen ? (
