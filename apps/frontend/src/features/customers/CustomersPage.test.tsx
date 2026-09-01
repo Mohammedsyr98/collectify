@@ -314,6 +314,36 @@ describe('CustomersPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('normalizes an out-of-range empty customer page query to the first page', async () => {
+    const requestedPages: Array<string | null> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        requestedPages.push(new URL(request.url).searchParams.get('page'));
+
+        return HttpResponse.json({
+          ...emptyCustomerList,
+          page: Number(new URL(request.url).searchParams.get('page') ?? 1),
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=99']);
+
+    await waitFor(() => expect(requestedPages).toEqual(['99', '1']));
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1',
+    );
+    expect(
+      screen.getAllByText('Create your first customer to start tracking debts.'),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByRole('button', { name: 'Previous page' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Next page' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps the current customer page visible while the next page loads', async () => {
     const user = userEvent.setup();
     const requestedPages: Array<string | null> = [];
