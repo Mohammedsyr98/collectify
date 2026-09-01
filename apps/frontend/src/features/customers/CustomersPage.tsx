@@ -1,34 +1,26 @@
-import { Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { CustomerListItem } from '@collectify/contracts';
-
 import { CustomerCreateModal } from './CustomerCreateModal';
-import {
-  useCreateCustomerMutation,
-  useCustomerListQuery,
-} from './customerQueries';
+import { useCreateCustomerMutation } from './customerQueries';
 import { CustomerTable } from './list/CustomerTable';
-
-const emptyCustomers: CustomerListItem[] = [];
+import { useCustomerListView } from './useCustomerListView';
 
 export function CustomersPage() {
   const { t } = useTranslation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const customerListQuery = useCustomerListQuery();
+  const { customers, pagination, status } = useCustomerListView();
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
-  const customers = customerListQuery.data?.items ?? emptyCustomers;
-  const hasCustomers = customers.length > 0;
 
   return (
     <main
       aria-label={t('app.workspace.navigation.customers')}
-      className="min-h-screen flex-1 bg-background p-6 text-foreground"
+      className="h-screen min-h-0 flex-1 overflow-hidden bg-background p-6 text-foreground"
     >
-      <div className="mx-auto grid w-full max-w-6xl gap-6">
+      <div className="mx-auto grid h-full min-h-0 w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)_auto] gap-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="grid gap-1">
             <h1 className="m-0 text-[1.65rem] font-black leading-tight tracking-normal">
@@ -48,19 +40,19 @@ export function CustomersPage() {
           </button>
         </header>
 
-        {customerListQuery.isLoading ? (
+        {status.status === 'loading' ? (
           <p
-            className="m-0 rounded-md border border-border bg-card p-5 text-[0.86rem] font-bold text-muted-foreground"
+            className="m-0 self-start rounded-md border border-border bg-card p-5 text-[0.86rem] font-bold text-muted-foreground"
             role="status"
           >
             {t('customers.list.loading')}
           </p>
         ) : null}
 
-        {customerListQuery.isError ? (
+        {status.status === 'error' ? (
           <section
             aria-label={t('customers.list.error.title')}
-            className="grid gap-3 rounded-md border border-border bg-card p-5"
+            className="grid self-start gap-3 rounded-md border border-border bg-card p-5"
             role="alert"
           >
             <div className="grid gap-1">
@@ -73,9 +65,9 @@ export function CustomersPage() {
             </div>
             <button
               className="w-fit rounded-[5px] border border-border bg-background px-3 py-2 text-[0.78rem] font-extrabold text-foreground"
-              disabled={customerListQuery.isFetching}
+              disabled={status.isRetrying}
               onClick={() => {
-                void customerListQuery.refetch();
+                void status.retry();
               }}
               type="button"
             >
@@ -84,15 +76,52 @@ export function CustomersPage() {
           </section>
         ) : null}
 
-        {customerListQuery.isSuccess && !hasCustomers ? (
-          <section className="rounded-md border border-dashed border-border bg-card p-8 text-center">
+        {status.status === 'empty' ? (
+          <section className="self-start rounded-md border border-dashed border-border bg-card p-8 text-center">
             <p className="m-0 text-[0.9rem] font-bold text-muted-foreground">
               {t('customers.page.empty')}
             </p>
           </section>
         ) : null}
 
-        {hasCustomers ? <CustomerTable customers={customers} /> : null}
+        {status.status === 'ready' ? (
+          <div
+            aria-busy={status.isShowingPreviousPage}
+            className={
+              status.isShowingPreviousPage
+                ? 'min-h-0 opacity-60 transition-opacity'
+                : 'min-h-0 transition-opacity'
+            }
+          >
+            <CustomerTable customers={customers} />
+          </div>
+        ) : null}
+
+        {pagination.showsControls ? (
+          <nav
+            aria-label={t('customers.list.pagination.label')}
+            className="flex items-center justify-end gap-2"
+          >
+            <button
+              aria-label={t('customers.list.pagination.previousPage')}
+              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!pagination.canMoveToPreviousPage}
+              onClick={pagination.moveToPreviousPage}
+              type="button"
+            >
+              <ChevronLeft aria-hidden="true" size={17} strokeWidth={2.5} />
+            </button>
+            <button
+              aria-label={t('customers.list.pagination.nextPage')}
+              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!pagination.canMoveToNextPage}
+              onClick={pagination.moveToNextPage}
+              type="button"
+            >
+              <ChevronRight aria-hidden="true" size={17} strokeWidth={2.5} />
+            </button>
+          </nav>
+        ) : null}
       </div>
 
       {isCreateModalOpen ? (

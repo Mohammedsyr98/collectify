@@ -1,9 +1,19 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   createCustomerRequestSchema,
+  customerListQuerySchema,
   type CreateCustomerRequest,
   type CreateCustomerResponse,
   type CustomerDetailsResponse,
+  type CustomerListQuery,
   type CustomerListResponse,
 } from '@collectify/contracts';
 
@@ -17,6 +27,9 @@ const createCustomerValidationPipe = new ZodValidationPipe(
   {
     resolveIssueMessage: resolveCustomerValidationMessage,
   },
+);
+const customerListQueryValidationPipe = new ZodValidationPipe(
+  customerListQuerySchema,
 );
 
 @Controller('customers')
@@ -35,8 +48,9 @@ export class CustomersController {
   @Get()
   listCustomers(
     @CurrentOwner() currentOwner: AuthenticatedOwner,
+    @Query(customerListQueryValidationPipe) query: CustomerListQuery,
   ): Promise<CustomerListResponse> {
-    return this.customersService.listCustomers(currentOwner);
+    return this.customersService.listCustomers(currentOwner, query);
   }
 
   @Get(':customerId')

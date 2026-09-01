@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
   customerApiErrorCode,
+  customerListPageSize,
   type CreateCustomerRequest,
   type CustomerDetailsResponse,
+  type CustomerListQuery,
   type CustomerListItem,
   type CustomerListFinancialSummary,
   type CustomerListResponse,
@@ -16,7 +18,6 @@ import { customerConstraints, customers } from '../database/schema';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
-const customerListPageSize = 25;
 
 @Injectable()
 export class CustomersService {
@@ -77,8 +78,10 @@ export class CustomersService {
 
   async listCustomers(
     currentOwner: AuthenticatedOwner,
+    query: CustomerListQuery,
   ): Promise<CustomerListResponse> {
     const ownerProfileId = currentOwner.ownerProfile.id;
+    const offset = (query.page - 1) * customerListPageSize;
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
       .select({ totalItems: sql<number>`count(*)::int` })
       .from(customers)
@@ -88,11 +91,12 @@ export class CustomersService {
       .from(customers)
       .where(eq(customers.ownerProfileId, ownerProfileId))
       .orderBy(desc(customers.createdAt), desc(customers.id))
-      .limit(customerListPageSize);
+      .limit(customerListPageSize)
+      .offset(offset);
 
     return {
       items: customerRows.map(toCustomerListItemResponse),
-      page: 1,
+      page: query.page,
       pageSize: customerListPageSize,
       totalItems,
       totalPages: Math.ceil(totalItems / customerListPageSize),

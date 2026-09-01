@@ -30,6 +30,8 @@ export const customerSchema = z.object({
 
 const moneyAmountSchema = z.string().regex(/^-?\d+(\.\d{2})$/);
 
+export const customerListPageSize = 25;
+
 export const customerFinancialSummarySchema = z.object({
   totalDebtAmount: moneyAmountSchema,
   totalPaidAmount: moneyAmountSchema,
@@ -70,6 +72,10 @@ export const customerListResponseSchema = z.object({
   totalPages: z.number().int().min(0),
 });
 
+export const customerListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).catch(1),
+});
+
 export const customerFieldErrorsSchema = z
   .object({
     name: z.array(z.string().min(1)).optional(),
@@ -99,6 +105,7 @@ export type CustomerListFinancialSummary = z.infer<
   typeof customerListFinancialSummarySchema
 >;
 export type CustomerListItem = z.infer<typeof customerListItemSchema>;
+export type CustomerListQuery = z.infer<typeof customerListQuerySchema>;
 export type CustomerListResponse = z.infer<typeof customerListResponseSchema>;
 export type CustomerFieldErrors = z.infer<typeof customerFieldErrorsSchema>;
 export type CustomerErrorCode = z.infer<typeof customerErrorCodeSchema>;

@@ -80,6 +80,11 @@ export const customerResources = {
             title: 'Could not load customers',
           },
           loading: 'Loading customers',
+          pagination: {
+            label: 'Customer pages',
+            nextPage: 'Next page',
+            previousPage: 'Previous page',
+          },
         },
         page: {
           empty: 'Create your first customer to start tracking debts.',
@@ -173,6 +178,11 @@ export const customerResources = {
             title: 'Musteriler yuklenemedi',
           },
           loading: 'Musteriler yukleniyor',
+          pagination: {
+            label: 'Musteri sayfalari',
+            nextPage: 'Sonraki sayfa',
+            previousPage: 'Onceki sayfa',
+          },
         },
         page: {
           empty: 'Borc takibine baslamak icin ilk musteriyi olusturun.',
@@ -261,6 +271,11 @@ export const customerResources = {
             title: 'تعذر تحميل العملاء',
           },
           loading: 'جارٍ تحميل العملاء',
+          pagination: {
+            label: 'صفحات العملاء',
+            nextPage: 'الصفحة التالية',
+            previousPage: 'الصفحة السابقة',
+          },
         },
         notFound: {
           action: 'العودة إلى العملاء',

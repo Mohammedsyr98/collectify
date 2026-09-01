@@ -4,6 +4,7 @@ import {
   createCustomerRequestSchema,
   customerDetailsResponseSchema,
   customerErrorResponseSchema,
+  customerListPageSize,
   customerListResponseSchema,
 } from './customer.js';
 import { customerApiErrorCode } from './api-error-codes.js';
@@ -151,6 +152,10 @@ describe('customer contracts', () => {
         },
       ],
     });
+  });
+
+  it('exports the default customer list page size', () => {
+    expect(customerListPageSize).toBe(25);
   });
 
   it('accepts controlled customer API error responses', () => {
