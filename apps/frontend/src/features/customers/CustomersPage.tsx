@@ -18,9 +18,9 @@ export function CustomersPage() {
   return (
     <main
       aria-label={t('app.workspace.navigation.customers')}
-      className="min-h-screen flex-1 bg-background p-6 text-foreground"
+      className="h-screen min-h-0 flex-1 overflow-hidden bg-background p-6 text-foreground"
     >
-      <div className="mx-auto grid w-full max-w-6xl gap-6">
+      <div className="mx-auto grid h-full min-h-0 w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)_auto] gap-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="grid gap-1">
             <h1 className="m-0 text-[1.65rem] font-black leading-tight tracking-normal">
@@ -42,7 +42,7 @@ export function CustomersPage() {
 
         {status.status === 'loading' ? (
           <p
-            className="m-0 rounded-md border border-border bg-card p-5 text-[0.86rem] font-bold text-muted-foreground"
+            className="m-0 self-start rounded-md border border-border bg-card p-5 text-[0.86rem] font-bold text-muted-foreground"
             role="status"
           >
             {t('customers.list.loading')}
@@ -52,7 +52,7 @@ export function CustomersPage() {
         {status.status === 'error' ? (
           <section
             aria-label={t('customers.list.error.title')}
-            className="grid gap-3 rounded-md border border-border bg-card p-5"
+            className="grid self-start gap-3 rounded-md border border-border bg-card p-5"
             role="alert"
           >
             <div className="grid gap-1">
@@ -77,7 +77,7 @@ export function CustomersPage() {
         ) : null}
 
         {status.status === 'empty' ? (
-          <section className="rounded-md border border-dashed border-border bg-card p-8 text-center">
+          <section className="self-start rounded-md border border-dashed border-border bg-card p-8 text-center">
             <p className="m-0 text-[0.9rem] font-bold text-muted-foreground">
               {t('customers.page.empty')}
             </p>
@@ -89,8 +89,8 @@ export function CustomersPage() {
             aria-busy={status.isShowingPreviousPage}
             className={
               status.isShowingPreviousPage
-                ? 'opacity-60 transition-opacity'
-                : 'transition-opacity'
+                ? 'min-h-0 opacity-60 transition-opacity'
+                : 'min-h-0 transition-opacity'
             }
           >
             <CustomerTable customers={customers} />

@@ -79,10 +79,10 @@ export function CustomerTable({ customers }: CustomerTableProps) {
   });
 
   return (
-    <section className="overflow-hidden rounded-md border border-border bg-card">
-      <div className="overflow-x-auto">
+    <section className="h-full min-h-0 overflow-hidden rounded-md border border-border bg-card">
+      <div className="h-full overflow-auto">
         <table className="min-w-full border-collapse text-start text-[0.84rem]">
-          <thead className="bg-muted text-muted-foreground">
+          <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
             {customerTable.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
