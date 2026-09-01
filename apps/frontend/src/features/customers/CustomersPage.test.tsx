@@ -314,6 +314,58 @@ describe('CustomersPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps the current customer page visible while the next page loads', async () => {
+    const user = userEvent.setup();
+    const requestedPages: Array<string | null> = [];
+    let resolveNextPageRequest!: () => void;
+    const pendingNextPageRequest = new Promise<void>((resolve) => {
+      resolveNextPageRequest = resolve;
+    });
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, async ({ request }) => {
+        const requestedPage = new URL(request.url).searchParams.get('page');
+        requestedPages.push(requestedPage);
+
+        if (requestedPage === '2') {
+          await pendingNextPageRequest;
+
+          return HttpResponse.json({
+            ...customerList,
+            items: [customerList.items[1]],
+            page: 2,
+            totalItems: 26,
+            totalPages: 2,
+          });
+        }
+
+        return HttpResponse.json({
+          ...customerList,
+          items: [customerList.items[0]],
+          page: 1,
+          totalItems: 26,
+          totalPages: 2,
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=1']);
+
+    expect(
+      await screen.findByRole('cell', { name: 'Acme Market' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
+
+    try {
+      expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+    } finally {
+      resolveNextPageRequest();
+    }
+  });
+
   it('shows a loading status while the customer list request is pending', async () => {
     let resolveCustomerListRequest!: () => void;
     const pendingCustomerListRequest = new Promise<void>((resolve) => {

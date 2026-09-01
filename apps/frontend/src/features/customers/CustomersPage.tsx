@@ -39,6 +39,8 @@ export function CustomersPage() {
   const showsPagination = customerListQuery.isSuccess && totalPages > 1;
   const canMoveToPreviousPage = currentPage > 1;
   const canMoveToNextPage = currentPage < totalPages;
+  const isShowingPreviousCustomerPage =
+    customerListQuery.isPlaceholderData && customerListQuery.isFetching;
 
   useEffect(() => {
     const normalizedPage = String(customerListQueryParams.page);
@@ -53,7 +55,11 @@ export function CustomersPage() {
   }, [customerListQueryParams.page, pageQuery, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!customerListQuery.isSuccess || pageQuery === null) {
+    if (
+      !customerListQuery.isSuccess ||
+      customerListQuery.isPlaceholderData ||
+      pageQuery === null
+    ) {
       return;
     }
 
@@ -67,6 +73,7 @@ export function CustomersPage() {
     nextSearchParams.set('page', String(lastAvailablePage));
     setSearchParams(nextSearchParams, { replace: true });
   }, [
+    customerListQuery.isPlaceholderData,
     customerListQuery.isSuccess,
     customerListQueryParams.page,
     pageQuery,
@@ -150,7 +157,18 @@ export function CustomersPage() {
           </section>
         ) : null}
 
-        {hasCustomers ? <CustomerTable customers={customers} /> : null}
+        {hasCustomers ? (
+          <div
+            aria-busy={isShowingPreviousCustomerPage}
+            className={
+              isShowingPreviousCustomerPage
+                ? 'opacity-60 transition-opacity'
+                : 'transition-opacity'
+            }
+          >
+            <CustomerTable customers={customers} />
+          </div>
+        ) : null}
 
         {showsPagination ? (
           <nav

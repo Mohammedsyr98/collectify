@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -26,6 +31,7 @@ export function useCustomerListQuery(query: CustomerListQuery) {
   return useQuery({
     queryKey: customerListPageQueryKey(query),
     queryFn: () => listCustomers(query),
+    placeholderData: keepPreviousData,
   });
 }
 
