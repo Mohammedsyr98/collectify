@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   customerApiErrorCode,
+  customerListPageSize,
   type CreateCustomerRequest,
   type CustomerDetailsResponse,
   type CustomerListQuery,
@@ -17,7 +18,6 @@ import { customerConstraints, customers } from '../database/schema';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
-const customerListPageSize = 25;
 
 @Injectable()
 export class CustomersService {

@@ -30,6 +30,8 @@ export const customerSchema = z.object({
 
 const moneyAmountSchema = z.string().regex(/^-?\d+(\.\d{2})$/);
 
+export const customerListPageSize = 25;
+
 export const customerFinancialSummarySchema = z.object({
   totalDebtAmount: moneyAmountSchema,
   totalPaidAmount: moneyAmountSchema,
