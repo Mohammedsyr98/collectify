@@ -1,92 +1,19 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router';
-
-import {
-  customerListQuerySchema,
-  type CustomerListItem,
-  type CustomerListQuery,
-} from '@collectify/contracts';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
-import {
-  useCreateCustomerMutation,
-  useCustomerListQuery,
-} from './customerQueries';
+import { useCreateCustomerMutation } from './customerQueries';
 import { CustomerTable } from './list/CustomerTable';
-
-const emptyCustomers: CustomerListItem[] = [];
+import { useCustomerListView } from './useCustomerListView';
 
 export function CustomersPage() {
   const { t } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const customerListQueryParams: CustomerListQuery =
-    customerListQuerySchema.parse({
-      page: searchParams.get('page') ?? undefined,
-    });
-  const pageQuery = searchParams.get('page');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const customerListQuery = useCustomerListQuery(customerListQueryParams);
+  const { customers, pagination, status } = useCustomerListView();
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
-  const customerList = customerListQuery.data;
-  const customers = customerList?.items ?? emptyCustomers;
-  const hasCustomers = customers.length > 0;
-  const currentPage = customerList?.page ?? customerListQueryParams.page;
-  const totalPages = customerList?.totalPages ?? 0;
-  const showsPagination = customerListQuery.isSuccess && totalPages > 1;
-  const canMoveToPreviousPage = currentPage > 1;
-  const canMoveToNextPage = currentPage < totalPages;
-  const isShowingPreviousCustomerPage =
-    customerListQuery.isPlaceholderData && customerListQuery.isFetching;
-
-  useEffect(() => {
-    const normalizedPage = String(customerListQueryParams.page);
-
-    if (pageQuery === null || pageQuery === normalizedPage) {
-      return;
-    }
-
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.set('page', normalizedPage);
-    setSearchParams(nextSearchParams, { replace: true });
-  }, [customerListQueryParams.page, pageQuery, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (
-      !customerListQuery.isSuccess ||
-      customerListQuery.isPlaceholderData ||
-      pageQuery === null
-    ) {
-      return;
-    }
-
-    const lastAvailablePage = totalPages > 0 ? totalPages : 1;
-
-    if (customerListQueryParams.page <= lastAvailablePage) {
-      return;
-    }
-
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.set('page', String(lastAvailablePage));
-    setSearchParams(nextSearchParams, { replace: true });
-  }, [
-    customerListQuery.isPlaceholderData,
-    customerListQuery.isSuccess,
-    customerListQueryParams.page,
-    pageQuery,
-    searchParams,
-    setSearchParams,
-    totalPages,
-  ]);
-
-  function moveToCustomerPage(page: number) {
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.set('page', String(page));
-    setSearchParams(nextSearchParams);
-  }
 
   return (
     <main
@@ -113,7 +40,7 @@ export function CustomersPage() {
           </button>
         </header>
 
-        {customerListQuery.isLoading ? (
+        {status.status === 'loading' ? (
           <p
             className="m-0 rounded-md border border-border bg-card p-5 text-[0.86rem] font-bold text-muted-foreground"
             role="status"
@@ -122,7 +49,7 @@ export function CustomersPage() {
           </p>
         ) : null}
 
-        {customerListQuery.isError ? (
+        {status.status === 'error' ? (
           <section
             aria-label={t('customers.list.error.title')}
             className="grid gap-3 rounded-md border border-border bg-card p-5"
@@ -138,9 +65,9 @@ export function CustomersPage() {
             </div>
             <button
               className="w-fit rounded-[5px] border border-border bg-background px-3 py-2 text-[0.78rem] font-extrabold text-foreground"
-              disabled={customerListQuery.isFetching}
+              disabled={status.isRetrying}
               onClick={() => {
-                void customerListQuery.refetch();
+                void status.retry();
               }}
               type="button"
             >
@@ -149,7 +76,7 @@ export function CustomersPage() {
           </section>
         ) : null}
 
-        {customerListQuery.isSuccess && !hasCustomers ? (
+        {status.status === 'empty' ? (
           <section className="rounded-md border border-dashed border-border bg-card p-8 text-center">
             <p className="m-0 text-[0.9rem] font-bold text-muted-foreground">
               {t('customers.page.empty')}
@@ -157,11 +84,11 @@ export function CustomersPage() {
           </section>
         ) : null}
 
-        {hasCustomers ? (
+        {status.status === 'ready' ? (
           <div
-            aria-busy={isShowingPreviousCustomerPage}
+            aria-busy={status.isShowingPreviousPage}
             className={
-              isShowingPreviousCustomerPage
+              status.isShowingPreviousPage
                 ? 'opacity-60 transition-opacity'
                 : 'transition-opacity'
             }
@@ -170,7 +97,7 @@ export function CustomersPage() {
           </div>
         ) : null}
 
-        {showsPagination ? (
+        {pagination.showsControls ? (
           <nav
             aria-label={t('customers.list.pagination.label')}
             className="flex items-center justify-end gap-2"
@@ -178,8 +105,10 @@ export function CustomersPage() {
             <button
               aria-label={t('customers.list.pagination.previousPage')}
               className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!canMoveToPreviousPage || customerListQuery.isFetching}
-              onClick={() => moveToCustomerPage(currentPage - 1)}
+              disabled={
+                !pagination.canMoveToPreviousPage || pagination.isDisabled
+              }
+              onClick={pagination.moveToPreviousPage}
               type="button"
             >
               <ChevronLeft aria-hidden="true" size={17} strokeWidth={2.5} />
@@ -187,8 +116,8 @@ export function CustomersPage() {
             <button
               aria-label={t('customers.list.pagination.nextPage')}
               className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!canMoveToNextPage || customerListQuery.isFetching}
-              onClick={() => moveToCustomerPage(currentPage + 1)}
+              disabled={!pagination.canMoveToNextPage || pagination.isDisabled}
+              onClick={pagination.moveToNextPage}
               type="button"
             >
               <ChevronRight aria-hidden="true" size={17} strokeWidth={2.5} />
