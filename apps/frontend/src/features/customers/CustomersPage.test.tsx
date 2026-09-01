@@ -179,6 +179,8 @@ describe('CustomersPage', () => {
         return HttpResponse.json({
           ...customerList,
           page: 2,
+          totalItems: 26,
+          totalPages: 2,
         });
       }),
     );
@@ -278,12 +280,18 @@ describe('CustomersPage', () => {
 
   it('normalizes an out-of-range customer page query to the last available page', async () => {
     const requestedPages: Array<string | null> = [];
+    let resolveLastPageRequest!: () => void;
+    const pendingLastPageRequest = new Promise<void>((resolve) => {
+      resolveLastPageRequest = resolve;
+    });
     server.use(
-      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+      http.get(`${getBackendUrl()}/customers`, async ({ request }) => {
         const requestedPage = new URL(request.url).searchParams.get('page');
         requestedPages.push(requestedPage);
 
         if (requestedPage === '2') {
+          await pendingLastPageRequest;
+
           return HttpResponse.json({
             ...customerList,
             items: [customerList.items[1]],
@@ -306,9 +314,17 @@ describe('CustomersPage', () => {
     renderCustomerRoutes(['/customers?page=99']);
 
     await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
-    expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=2',
-    );
+
+    try {
+      expect(screen.getByTestId('router-location')).toHaveTextContent(
+        '/customers?page=2',
+      );
+      expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    } finally {
+      resolveLastPageRequest();
+    }
+
     expect(
       await screen.findByRole('cell', { name: 'North Star Cafe' }),
     ).toBeInTheDocument();

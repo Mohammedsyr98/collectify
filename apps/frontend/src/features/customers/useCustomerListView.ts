@@ -33,6 +33,10 @@ export function useCustomerListView() {
   const customers = customerList?.items ?? emptyCustomers;
   const currentPage = customerListQueryParams.page;
   const totalPages = customerList?.totalPages ?? 0;
+  const totalItems = customerList?.totalItems ?? 0;
+  const lastAvailablePage = totalPages > 0 ? totalPages : 1;
+  const hasCustomers = totalItems > 0;
+  const hasVisibleCustomers = customers.length > 0;
   const isShowingPreviousPage =
     customerListQuery.isPlaceholderData && customerListQuery.isFetching;
   const setCustomerPageQuery = useCallback(
@@ -63,8 +67,6 @@ export function useCustomerListView() {
       return;
     }
 
-    const lastAvailablePage = totalPages > 0 ? totalPages : 1;
-
     if (customerListQueryParams.page <= lastAvailablePage) {
       return;
     }
@@ -74,9 +76,9 @@ export function useCustomerListView() {
     customerListQuery.isPlaceholderData,
     customerListQuery.isSuccess,
     customerListQueryParams.page,
+    lastAvailablePage,
     pageQuery,
     setCustomerPageQuery,
-    totalPages,
   ]);
 
   const status: CustomerListViewStatus = (() => {
@@ -92,8 +94,12 @@ export function useCustomerListView() {
       };
     }
 
-    if (customerListQuery.isSuccess && customers.length === 0) {
+    if (customerListQuery.isSuccess && !hasCustomers) {
       return { status: 'empty' };
+    }
+
+    if (!hasVisibleCustomers) {
+      return { status: 'loading' };
     }
 
     return {
