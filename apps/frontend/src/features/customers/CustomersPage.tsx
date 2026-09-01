@@ -52,6 +52,29 @@ export function CustomersPage() {
     setSearchParams(nextSearchParams, { replace: true });
   }, [customerListQueryParams.page, pageQuery, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (!customerListQuery.isSuccess || pageQuery === null) {
+      return;
+    }
+
+    const lastAvailablePage = totalPages > 0 ? totalPages : 1;
+
+    if (customerListQueryParams.page <= lastAvailablePage) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('page', String(lastAvailablePage));
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [
+    customerListQuery.isSuccess,
+    customerListQueryParams.page,
+    pageQuery,
+    searchParams,
+    setSearchParams,
+    totalPages,
+  ]);
+
   function moveToCustomerPage(page: number) {
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.set('page', String(page));

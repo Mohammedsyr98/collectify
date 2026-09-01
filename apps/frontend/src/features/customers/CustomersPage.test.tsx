@@ -276,6 +276,44 @@ describe('CustomersPage', () => {
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
   });
 
+  it('normalizes an out-of-range customer page query to the last available page', async () => {
+    const requestedPages: Array<string | null> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        const requestedPage = new URL(request.url).searchParams.get('page');
+        requestedPages.push(requestedPage);
+
+        if (requestedPage === '2') {
+          return HttpResponse.json({
+            ...customerList,
+            items: [customerList.items[1]],
+            page: 2,
+            totalItems: 26,
+            totalPages: 2,
+          });
+        }
+
+        return HttpResponse.json({
+          ...customerList,
+          items: [],
+          page: 99,
+          totalItems: 26,
+          totalPages: 2,
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=99']);
+
+    await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=2',
+    );
+    expect(
+      await screen.findByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+  });
+
   it('shows a loading status while the customer list request is pending', async () => {
     let resolveCustomerListRequest!: () => void;
     const pendingCustomerListRequest = new Promise<void>((resolve) => {
