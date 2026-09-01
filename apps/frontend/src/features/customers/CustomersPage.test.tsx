@@ -254,6 +254,28 @@ describe('CustomersPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('disables the next customer page control on the last page', async () => {
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json({
+          ...customerList,
+          items: [customerList.items[1]],
+          page: 2,
+          totalItems: 26,
+          totalPages: 2,
+        }),
+      ),
+    );
+
+    renderCustomerRoutes(['/customers?page=2']);
+
+    expect(
+      await screen.findByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+  });
+
   it('shows a loading status while the customer list request is pending', async () => {
     let resolveCustomerListRequest!: () => void;
     const pendingCustomerListRequest = new Promise<void>((resolve) => {
