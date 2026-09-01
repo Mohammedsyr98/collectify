@@ -344,7 +344,7 @@ describe('CustomersPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the current customer page visible while the next page loads', async () => {
+  it('keeps the current customer page visible while the next page loads and updates pagination controls', async () => {
     const user = userEvent.setup();
     const requestedPages: Array<string | null> = [];
     let resolveNextPageRequest!: () => void;
@@ -389,10 +389,64 @@ describe('CustomersPage', () => {
 
     try {
       expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
     } finally {
       resolveNextPageRequest();
+    }
+  });
+
+  it('keeps the current customer page visible while the previous page loads and updates pagination controls', async () => {
+    const user = userEvent.setup();
+    const requestedPages: Array<string | null> = [];
+    let resolvePreviousPageRequest!: () => void;
+    const pendingPreviousPageRequest = new Promise<void>((resolve) => {
+      resolvePreviousPageRequest = resolve;
+    });
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, async ({ request }) => {
+        const requestedPage = new URL(request.url).searchParams.get('page');
+        requestedPages.push(requestedPage);
+
+        if (requestedPage === '1') {
+          await pendingPreviousPageRequest;
+
+          return HttpResponse.json({
+            ...customerList,
+            items: [customerList.items[0]],
+            page: 1,
+            totalItems: 26,
+            totalPages: 2,
+          });
+        }
+
+        return HttpResponse.json({
+          ...customerList,
+          items: [customerList.items[1]],
+          page: 2,
+          totalItems: 26,
+          totalPages: 2,
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=2']);
+
+    expect(
+      await screen.findByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous page' }));
+    await waitFor(() => expect(requestedPages).toEqual(['2', '1']));
+
+    try {
+      expect(
+        screen.getByRole('cell', { name: 'North Star Cafe' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeEnabled();
+    } finally {
+      resolvePreviousPageRequest();
     }
   });
 

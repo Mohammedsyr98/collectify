@@ -105,9 +105,7 @@ export function CustomersPage() {
             <button
               aria-label={t('customers.list.pagination.previousPage')}
               className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={
-                !pagination.canMoveToPreviousPage || pagination.isDisabled
-              }
+              disabled={!pagination.canMoveToPreviousPage}
               onClick={pagination.moveToPreviousPage}
               type="button"
             >
@@ -116,7 +114,7 @@ export function CustomersPage() {
             <button
               aria-label={t('customers.list.pagination.nextPage')}
               className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!pagination.canMoveToNextPage || pagination.isDisabled}
+              disabled={!pagination.canMoveToNextPage}
               onClick={pagination.moveToNextPage}
               type="button"
             >

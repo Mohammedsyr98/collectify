@@ -31,7 +31,7 @@ export function useCustomerListView() {
   const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const customerList = customerListQuery.data;
   const customers = customerList?.items ?? emptyCustomers;
-  const currentPage = customerList?.page ?? customerListQueryParams.page;
+  const currentPage = customerListQueryParams.page;
   const totalPages = customerList?.totalPages ?? 0;
   const isShowingPreviousPage =
     customerListQuery.isPlaceholderData && customerListQuery.isFetching;
@@ -107,7 +107,6 @@ export function useCustomerListView() {
     pagination: {
       canMoveToNextPage: currentPage < totalPages,
       canMoveToPreviousPage: currentPage > 1,
-      isDisabled: customerListQuery.isFetching,
       moveToNextPage: () => setCustomerPageQuery(currentPage + 1),
       moveToPreviousPage: () => setCustomerPageQuery(currentPage - 1),
       showsControls: customerListQuery.isSuccess && totalPages > 1,
