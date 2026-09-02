@@ -2,9 +2,9 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { CustomerCreateModal } from './CustomerCreateModal';
-import { useCreateCustomerMutation } from './customerQueries';
-import { CustomerTable } from './list/CustomerTable';
+import { CustomerCreateModal } from '../create/CustomerCreateModal';
+import { useCreateCustomerMutation } from '../create/useCreateCustomerMutation';
+import { CustomerTable } from './CustomerTable';
 import { useCustomerListView } from './useCustomerListView';
 
 export function CustomersPage() {

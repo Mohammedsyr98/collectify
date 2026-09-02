@@ -7,7 +7,7 @@ import {
   type CustomerListQuery,
 } from '@collectify/contracts';
 
-import { useCustomerListQuery } from './customerQueries';
+import { useCustomerListQuery } from './useCustomerListQuery';
 
 const emptyCustomers: CustomerListItem[] = [];
 

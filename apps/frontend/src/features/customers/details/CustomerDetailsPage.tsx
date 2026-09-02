@@ -4,10 +4,10 @@ import { useNavigate, useParams } from 'react-router';
 
 import { customerApiErrorCode } from '@collectify/contracts';
 
-import { isApiError } from '../../shared/api/http';
-import { ErrorStatePage } from '../../shared/ui/error/ErrorStatePage';
-import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
-import { useCustomerDetailsQuery } from './customerQueries';
+import { isApiError } from '../../../shared/api/http';
+import { ErrorStatePage } from '../../../shared/ui/error/ErrorStatePage';
+import { LoadingScreen } from '../../../shared/ui/loading/LoadingScreen';
+import { useCustomerDetailsQuery } from './useCustomerDetailsQuery';
 
 export function CustomerDetailsPage() {
   const { customerId } = useParams();

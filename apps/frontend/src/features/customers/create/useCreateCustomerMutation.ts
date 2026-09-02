@@ -1,47 +1,16 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import {
   isCustomerApiErrorCode,
   type CreateCustomerRequest,
-  type CustomerListQuery,
 } from '@collectify/contracts';
 
-import { resolveApiErrorDescription } from '../../shared/api/http';
-import { useToast } from '../../shared/ui/toast/toastContext';
-import { createCustomer } from './api/create-customer';
-import { getCustomer } from './api/get-customer';
-import { listCustomers } from './api/list-customers';
-
-export const customerListQueryKey = ['customers', 'list'] as const;
-
-export const customerListPageQueryKey = (query: CustomerListQuery) =>
-  [...customerListQueryKey, query] as const;
-
-export const customerDetailsQueryKey = (customerId: string) =>
-  ['customers', customerId] as const;
-
-export function useCustomerListQuery(query: CustomerListQuery) {
-  return useQuery({
-    queryKey: customerListPageQueryKey(query),
-    queryFn: () => listCustomers(query),
-    placeholderData: keepPreviousData,
-  });
-}
-
-export function useCustomerDetailsQuery(customerId: string | undefined) {
-  return useQuery({
-    queryKey: customerDetailsQueryKey(customerId ?? ''),
-    queryFn: () => getCustomer(customerId!),
-    enabled: Boolean(customerId),
-  });
-}
+import { resolveApiErrorDescription } from '../../../shared/api/http';
+import { useToast } from '../../../shared/ui/toast/toastContext';
+import { createCustomer } from '../api/create-customer';
+import { customerListQueryKey } from '../customerQueryKeys';
 
 export function useCreateCustomerMutation({
   onCreated,

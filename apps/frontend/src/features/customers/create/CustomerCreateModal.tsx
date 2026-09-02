@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 
 import { createCustomerRequestSchema, type CreateCustomerRequest } from '@collectify/contracts';
 
-import { FormInput } from '../../shared/ui/form/FormInput';
-import { useCustomerValidationErrorFormatter } from './localization/useCustomerValidationErrorFormatter';
+import { FormInput } from '../../../shared/ui/form/FormInput';
+import { useCustomerValidationErrorFormatter } from '../localization/useCustomerValidationErrorFormatter';
 
 type CustomerCreateFormValues = {
   name: string;

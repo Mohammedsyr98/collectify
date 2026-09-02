@@ -5,27 +5,16 @@ import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { CustomerDetailsResponse } from '@collectify/contracts';
-
-import { getBackendUrl } from '../../shared/api/http';
-import { renderWithAppProviders } from '../../shared/test/render';
-import { server } from '../../shared/test/server';
+import { getBackendUrl } from '../../../shared/api/http';
+import { renderWithAppProviders } from '../../../shared/test/render';
+import { server } from '../../../shared/test/server';
+import { CustomersPage } from '../list/CustomersPage';
+import { baseCustomer as customerFixture } from '../test/customerFixtures';
 import { CustomerDetailsPage } from './CustomerDetailsPage';
-import { CustomersPage } from './CustomersPage';
 
-const baseCustomer: CustomerDetailsResponse = {
-  id: 'customer_123',
-  name: 'Acme Market',
-  code: 'ACME-001',
-  phoneNumber: '+90 555 123 45 67',
+const baseCustomer = {
+  ...customerFixture,
   address: 'Istanbul',
-  createdAt: '2026-08-28T12:00:00.000Z',
-  updatedAt: '2026-08-28T12:00:00.000Z',
-  financialSummary: {
-    totalDebtAmount: '0.00',
-    totalPaidAmount: '0.00',
-    balanceAmount: '0.00',
-  },
 };
 
 function renderCustomerRoutes(initialEntries: string[]) {
