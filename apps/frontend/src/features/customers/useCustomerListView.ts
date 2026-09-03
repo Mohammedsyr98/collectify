@@ -26,8 +26,10 @@ export function useCustomerListView() {
   const customerListQueryParams: CustomerListQuery =
     customerListQuerySchema.parse({
       page: searchParams.get('page') ?? undefined,
+      search: searchParams.get('search') ?? undefined,
     });
   const pageQuery = searchParams.get('page');
+  const searchValue = customerListQueryParams.search ?? '';
   const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const customerList = customerListQuery.data;
   const customers = customerList?.items ?? emptyCustomers;
@@ -44,6 +46,22 @@ export function useCustomerListView() {
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('page', String(page));
       setSearchParams(nextSearchParams, options);
+    },
+    [searchParams, setSearchParams],
+  );
+  const setCustomerSearchQuery = useCallback(
+    (search: string) => {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      const normalizedSearch = search.trim();
+      nextSearchParams.set('page', '1');
+
+      if (normalizedSearch) {
+        nextSearchParams.set('search', normalizedSearch);
+      } else {
+        nextSearchParams.delete('search');
+      }
+
+      setSearchParams(nextSearchParams);
     },
     [searchParams, setSearchParams],
   );
@@ -116,6 +134,10 @@ export function useCustomerListView() {
       moveToNextPage: () => setCustomerPageQuery(currentPage + 1),
       moveToPreviousPage: () => setCustomerPageQuery(currentPage - 1),
       showsControls: customerListQuery.isSuccess && totalPages > 1,
+    },
+    search: {
+      onChange: setCustomerSearchQuery,
+      value: searchValue,
     },
     status,
   };

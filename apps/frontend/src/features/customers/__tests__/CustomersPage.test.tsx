@@ -72,6 +72,37 @@ describe('CustomersPage', () => {
     expect(requestedPages).toEqual(['2']);
   });
 
+  it('restores customer search from the URL and sends it to the backend', async () => {
+    const requestedQueries: Array<{
+      page: string | null;
+      search: string | null;
+    }> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        const requestSearchParams = new URL(request.url).searchParams;
+        requestedQueries.push({
+          page: requestSearchParams.get('page'),
+          search: requestSearchParams.get('search'),
+        });
+
+        return HttpResponse.json({
+          ...customerList,
+          page: 2,
+          totalItems: 26,
+          totalPages: 2,
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=2&search=acme']);
+
+    expect(await screen.findByLabelText('Search customers')).toHaveValue('acme');
+    expect(
+      await screen.findByRole('cell', { name: 'Acme Market' }),
+    ).toBeInTheDocument();
+    expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
+  });
+
   it('normalizes an invalid customer page query to the first page URL', async () => {
     const requestedPages: Array<string | null> = [];
     server.use(
