@@ -103,6 +103,56 @@ describe('CustomersPage', () => {
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
   });
 
+  it('debounces customer search URL updates and resets to the first page', async () => {
+    const requestedQueries: Array<{
+      page: string | null;
+      search: string | null;
+    }> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        const requestSearchParams = new URL(request.url).searchParams;
+        requestedQueries.push({
+          page: requestSearchParams.get('page'),
+          search: requestSearchParams.get('search'),
+        });
+
+        return HttpResponse.json({
+          ...customerList,
+          page: Number(requestSearchParams.get('page') ?? 1),
+          totalItems: 26,
+          totalPages: 2,
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=2']);
+
+    const searchInput = await screen.findByLabelText('Search customers');
+    await waitFor(() =>
+      expect(requestedQueries).toEqual([{ page: '2', search: null }]),
+    );
+
+    fireEvent.change(searchInput, { target: { value: 'a' } });
+    fireEvent.change(searchInput, { target: { value: 'ac' } });
+    fireEvent.change(searchInput, { target: { value: 'acme' } });
+
+    expect(searchInput).toHaveValue('acme');
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=2',
+    );
+    expect(requestedQueries).toEqual([{ page: '2', search: null }]);
+
+    await waitFor(() =>
+      expect(requestedQueries).toEqual([
+        { page: '2', search: null },
+        { page: '1', search: 'acme' },
+      ]),
+    );
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1&search=acme',
+    );
+  });
+
   it('normalizes an invalid customer page query to the first page URL', async () => {
     const requestedPages: Array<string | null> = [];
     server.use(
