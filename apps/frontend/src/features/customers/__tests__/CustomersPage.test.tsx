@@ -153,6 +153,63 @@ describe('CustomersPage', () => {
     );
   });
 
+  it('clears customer search from the URL and requests the unfiltered first page', async () => {
+    const requestedQueries: Array<{
+      page: string | null;
+      search: string | null;
+    }> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        const requestSearchParams = new URL(request.url).searchParams;
+        const requestedSearch = requestSearchParams.get('search');
+        requestedQueries.push({
+          page: requestSearchParams.get('page'),
+          search: requestedSearch,
+        });
+
+        if (requestedSearch === 'acme') {
+          return HttpResponse.json({
+            ...customerList,
+            items: [customerList.items[0]],
+            page: 2,
+            totalItems: 26,
+            totalPages: 2,
+          });
+        }
+
+        return HttpResponse.json(emptyCustomerList);
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=2&search=acme']);
+
+    const searchInput = await screen.findByLabelText('Search customers');
+    expect(searchInput).toHaveValue('acme');
+    expect(
+      await screen.findByRole('cell', { name: 'Acme Market' }),
+    ).toBeInTheDocument();
+    expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
+
+    fireEvent.change(searchInput, { target: { value: '   ' } });
+
+    expect(searchInput).toHaveValue('   ');
+
+    await waitFor(() =>
+      expect(requestedQueries).toEqual([
+        { page: '2', search: 'acme' },
+        { page: '1', search: null },
+      ]),
+    );
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1',
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Create your first customer to start tracking debts.'),
+      ).toHaveLength(2),
+    );
+  });
+
   it('normalizes an invalid customer page query to the first page URL', async () => {
     const requestedPages: Array<string | null> = [];
     server.use(
