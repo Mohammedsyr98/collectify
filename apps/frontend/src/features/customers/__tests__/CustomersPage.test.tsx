@@ -128,7 +128,7 @@ describe('CustomersPage', () => {
     );
   });
 
-  it('debounces customer search URL updates and resets to the first page', async () => {
+  it('debounces customer search URL updates without overwriting continued typing', async () => {
     const requestedQueries: Array<{
       page: string | null;
       search: string | null;
@@ -156,21 +156,42 @@ describe('CustomersPage', () => {
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '2', search: null }]));
 
     fireEvent.change(searchInput, { target: { value: 'a' } });
-    fireEvent.change(searchInput, { target: { value: 'ac' } });
-    fireEvent.change(searchInput, { target: { value: 'acme' } });
 
-    expect(searchInput).toHaveValue('acme');
+    expect(searchInput).toHaveValue('a');
     expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
 
     await waitFor(() =>
       expect(requestedQueries).toEqual([
         { page: '2', search: null },
-        { page: '1', search: 'acme' },
+        { page: '1', search: 'a' },
       ]),
     );
     expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=1&search=acme',
+      '/customers?page=1&search=a',
+    );
+
+    fireEvent.change(searchInput, { target: { value: 'ah' } });
+    fireEvent.change(searchInput, { target: { value: 'ahm' } });
+
+    expect(searchInput).toHaveValue('ahm');
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1&search=a',
+    );
+    expect(requestedQueries).toEqual([
+      { page: '2', search: null },
+      { page: '1', search: 'a' },
+    ]);
+
+    await waitFor(() =>
+      expect(requestedQueries).toEqual([
+        { page: '2', search: null },
+        { page: '1', search: 'a' },
+        { page: '1', search: 'ahm' },
+      ]),
+    );
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1&search=ahm',
     );
   });
 
