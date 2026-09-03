@@ -457,6 +457,74 @@ describe('customer routes', () => {
     ]);
   });
 
+  it('searches owner customers by name, code, and phone while excluding address matches', async () => {
+    const firstOwner = await signUpOwner('first-owner@example.com');
+    const secondOwner = await signUpOwner('second-owner@example.com');
+
+    await insertCustomer({
+      ownerProfileId: firstOwner.ownerProfileId,
+      id: 'customer_search_name',
+      name: 'North Ledger Market',
+      code: 'NORTH-001',
+      phoneNumber: '+90 555 410 00 01',
+      createdAt: '2026-08-29 12:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: firstOwner.ownerProfileId,
+      id: 'customer_search_code',
+      name: 'Harbor Supplies',
+      code: 'LEDGER-002',
+      phoneNumber: '+90 555 410 00 02',
+      createdAt: '2026-08-29 12:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: firstOwner.ownerProfileId,
+      id: 'customer_search_phone',
+      name: 'South Goods',
+      code: 'SOUTH-003',
+      phoneNumber: '+90 555 999 LEDGER',
+      createdAt: '2026-08-29 11:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: firstOwner.ownerProfileId,
+      id: 'customer_search_address_only',
+      name: 'Address Only',
+      code: 'ADDRESS-004',
+      phoneNumber: '+90 555 410 00 04',
+      address: 'Ledger Avenue',
+      createdAt: '2026-08-29 13:00:00',
+    });
+    await insertCustomer({
+      ownerProfileId: secondOwner.ownerProfileId,
+      id: 'customer_search_other_owner',
+      name: 'Other Ledger Customer',
+      code: 'OTHER-LEDGER',
+      phoneNumber: '+90 555 410 00 05',
+      createdAt: '2026-08-29 14:00:00',
+    });
+
+    const response = await fetch(`${backend!.baseUrl}/customers?search=ledger`, {
+      headers: {
+        cookie: firstOwner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((customer) => customer.id)).toEqual([
+      'customer_search_name',
+      'customer_search_code',
+      'customer_search_phone',
+    ]);
+    expect(list).toMatchObject({
+      page: 1,
+      pageSize: customerListPageSize,
+      totalItems: 3,
+      totalPages: 1,
+    });
+  });
+
   async function signUpOwner(
     email: string,
   ): Promise<{ cookieHeader: string; ownerProfileId: string }> {
@@ -505,11 +573,13 @@ describe('customer routes', () => {
   function insertCustomer({
     code,
     createdAt,
+    address,
     id,
     name,
     ownerProfileId,
     phoneNumber,
   }: {
+    address?: string;
     code: string;
     createdAt: string;
     id: string;
@@ -525,12 +595,13 @@ describe('customer routes', () => {
           "name",
           "code",
           "phone_number",
+          "address",
           "created_at",
           "updated_at"
         )
-        VALUES ($1, $2, $3, $4, $5, $6::timestamp, $6::timestamp)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::timestamp, $7::timestamp)
       `,
-      [id, ownerProfileId, name, code, phoneNumber, createdAt],
+      [id, ownerProfileId, name, code, phoneNumber, address ?? null, createdAt],
     );
   }
 });

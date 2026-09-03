@@ -9,7 +9,7 @@ import {
   type CustomerListFinancialSummary,
   type CustomerListResponse,
 } from '@collectify/contracts';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
@@ -18,6 +18,10 @@ import { customerConstraints, customers } from '../database/schema';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
+type SearchableCustomerColumn =
+  | typeof customers.name
+  | typeof customers.code
+  | typeof customers.phoneNumber;
 
 @Injectable()
 export class CustomersService {
@@ -82,14 +86,15 @@ export class CustomersService {
   ): Promise<CustomerListResponse> {
     const ownerProfileId = currentOwner.ownerProfile.id;
     const offset = (query.page - 1) * customerListPageSize;
+    const listFilter = customerListFilter(ownerProfileId, query.search);
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
       .select({ totalItems: sql<number>`count(*)::int` })
       .from(customers)
-      .where(eq(customers.ownerProfileId, ownerProfileId));
+      .where(listFilter);
     const customerRows = await this.databaseService.db
       .select()
       .from(customers)
-      .where(eq(customers.ownerProfileId, ownerProfileId))
+      .where(listFilter)
       .orderBy(desc(customers.createdAt), desc(customers.id))
       .limit(customerListPageSize)
       .offset(offset);
@@ -102,6 +107,34 @@ export class CustomersService {
       totalPages: Math.ceil(totalItems / customerListPageSize),
     };
   }
+}
+
+function customerListFilter(ownerProfileId: string, search: string | undefined) {
+  const ownerFilter = eq(customers.ownerProfileId, ownerProfileId);
+
+  if (!search) {
+    return ownerFilter;
+  }
+
+  return and(
+    ownerFilter,
+    or(
+      caseInsensitiveLiteralSubstring(customers.name, search),
+      caseInsensitiveLiteralSubstring(customers.code, search),
+      caseInsensitiveLiteralSubstring(customers.phoneNumber, search),
+    ),
+  );
+}
+
+function caseInsensitiveLiteralSubstring(
+  column: SearchableCustomerColumn,
+  search: string,
+) {
+  return sql`lower(${column}) like ${`%${escapeLikePattern(search.toLowerCase())}%`} escape '\\'`;
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 }
 
 function toCustomerDetailsResponse(

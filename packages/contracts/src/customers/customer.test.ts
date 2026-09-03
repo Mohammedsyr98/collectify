@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createCustomerRequestSchema,
   customerDetailsResponseSchema,
+  customerListQuerySchema,
   customerErrorResponseSchema,
   customerListPageSize,
   customerListResponseSchema,
@@ -156,6 +157,24 @@ describe('customer contracts', () => {
 
   it('exports the default customer list page size', () => {
     expect(customerListPageSize).toBe(25);
+  });
+
+  it('normalizes customer list query pagination and search terms', () => {
+    expect(
+      customerListQuerySchema.parse({
+        page: '2',
+        search: '  acme  ',
+      }),
+    ).toEqual({
+      page: 2,
+      search: 'acme',
+    });
+    expect(customerListQuerySchema.parse({ page: 'invalid' })).toEqual({
+      page: 1,
+    });
+    expect(customerListQuerySchema.parse({ page: '1', search: '   ' })).toEqual({
+      page: 1,
+    });
   });
 
   it('accepts controlled customer API error responses', () => {
