@@ -1,11 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import {
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -25,9 +19,7 @@ describe('CustomersPage', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(emptyCustomerList),
-      ),
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
     );
   });
 
@@ -36,17 +28,11 @@ describe('CustomersPage', () => {
   });
 
   it('renders a customer from the list response', async () => {
-    server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(customerList),
-      ),
-    );
+    server.use(http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)));
 
     renderCustomerRoutes();
 
-    expect(
-      await screen.findByRole('cell', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
   });
 
   it('requests the customer page from the URL query', async () => {
@@ -66,9 +52,7 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes(['/customers?page=2']);
 
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     expect(requestedPages).toEqual(['2']);
   });
 
@@ -97,10 +81,51 @@ describe('CustomersPage', () => {
     renderCustomerRoutes(['/customers?page=2&search=acme']);
 
     expect(await screen.findByLabelText('Search customers')).toHaveValue('acme');
-    expect(
-      await screen.findByRole('cell', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
+  });
+
+  it('restores customer search from browser history navigation', async () => {
+    const requestedQueries: Array<{
+      page: string | null;
+      search: string | null;
+    }> = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, ({ request }) => {
+        const requestSearchParams = new URL(request.url).searchParams;
+        const requestedSearch = requestSearchParams.get('search');
+        requestedQueries.push({
+          page: requestSearchParams.get('page'),
+          search: requestedSearch,
+        });
+
+        return HttpResponse.json({
+          ...customerList,
+          items: requestedSearch === 'acme' ? [customerList.items[0]] : [customerList.items[1]],
+        });
+      }),
+    );
+
+    renderCustomerRoutes(['/customers?page=1&search=acme', '/customers?page=1&search=north']);
+
+    const searchInput = await screen.findByLabelText('Search customers');
+    expect(searchInput).toHaveValue('north');
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
+    await waitFor(() => expect(requestedQueries).toEqual([{ page: '1', search: 'north' }]));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go back' }));
+
+    await waitFor(() => expect(searchInput).toHaveValue('acme'));
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      '/customers?page=1&search=acme',
+    );
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(requestedQueries).toEqual([
+        { page: '1', search: 'north' },
+        { page: '1', search: 'acme' },
+      ]),
+    );
   });
 
   it('debounces customer search URL updates and resets to the first page', async () => {
@@ -128,18 +153,14 @@ describe('CustomersPage', () => {
     renderCustomerRoutes(['/customers?page=2']);
 
     const searchInput = await screen.findByLabelText('Search customers');
-    await waitFor(() =>
-      expect(requestedQueries).toEqual([{ page: '2', search: null }]),
-    );
+    await waitFor(() => expect(requestedQueries).toEqual([{ page: '2', search: null }]));
 
     fireEvent.change(searchInput, { target: { value: 'a' } });
     fireEvent.change(searchInput, { target: { value: 'ac' } });
     fireEvent.change(searchInput, { target: { value: 'acme' } });
 
     expect(searchInput).toHaveValue('acme');
-    expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=2',
-    );
+    expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
 
     await waitFor(() =>
@@ -185,9 +206,7 @@ describe('CustomersPage', () => {
 
     const searchInput = await screen.findByLabelText('Search customers');
     expect(searchInput).toHaveValue('acme');
-    expect(
-      await screen.findByRole('cell', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
 
     fireEvent.change(searchInput, { target: { value: '   ' } });
@@ -200,9 +219,7 @@ describe('CustomersPage', () => {
         { page: '1', search: null },
       ]),
     );
-    expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=1',
-    );
+    expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=1');
     await waitFor(() =>
       expect(
         screen.getAllByText('Create your first customer to start tracking debts.'),
@@ -223,9 +240,7 @@ describe('CustomersPage', () => {
     renderCustomerRoutes(['/customers?page=invalid']);
 
     await waitFor(() => expect(requestedPages).toEqual(['1']));
-    expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=1',
-    );
+    expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=1');
   });
 
   it('moves to the next customer page with pagination controls', async () => {
@@ -258,19 +273,13 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes(['/customers?page=1']);
 
-    expect(
-      await screen.findByRole('cell', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Next page' }));
 
     await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
-    expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=2',
-    );
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
   it('disables the next customer page control on the last page', async () => {
@@ -288,9 +297,7 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes(['/customers?page=2']);
 
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
   });
@@ -333,18 +340,14 @@ describe('CustomersPage', () => {
     await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
 
     try {
-      expect(screen.getByTestId('router-location')).toHaveTextContent(
-        '/customers?page=2',
-      );
+      expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
       expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
     } finally {
       resolveLastPageRequest();
     }
 
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
   it('normalizes an out-of-range empty customer page query to the first page', async () => {
@@ -363,18 +366,12 @@ describe('CustomersPage', () => {
     renderCustomerRoutes(['/customers?page=99']);
 
     await waitFor(() => expect(requestedPages).toEqual(['99', '1']));
-    expect(screen.getByTestId('router-location')).toHaveTextContent(
-      '/customers?page=1',
+    expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=1');
+    expect(screen.getAllByText('Create your first customer to start tracking debts.')).toHaveLength(
+      2,
     );
-    expect(
-      screen.getAllByText('Create your first customer to start tracking debts.'),
-    ).toHaveLength(2);
-    expect(
-      screen.queryByRole('button', { name: 'Previous page' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Next page' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Previous page' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
   });
 
   it('keeps the current customer page visible while the next page loads and updates pagination controls', async () => {
@@ -413,9 +410,7 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes(['/customers?page=1']);
 
-    expect(
-      await screen.findByRole('cell', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Next page' }));
     await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
@@ -428,9 +423,7 @@ describe('CustomersPage', () => {
       resolveNextPageRequest();
     }
 
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
   it('keeps the current customer page visible while the previous page loads and updates pagination controls', async () => {
@@ -469,26 +462,20 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes(['/customers?page=2']);
 
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Previous page' }));
     await waitFor(() => expect(requestedPages).toEqual(['2', '1']));
 
     try {
-      expect(
-        screen.getByRole('cell', { name: 'North Star Cafe' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Next page' })).toBeEnabled();
     } finally {
       resolvePreviousPageRequest();
     }
 
-    expect(
-      await screen.findByRole('cell', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
   });
 
   it('shows a loading status while the customer list request is pending', async () => {
@@ -506,14 +493,10 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Loading customers',
-    );
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading customers');
 
     resolveCustomerListRequest();
-    await waitFor(() =>
-      expect(screen.queryByRole('status')).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
   });
 
   it('shows the empty state instead of the table when the customer list has no items', async () => {
@@ -525,9 +508,7 @@ describe('CustomersPage', () => {
       ).toHaveLength(2),
     );
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('columnheader', { name: 'Name' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
   });
 
   it('shows a recoverable error and reloads customers on retry', async () => {
@@ -555,9 +536,7 @@ describe('CustomersPage', () => {
 
     await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
 
-    expect(
-      await screen.findByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'NSC-002' })).toBeInTheDocument();
     expect(
       screen.queryByRole('alert', { name: 'Could not load customers' }),
@@ -568,9 +547,7 @@ describe('CustomersPage', () => {
   it('navigates from a customer row to that customer details page', async () => {
     const user = userEvent.setup();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(customerList),
-      ),
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
       http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
         if (params.customerId !== northStarCustomer.id) {
           return HttpResponse.json(
@@ -598,9 +575,7 @@ describe('CustomersPage', () => {
     );
     await user.click(await screen.findByRole('menuitem', { name: 'Open details' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {
@@ -633,12 +608,10 @@ describe('CustomersPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
 
-    expect(
-      await screen.findByRole('status', { name: 'Customer created' }),
-    ).toHaveTextContent('Acme Market is ready for debt tracking.');
-    expect(
-      await screen.findByRole('heading', { name: 'Acme Market' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('status', { name: 'Customer created' })).toHaveTextContent(
+      'Acme Market is ready for debt tracking.',
+    );
+    expect(await screen.findByRole('heading', { name: 'Acme Market' })).toBeInTheDocument();
     expect(screen.getByText('Code: ACME-001')).toBeInTheDocument();
   });
 
