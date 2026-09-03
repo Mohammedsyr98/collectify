@@ -15,9 +15,13 @@ const customerColumnHelper = createColumnHelper<
 
 type CustomerTableProps = {
   customers: CustomerListItem[];
+  isLoading?: boolean;
 };
 
-export function CustomerTable({ customers }: CustomerTableProps) {
+const skeletonRows = Array.from({ length: 6 }, (_, index) => index);
+const skeletonCellWidths = ['w-36', 'w-24', 'w-36', 'w-28', 'w-28', 'w-24', 'w-16'];
+
+export function CustomerTable({ customers, isLoading = false }: CustomerTableProps) {
   const { t } = useTranslation();
   const customerColumns = useMemo(
     () =>
@@ -74,14 +78,17 @@ export function CustomerTable({ customers }: CustomerTableProps) {
   const customerTable = useTable({
     features: customerTableFeatures,
     columns: customerColumns,
-    data: customers,
+    data: isLoading ? [] : customers,
     getRowId: (customer) => customer.id,
   });
 
   return (
     <section className="h-full min-h-0 overflow-hidden rounded-md border border-border bg-card">
       <div className="h-full overflow-auto">
-        <table className="min-w-full border-collapse text-start text-[0.84rem]">
+        <table
+          aria-busy={isLoading ? true : undefined}
+          className="min-w-full border-collapse text-start text-[0.84rem]"
+        >
           <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
             {customerTable.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -100,15 +107,32 @@ export function CustomerTable({ customers }: CustomerTableProps) {
             ))}
           </thead>
           <tbody>
-            {customerTable.getRowModel().rows.map((row) => (
-              <tr className="border-b border-border last:border-b-0" key={row.id}>
-                {row.getAllCells().map((cell) => (
-                  <td className="whitespace-nowrap px-4 py-3 font-bold" key={cell.id}>
-                    <customerTable.FlexRender cell={cell} />
-                  </td>
+            {isLoading
+              ? skeletonRows.map((rowIndex) => (
+                  <tr
+                    aria-hidden="true"
+                    className="border-b border-border last:border-b-0"
+                    data-testid="customer-table-skeleton-row"
+                    key={rowIndex}
+                  >
+                    {skeletonCellWidths.map((widthClass, cellIndex) => (
+                      <td className="whitespace-nowrap px-4 py-3" key={cellIndex}>
+                        <span
+                          className={`block h-4 rounded-[4px] bg-muted-foreground/20 motion-safe:animate-pulse ${widthClass}`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : customerTable.getRowModel().rows.map((row) => (
+                  <tr className="border-b border-border last:border-b-0" key={row.id}>
+                    {row.getAllCells().map((cell) => (
+                      <td className="whitespace-nowrap px-4 py-3 font-bold" key={cell.id}>
+                        <customerTable.FlexRender cell={cell} />
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
