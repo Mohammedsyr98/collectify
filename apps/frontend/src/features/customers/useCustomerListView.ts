@@ -19,7 +19,7 @@ type CustomerListViewStatus =
       status: 'error';
     }
   | { status: 'empty' }
-  | { isShowingPreviousPage: boolean; status: 'ready' };
+  | { status: 'ready' };
 
 export function useCustomerListView() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,7 +40,10 @@ export function useCustomerListView() {
   const lastAvailablePage = totalPages > 0 ? totalPages : 1;
   const hasCustomers = totalItems > 0;
   const hasVisibleCustomers = customers.length > 0;
-  const isShowingPreviousPage = customerListQuery.isPlaceholderData && customerListQuery.isFetching;
+  const isLoadingRows =
+    customerListQuery.isLoading ||
+    customerListQuery.isPlaceholderData ||
+    (customerListQuery.isSuccess && hasCustomers && !hasVisibleCustomers);
   const setCustomerPageQuery = useCallback(
     (page: number, options?: Parameters<typeof setSearchParams>[1]) => {
       const nextSearchParams = new URLSearchParams(searchParams);
@@ -117,10 +120,6 @@ export function useCustomerListView() {
   ]);
 
   const status: CustomerListViewStatus = (() => {
-    if (customerListQuery.isLoading) {
-      return { status: 'loading' };
-    }
-
     if (customerListQuery.isError) {
       return {
         isRetrying: customerListQuery.isFetching,
@@ -129,25 +128,22 @@ export function useCustomerListView() {
       };
     }
 
+    if (isLoadingRows) {
+      return { status: 'loading' };
+    }
+
     if (customerListQuery.isSuccess && !hasCustomers) {
       return { status: 'empty' };
     }
 
-    if (!hasVisibleCustomers) {
-      return { status: 'loading' };
-    }
-
-    return {
-      isShowingPreviousPage,
-      status: 'ready',
-    };
+    return { status: 'ready' };
   })();
 
   return {
     customers,
     pagination: {
-      canMoveToNextPage: currentPage < totalPages,
-      canMoveToPreviousPage: currentPage > 1,
+      canMoveToNextPage: !isLoadingRows && currentPage < totalPages,
+      canMoveToPreviousPage: !isLoadingRows && currentPage > 1,
       moveToNextPage: () => setCustomerPageQuery(currentPage + 1),
       moveToPreviousPage: () => setCustomerPageQuery(currentPage - 1),
       showsControls: customerListQuery.isSuccess && totalPages > 1,

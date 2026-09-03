@@ -14,6 +14,8 @@ export function CustomersPage() {
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
+  const isTableLoading = status.status === 'loading';
+  const showsCustomerTable = isTableLoading || status.status === 'ready';
 
   return (
     <main
@@ -61,7 +63,7 @@ export function CustomersPage() {
 
         {status.status === 'loading' ? (
           <p
-            className="m-0 self-start rounded-md border border-border bg-card p-5 text-[0.86rem] font-bold text-muted-foreground"
+            className="sr-only"
             role="status"
           >
             {t('customers.list.loading')}
@@ -103,16 +105,9 @@ export function CustomersPage() {
           </section>
         ) : null}
 
-        {status.status === 'ready' ? (
-          <div
-            aria-busy={status.isShowingPreviousPage}
-            className={
-              status.isShowingPreviousPage
-                ? 'min-h-0 opacity-60 transition-opacity'
-                : 'min-h-0 transition-opacity'
-            }
-          >
-            <CustomerTable customers={customers} />
+        {showsCustomerTable ? (
+          <div className="min-h-0 transition-opacity">
+            <CustomerTable customers={customers} isLoading={isTableLoading} />
           </div>
         ) : null}
 

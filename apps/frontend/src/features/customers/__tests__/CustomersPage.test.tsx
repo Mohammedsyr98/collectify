@@ -363,7 +363,6 @@ describe('CustomersPage', () => {
     try {
       expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
       expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
-      expect(screen.queryByRole('table')).not.toBeInTheDocument();
     } finally {
       resolveLastPageRequest();
     }
@@ -395,7 +394,7 @@ describe('CustomersPage', () => {
     expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
   });
 
-  it('keeps the current customer page visible while the next page loads and updates pagination controls', async () => {
+  it('replaces the current customer page while the next page loads and updates pagination controls', async () => {
     const user = userEvent.setup();
     const requestedPages: Array<string | null> = [];
     let resolveNextPageRequest!: () => void;
@@ -437,8 +436,9 @@ describe('CustomersPage', () => {
     await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
 
     try {
-      expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
+      expect(screen.queryByRole('cell', { name: 'Acme Market' })).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
     } finally {
       resolveNextPageRequest();
@@ -447,7 +447,7 @@ describe('CustomersPage', () => {
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
-  it('keeps the current customer page visible while the previous page loads and updates pagination controls', async () => {
+  it('replaces the current customer page while the previous page loads and updates pagination controls', async () => {
     const user = userEvent.setup();
     const requestedPages: Array<string | null> = [];
     let resolvePreviousPageRequest!: () => void;
@@ -489,9 +489,10 @@ describe('CustomersPage', () => {
     await waitFor(() => expect(requestedPages).toEqual(['2', '1']));
 
     try {
-      expect(screen.getByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
+      expect(screen.queryByRole('cell', { name: 'North Star Cafe' })).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
       expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Next page' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
     } finally {
       resolvePreviousPageRequest();
     }
@@ -499,7 +500,7 @@ describe('CustomersPage', () => {
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
   });
 
-  it('shows a loading status while the customer list request is pending', async () => {
+  it('renders the customer table loading state while the list request is pending', async () => {
     let resolveCustomerListRequest!: () => void;
     const pendingCustomerListRequest = new Promise<void>((resolve) => {
       resolveCustomerListRequest = resolve;
@@ -515,6 +516,8 @@ describe('CustomersPage', () => {
     renderCustomerRoutes();
 
     expect(await screen.findByRole('status')).toHaveTextContent('Loading customers');
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
 
     resolveCustomerListRequest();
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
@@ -668,6 +671,8 @@ describe('CustomersPage', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
   });
+
+  // TODO: Cover same-query list refresh once a visible list action invalidates customers without leaving this page.
 });
 
 function fillCreateCustomerForm({

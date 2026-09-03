@@ -79,4 +79,15 @@ describe('CustomerTable', () => {
     expect(within(emptyFinancialRow).getByText('No overdue')).toBeInTheDocument();
     expect(within(emptyFinancialRow).getByText('No due date')).toBeInTheDocument();
   });
+
+  it('renders decorative skeleton rows in loading mode', () => {
+    renderWithAppProviders(<CustomerTable customers={customerList.items} isLoading />);
+
+    expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: 'Acme Market' })).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('customer-table-skeleton-row')).toHaveLength(6);
+  });
 });
