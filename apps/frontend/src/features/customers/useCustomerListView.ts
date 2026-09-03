@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -23,11 +23,14 @@ type CustomerListViewStatus =
 
 export function useCustomerListView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const customerListQueryParams: CustomerListQuery =
-    customerListQuerySchema.parse({
-      page: searchParams.get('page') ?? undefined,
-    });
+  const customerListQueryParams: CustomerListQuery = customerListQuerySchema.parse({
+    page: searchParams.get('page') ?? undefined,
+    search: searchParams.get('search') ?? undefined,
+  });
   const pageQuery = searchParams.get('page');
+  const pendingSearchUrlUpdateRef = useRef<string | null>(null);
+  const effectiveSearchValue = customerListQueryParams.search ?? '';
+  const [searchValue, setSearchValue] = useState(effectiveSearchValue);
   const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const customerList = customerListQuery.data;
   const customers = customerList?.items ?? emptyCustomers;
@@ -37,8 +40,7 @@ export function useCustomerListView() {
   const lastAvailablePage = totalPages > 0 ? totalPages : 1;
   const hasCustomers = totalItems > 0;
   const hasVisibleCustomers = customers.length > 0;
-  const isShowingPreviousPage =
-    customerListQuery.isPlaceholderData && customerListQuery.isFetching;
+  const isShowingPreviousPage = customerListQuery.isPlaceholderData && customerListQuery.isFetching;
   const setCustomerPageQuery = useCallback(
     (page: number, options?: Parameters<typeof setSearchParams>[1]) => {
       const nextSearchParams = new URLSearchParams(searchParams);
@@ -47,6 +49,43 @@ export function useCustomerListView() {
     },
     [searchParams, setSearchParams],
   );
+  const setCustomerSearchQuery = (search: string) => {
+    setSearchValue(search);
+  };
+
+  useEffect(() => {
+    if (pendingSearchUrlUpdateRef.current === effectiveSearchValue) {
+      pendingSearchUrlUpdateRef.current = null;
+      return;
+    }
+
+    setSearchValue(effectiveSearchValue);
+  }, [effectiveSearchValue]);
+
+  useEffect(() => {
+    const normalizedSearch = searchValue.trim();
+
+    if (normalizedSearch === effectiveSearchValue) {
+      return undefined;
+    }
+
+    const debounceId = window.setTimeout(() => {
+      const nextSearchParams = new URLSearchParams(searchParams);
+
+      nextSearchParams.set('page', '1');
+
+      if (normalizedSearch) {
+        nextSearchParams.set('search', normalizedSearch);
+      } else {
+        nextSearchParams.delete('search');
+      }
+
+      pendingSearchUrlUpdateRef.current = normalizedSearch;
+      setSearchParams(nextSearchParams);
+    }, 500);
+
+    return () => window.clearTimeout(debounceId);
+  }, [effectiveSearchValue, searchParams, searchValue, setSearchParams]);
 
   useEffect(() => {
     const normalizedPage = String(customerListQueryParams.page);
@@ -59,11 +98,7 @@ export function useCustomerListView() {
   }, [customerListQueryParams.page, pageQuery, setCustomerPageQuery]);
 
   useEffect(() => {
-    if (
-      !customerListQuery.isSuccess ||
-      customerListQuery.isPlaceholderData ||
-      pageQuery === null
-    ) {
+    if (!customerListQuery.isSuccess || customerListQuery.isPlaceholderData || pageQuery === null) {
       return;
     }
 
@@ -116,6 +151,10 @@ export function useCustomerListView() {
       moveToNextPage: () => setCustomerPageQuery(currentPage + 1),
       moveToPreviousPage: () => setCustomerPageQuery(currentPage - 1),
       showsControls: customerListQuery.isSuccess && totalPages > 1,
+    },
+    search: {
+      onChange: setCustomerSearchQuery,
+      value: searchValue,
     },
     status,
   };

@@ -72,9 +72,14 @@ export const customerListResponseSchema = z.object({
   totalPages: z.number().int().min(0),
 });
 
-export const customerListQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).catch(1),
-});
+export const customerListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).catch(1),
+    search: z.string().trim().optional(),
+  })
+  .transform(({ page, search }) =>
+    search ? { page, search } : { page },
+  );
 
 export const customerFieldErrorsSchema = z
   .object({

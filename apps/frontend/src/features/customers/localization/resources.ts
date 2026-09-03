@@ -90,6 +90,10 @@ export const customerResources = {
           empty: 'Create your first customer to start tracking debts.',
           title: 'Customers',
         },
+        search: {
+          label: 'Search customers',
+          placeholder: 'Search name, code, or phone',
+        },
         toast: {
           create: {
             errorTitle: 'Could not create customer',
@@ -188,6 +192,10 @@ export const customerResources = {
           empty: 'Borc takibine baslamak icin ilk musteriyi olusturun.',
           title: 'Musteriler',
         },
+        search: {
+          label: 'Musteri ara',
+          placeholder: 'Ad, kod veya telefon ara',
+        },
         toast: {
           create: {
             errorTitle: 'Musteri olusturulamadi',
@@ -285,6 +293,10 @@ export const customerResources = {
         page: {
           empty: 'أنشئ أول عميل لبدء متابعة الديون.',
           title: 'العملاء',
+        },
+        search: {
+          label: 'ابحث عن العملاء',
+          placeholder: 'ابحث بالاسم أو الرمز أو الهاتف',
         },
         toast: {
           create: {
