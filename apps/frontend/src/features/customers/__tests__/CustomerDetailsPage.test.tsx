@@ -5,27 +5,20 @@ import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { CustomerDetailsResponse } from '@collectify/contracts';
+import { getBackendUrl } from '../../../shared/api/http';
+import { renderWithAppProviders } from '../../../shared/test/render';
+import { server } from '../../../shared/test/server';
+import { CustomerDetailsPage } from '../CustomerDetailsPage';
+import { CustomersPage } from '../CustomersPage';
+import {
+  baseCustomer,
+  emptyCustomerList,
+  resetCustomerTestEnvironment,
+} from './customerTestData';
 
-import { getBackendUrl } from '../../shared/api/http';
-import { renderWithAppProviders } from '../../shared/test/render';
-import { server } from '../../shared/test/server';
-import { CustomerDetailsPage } from './CustomerDetailsPage';
-import { CustomersPage } from './CustomersPage';
-
-const baseCustomer: CustomerDetailsResponse = {
-  id: 'customer_123',
-  name: 'Acme Market',
-  code: 'ACME-001',
-  phoneNumber: '+90 555 123 45 67',
+const customerWithAddress = {
+  ...baseCustomer,
   address: 'Istanbul',
-  createdAt: '2026-08-28T12:00:00.000Z',
-  updatedAt: '2026-08-28T12:00:00.000Z',
-  financialSummary: {
-    totalDebtAmount: '0.00',
-    totalPaidAmount: '0.00',
-    balanceAmount: '0.00',
-  },
 };
 
 function renderCustomerRoutes(initialEntries: string[]) {
@@ -38,19 +31,14 @@ function renderCustomerRoutes(initialEntries: string[]) {
   );
 }
 
-function setBrowserLanguages(languages: readonly string[]) {
-  Object.defineProperty(window.navigator, 'languages', {
-    configurable: true,
-    value: languages,
-  });
-}
-
 describe('CustomerDetailsPage', () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    document.documentElement.lang = '';
-    document.documentElement.removeAttribute('dir');
-    setBrowserLanguages(['en-US']);
+    resetCustomerTestEnvironment();
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json(emptyCustomerList),
+      ),
+    );
   });
 
   afterEach(() => {
@@ -63,7 +51,7 @@ describe('CustomerDetailsPage', () => {
       http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
         detailsRequestCount += 1;
 
-        if (params.customerId !== baseCustomer.id) {
+        if (params.customerId !== customerWithAddress.id) {
           return HttpResponse.json(
             {
               code: 'CUSTOMER_NOT_FOUND',
@@ -73,11 +61,11 @@ describe('CustomerDetailsPage', () => {
           );
         }
 
-        return HttpResponse.json(baseCustomer);
+        return HttpResponse.json(customerWithAddress);
       }),
     );
 
-    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+    renderCustomerRoutes([`/customers/${customerWithAddress.id}`]);
 
     expect(
       await screen.findByRole('heading', { name: 'Acme Market' }),

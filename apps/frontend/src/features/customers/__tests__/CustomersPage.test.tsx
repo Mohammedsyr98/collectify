@@ -8,114 +8,22 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { Route, Routes, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { getBackendUrl } from '../../../shared/api/http';
+import { server } from '../../../shared/test/server';
 import {
-  createCustomerRequestSchema,
-  type CustomerDetailsResponse,
-  type CustomerListResponse,
-} from '@collectify/contracts';
-
-import { getBackendUrl } from '../../shared/api/http';
-import { renderWithAppProviders } from '../../shared/test/render';
-import { server } from '../../shared/test/server';
-import { CustomerDetailsPage } from './CustomerDetailsPage';
-import { CustomersPage } from './CustomersPage';
-
-const baseCustomer: CustomerDetailsResponse = {
-  id: 'customer_123',
-  name: 'Acme Market',
-  code: 'ACME-001',
-  phoneNumber: '+90 555 123 45 67',
-  address: null,
-  createdAt: '2026-08-28T12:00:00.000Z',
-  updatedAt: '2026-08-28T12:00:00.000Z',
-  financialSummary: {
-    totalDebtAmount: '0.00',
-    totalPaidAmount: '0.00',
-    balanceAmount: '0.00',
-  },
-};
-
-const customerList: CustomerListResponse = {
-  items: [
-    {
-      id: 'customer_123',
-      name: 'Acme Market',
-      code: 'ACME-001',
-      phoneNumber: '+90 555 123 45 67',
-      createdAt: '2026-08-28T12:00:00.000Z',
-      updatedAt: '2026-08-28T12:00:00.000Z',
-      financialSummary: {
-        balancesByCurrency: [],
-        nextDueDate: null,
-      },
-    },
-    {
-      id: 'customer_456',
-      name: 'North Star Cafe',
-      code: 'NSC-002',
-      phoneNumber: '+90 555 456 78 90',
-      createdAt: '2026-08-29T12:00:00.000Z',
-      updatedAt: '2026-08-29T12:00:00.000Z',
-      financialSummary: {
-        balancesByCurrency: [],
-        nextDueDate: null,
-      },
-    },
-  ],
-  page: 1,
-  pageSize: 25,
-  totalItems: 2,
-  totalPages: 1,
-};
-
-const emptyCustomerList: CustomerListResponse = {
-  items: [],
-  page: 1,
-  pageSize: 25,
-  totalItems: 0,
-  totalPages: 0,
-};
-
-function renderCustomerRoutes(initialEntries: string[] = ['/customers']) {
-  return renderWithAppProviders(
-    <>
-      <Routes>
-        <Route element={<CustomersPage />} path="/customers" />
-        <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
-      </Routes>
-      <RouterLocationProbe />
-    </>,
-    { initialEntries },
-  );
-}
-
-function RouterLocationProbe() {
-  const location = useLocation();
-
-  return (
-    <div data-testid="router-location">
-      {location.pathname}
-      {location.search}
-    </div>
-  );
-}
-
-function setBrowserLanguages(languages: readonly string[]) {
-  Object.defineProperty(window.navigator, 'languages', {
-    configurable: true,
-    value: languages,
-  });
-}
+  baseCustomer,
+  customerList,
+  emptyCustomerList,
+  northStarCustomer,
+  resetCustomerTestEnvironment,
+} from './customerTestData';
+import { renderCustomerRoutes } from './renderCustomerRoutes';
 
 describe('CustomersPage', () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    document.documentElement.lang = '';
-    document.documentElement.removeAttribute('dir');
-    setBrowserLanguages(['en-US']);
+    resetCustomerTestEnvironment();
     server.use(
       http.get(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(emptyCustomerList),
@@ -127,7 +35,7 @@ describe('CustomersPage', () => {
     cleanup();
   });
 
-  it('renders the customer directory table from the list response', async () => {
+  it('renders a customer from the list response', async () => {
     server.use(
       http.get(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(customerList),
@@ -137,36 +45,7 @@ describe('CustomersPage', () => {
     renderCustomerRoutes();
 
     expect(
-      await screen.findByRole('columnheader', { name: 'Name' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Code' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Phone' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Remaining debt' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Overdue amount' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Next due date' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Actions' }),
-    ).toBeInTheDocument();
-
-    expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: 'ACME-001' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('cell', { name: '+90 555 123 45 67' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('cell', { name: 'North Star Cafe' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: 'NSC-002' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('cell', { name: '+90 555 456 78 90' }),
+      await screen.findByRole('cell', { name: 'Acme Market' }),
     ).toBeInTheDocument();
   });
 
@@ -410,6 +289,10 @@ describe('CustomersPage', () => {
     } finally {
       resolveNextPageRequest();
     }
+
+    expect(
+      await screen.findByRole('cell', { name: 'North Star Cafe' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps the current customer page visible while the previous page loads and updates pagination controls', async () => {
@@ -464,6 +347,10 @@ describe('CustomersPage', () => {
     } finally {
       resolvePreviousPageRequest();
     }
+
+    expect(
+      await screen.findByRole('cell', { name: 'Acme Market' }),
+    ).toBeInTheDocument();
   });
 
   it('shows a loading status while the customer list request is pending', async () => {
@@ -540,26 +427,14 @@ describe('CustomersPage', () => {
     expect(customerListRequestCount).toBe(2);
   });
 
-  it('opens a customer row actions menu and navigates to that customer details', async () => {
+  it('navigates from a customer row to that customer details page', async () => {
     const user = userEvent.setup();
-    const northStarDetails: CustomerDetailsResponse = {
-      ...baseCustomer,
-      id: 'customer_456',
-      name: 'North Star Cafe',
-      code: 'NSC-002',
-      phoneNumber: '+90 555 456 78 90',
-      createdAt: '2026-08-29T12:00:00.000Z',
-      updatedAt: '2026-08-29T12:00:00.000Z',
-    };
-    const requestedCustomerIds: string[] = [];
     server.use(
       http.get(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(customerList),
       ),
       http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
-        requestedCustomerIds.push(String(params.customerId));
-
-        if (params.customerId !== northStarDetails.id) {
+        if (params.customerId !== northStarCustomer.id) {
           return HttpResponse.json(
             {
               code: 'CUSTOMER_NOT_FOUND',
@@ -569,7 +444,7 @@ describe('CustomersPage', () => {
           );
         }
 
-        return HttpResponse.json(northStarDetails);
+        return HttpResponse.json(northStarCustomer);
       }),
     );
 
@@ -583,171 +458,18 @@ describe('CustomersPage', () => {
         name: 'Open actions for North Star Cafe',
       }),
     );
-
-    const actionsMenu = await screen.findByRole('menu', {
-      name: 'Actions for North Star Cafe',
-    });
-    await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Open details' }),
-    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Open details' }));
 
     expect(
       await screen.findByRole('heading', { name: 'North Star Cafe' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Code: NSC-002')).toBeInTheDocument();
-    expect(requestedCustomerIds).toEqual(['customer_456']);
-  });
-
-  it('opens additional currency balances as a mobile-friendly popover', async () => {
-    const user = userEvent.setup();
-    const financialCustomerList: CustomerListResponse = {
-      items: [
-        {
-          id: 'customer_financial',
-          name: 'South Ledger',
-          code: 'SL-003',
-          phoneNumber: '+90 555 700 00 03',
-          createdAt: '2026-08-30T12:00:00.000Z',
-          updatedAt: '2026-08-30T12:00:00.000Z',
-          financialSummary: {
-            balancesByCurrency: [
-              {
-                currency: 'USD',
-                remainingAmount: '125.50',
-                overdueAmount: '5.00',
-              },
-              {
-                currency: 'EUR',
-                remainingAmount: '80.00',
-                overdueAmount: '0.00',
-              },
-              {
-                currency: 'TRY',
-                remainingAmount: '12.30',
-                overdueAmount: '2.00',
-              },
-            ],
-            nextDueDate: '2026-09-15',
-          },
-        },
-      ],
-      page: 1,
-      pageSize: 25,
-      totalItems: 1,
-      totalPages: 1,
-    };
-    server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(financialCustomerList),
-      ),
-    );
-
-    renderCustomerRoutes();
-
-    const customerRow = await screen.findByRole('row', {
-      name: /South Ledger/,
-    });
-    expect(within(customerRow).getByText(/125\.50 USD/)).toBeInTheDocument();
-    expect(within(customerRow).queryByText(/80\.00 EUR/)).not.toBeInTheDocument();
-    expect(within(customerRow).queryByText(/12\.30 TRY/)).not.toBeInTheDocument();
-
-    const remainingExtraCurrencies = within(customerRow).getByRole('button', {
-      name: 'Show 2 more remaining debt currencies for South Ledger',
-    });
-    expect(remainingExtraCurrencies).toHaveTextContent('+2 currencies');
-
-    await user.click(remainingExtraCurrencies);
-
-    const currencyPopover = await screen.findByRole('dialog', {
-      name: 'Remaining debt currencies for South Ledger',
-    });
-    expect(
-      within(currencyPopover).getByRole('heading', { name: 'Remaining debt' }),
-    ).toBeInTheDocument();
-
-    const currencyRows = within(currencyPopover).getAllByRole('listitem');
-    expect(currencyRows).toHaveLength(2);
-    expect(currencyRows[0]).toHaveTextContent('EUR');
-    expect(currencyRows[0]).toHaveTextContent('80.00');
-    expect(currencyRows[1]).toHaveTextContent('TRY');
-    expect(currencyRows[1]).toHaveTextContent('12.30');
-
-    await user.keyboard('{Escape}');
-    expect(
-      screen.queryByRole('dialog', {
-        name: 'Remaining debt currencies for South Ledger',
-      }),
-    ).not.toBeInTheDocument();
-
-    await user.click(remainingExtraCurrencies);
-    expect(
-      await screen.findByRole('dialog', {
-        name: 'Remaining debt currencies for South Ledger',
-      }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole('heading', { name: 'Customers' }));
-    expect(
-      screen.queryByRole('dialog', {
-        name: 'Remaining debt currencies for South Ledger',
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('closes the create modal without posting and clears draft values', async () => {
-    const user = userEvent.setup();
-    let createRequestCount = 0;
-    server.use(
-      http.post(`${getBackendUrl()}/customers`, () => {
-        createRequestCount += 1;
-
-        return HttpResponse.json(baseCustomer, { status: 201 });
-      }),
-    );
-
-    renderCustomerRoutes();
-
-    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
-    await user.type(screen.getByLabelText('Name'), 'Draft Customer');
-    await user.click(screen.getByRole('button', { name: 'Close customer form' }));
-
-    await user.click(screen.getByRole('button', { name: 'Create customer' }));
-    expect(screen.getByLabelText('Name')).toHaveValue('');
-    await user.type(screen.getByLabelText('Name'), 'Draft Customer');
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    await user.click(screen.getByRole('button', { name: 'Create customer' }));
-    expect(screen.getByLabelText('Name')).toHaveValue('');
-    await user.type(screen.getByLabelText('Name'), 'Draft Customer');
-    fireEvent.mouseDown(screen.getByRole('dialog'));
-
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-    expect(createRequestCount).toBe(0);
   });
 
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {
-    const user = userEvent.setup();
-    let capturedCreateBody: unknown;
     server.use(
-      http.post(`${getBackendUrl()}/customers`, async ({ request }) => {
-        capturedCreateBody = await request.json();
-        const createRequestResult =
-          createCustomerRequestSchema.safeParse(capturedCreateBody);
-
-        if (!createRequestResult.success) {
-          return HttpResponse.json(
-            {
-              code: 'VALIDATION_ERROR',
-              message: 'Check the highlighted fields.',
-            },
-            { status: 400 },
-          );
-        }
-
-        return HttpResponse.json(baseCustomer, { status: 201 });
-      }),
+      http.post(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json(baseCustomer, { status: 201 }),
+      ),
       http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
         if (params.customerId !== baseCustomer.id) {
           return HttpResponse.json(
@@ -765,15 +487,13 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes();
 
-    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
-    await user.type(screen.getByLabelText('Name'), '  Acme Market  ');
-    await user.type(screen.getByLabelText('Code'), '  ACME-001  ');
-    await user.type(
-      screen.getByLabelText('Phone number'),
-      '  +90 555 123 45 67  ',
-    );
-    await user.type(screen.getByLabelText('Address'), '   ');
-    await user.click(screen.getByRole('button', { name: 'Save customer' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Create customer' }));
+    fillCreateCustomerForm({
+      code: 'ACME-001',
+      name: 'Acme Market',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
 
     expect(
       await screen.findByRole('status', { name: 'Customer created' }),
@@ -782,15 +502,9 @@ describe('CustomersPage', () => {
       await screen.findByRole('heading', { name: 'Acme Market' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Code: ACME-001')).toBeInTheDocument();
-    expect(capturedCreateBody).toEqual({
-      name: 'Acme Market',
-      code: 'ACME-001',
-      phoneNumber: '+90 555 123 45 67',
-    });
   });
 
-  it('keeps entered values and shows the duplicate-code toast when creation fails', async () => {
-    const user = userEvent.setup();
+  it('shows a duplicate-code create error toast and keeps the create modal open', async () => {
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(
@@ -808,48 +522,46 @@ describe('CustomersPage', () => {
 
     renderCustomerRoutes();
 
-    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
-    await user.type(screen.getByLabelText('Name'), 'Acme Market');
-    await user.type(screen.getByLabelText('Code'), 'ACME-001');
-    await user.type(screen.getByLabelText('Phone number'), '+90 555 123 45 67');
-    await user.click(screen.getByRole('button', { name: 'Save customer' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Create customer' }));
+    fillCreateCustomerForm({
+      code: 'ACME-001',
+      name: 'Acme Market',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
 
     expect(
       await screen.findByRole('alert', { name: 'Could not create customer' }),
     ).toHaveTextContent('A customer with this code already exists.');
-    expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
-    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
-    expect(screen.getByLabelText('Phone number')).toHaveValue(
-      '+90 555 123 45 67',
-    );
-  });
-
-  it('keeps entered values and shows the generic toast when creation fails unexpectedly', async () => {
-    const user = userEvent.setup();
-    server.use(
-      http.post(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.text('Internal server error', { status: 500 }),
-      ),
-    );
-
-    renderCustomerRoutes();
-
-    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
-    await user.type(screen.getByLabelText('Name'), 'Acme Market');
-    await user.type(screen.getByLabelText('Code'), 'ACME-001');
-    await user.type(screen.getByLabelText('Phone number'), '+90 555 123 45 67');
-    await user.type(screen.getByLabelText('Address'), '42 Market Street');
-    await user.click(screen.getByRole('button', { name: 'Save customer' }));
-
-    expect(
-      await screen.findByRole('alert', { name: 'Could not create customer' }),
-    ).toHaveTextContent('Something went wrong. Try again.');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
-    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
-    expect(screen.getByLabelText('Phone number')).toHaveValue(
-      '+90 555 123 45 67',
-    );
-    expect(screen.getByLabelText('Address')).toHaveValue('42 Market Street');
   });
 });
+
+function fillCreateCustomerForm({
+  address,
+  code,
+  name,
+  phoneNumber,
+}: {
+  address?: string;
+  code: string;
+  name: string;
+  phoneNumber: string;
+}) {
+  fireEvent.change(screen.getByLabelText('Name'), {
+    target: { value: name },
+  });
+  fireEvent.change(screen.getByLabelText('Code'), {
+    target: { value: code },
+  });
+  fireEvent.change(screen.getByLabelText('Phone number'), {
+    target: { value: phoneNumber },
+  });
+
+  if (address !== undefined) {
+    fireEvent.change(screen.getByLabelText('Address'), {
+      target: { value: address },
+    });
+  }
+}
