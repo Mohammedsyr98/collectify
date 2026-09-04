@@ -1,21 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Hash, MapPin, Phone, UserRound, X } from 'lucide-react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { createCustomerRequestSchema, type CreateCustomerRequest } from '@collectify/contracts';
 
-import { FormInput } from '../../shared/ui/form/FormInput';
-import { useCustomerValidationErrorFormatter } from './localization/useCustomerValidationErrorFormatter';
+import {
+  CustomerForm,
+  type CustomerFormValues,
+} from './CustomerForm';
 
-type CustomerCreateFormValues = {
-  name: string;
-  code: string;
-  phoneNumber: string;
-  address?: string;
-};
-
-const defaultValues: CustomerCreateFormValues = {
+const defaultValues: CustomerFormValues = {
   name: '',
   code: '',
   phoneNumber: '',
@@ -32,11 +26,6 @@ export function CustomerCreateModal({
   onSubmit: (request: CreateCustomerRequest) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const formatValidationError = useCustomerValidationErrorFormatter();
-  const form = useForm<CustomerCreateFormValues, unknown, CreateCustomerRequest>({
-    defaultValues,
-    resolver: zodResolver(createCustomerRequestSchema),
-  });
 
   return (
     <div
@@ -69,69 +58,13 @@ export function CustomerCreateModal({
           </button>
         </div>
 
-        <FormProvider {...form}>
-          <form
-            className="grid gap-[13px]"
-            noValidate
-            onSubmit={form.handleSubmit((request) => onSubmit(request))}
-          >
-            <FormInput
-              autoComplete="name"
-              formatError={formatValidationError}
-              icon={<UserRound aria-hidden="true" size={16} strokeWidth={2.2} />}
-              label={t('customers.create.nameLabel')}
-              name="name"
-              placeholder={t('customers.create.namePlaceholder')}
-              type="text"
-            />
-            <FormInput
-              autoComplete="off"
-              formatError={formatValidationError}
-              icon={<Hash aria-hidden="true" size={16} strokeWidth={2.2} />}
-              label={t('customers.create.codeLabel')}
-              name="code"
-              placeholder={t('customers.create.codePlaceholder')}
-              type="text"
-            />
-            <FormInput
-              autoComplete="tel"
-              dir="ltr"
-              formatError={formatValidationError}
-              icon={<Phone aria-hidden="true" size={16} strokeWidth={2.2} />}
-              label={t('customers.create.phoneNumberLabel')}
-              name="phoneNumber"
-              placeholder={t('customers.create.phoneNumberPlaceholder')}
-              type="tel"
-            />
-            <FormInput
-              autoComplete="street-address"
-              formatError={formatValidationError}
-              icon={<MapPin aria-hidden="true" size={16} strokeWidth={2.2} />}
-              label={t('customers.create.addressLabel')}
-              name="address"
-              placeholder={t('customers.create.addressPlaceholder')}
-              type="text"
-            />
-
-            <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
-              <button
-                className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
-                disabled={isSubmitting}
-                onClick={onClose}
-                type="button"
-              >
-                {t('customers.create.cancel')}
-              </button>
-              <button
-                className="min-h-11 cursor-pointer rounded-[5px] border-0 bg-primary px-[18px] text-[0.84rem] font-extrabold text-primary-foreground transition duration-150 hover:-translate-y-px hover:brightness-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                {isSubmitting ? t('customers.actions.saving') : t('customers.actions.save')}
-              </button>
-            </div>
-          </form>
-        </FormProvider>
+        <CustomerForm
+          defaultValues={defaultValues}
+          isSubmitting={isSubmitting}
+          onCancel={onClose}
+          onSubmit={onSubmit}
+          resolver={zodResolver(createCustomerRequestSchema)}
+        />
       </section>
     </div>
   );
