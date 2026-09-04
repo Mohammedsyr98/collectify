@@ -9,6 +9,7 @@ export const customerResources = {
         actions: {
           addDebt: 'Add debt',
           create: 'Create customer',
+          edit: 'Edit customer',
           recordPayment: 'Record payment',
           save: 'Save customer',
           saving: 'Saving',
@@ -122,6 +123,7 @@ export const customerResources = {
         actions: {
           addDebt: 'Borc ekle',
           create: 'Musteri olustur',
+          edit: 'Musteriyi duzenle',
           recordPayment: 'Odeme kaydet',
           save: 'Musteriyi kaydet',
           saving: 'Kaydediliyor',
@@ -235,6 +237,7 @@ export const customerResources = {
         actions: {
           addDebt: 'أضف دينًا',
           create: 'أنشئ عميلًا',
+          edit: 'عدّل العميل',
           recordPayment: 'سجل دفعة',
           save: 'احفظ العميل',
           saving: 'جارٍ الحفظ',
