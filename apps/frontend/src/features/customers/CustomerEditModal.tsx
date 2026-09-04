@@ -3,38 +3,47 @@ import { X } from 'lucide-react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { createCustomerRequestSchema, type CreateCustomerRequest } from '@collectify/contracts';
+import {
+  updateCustomerRequestSchema,
+  type CustomerDetailsResponse,
+  type UpdateCustomerRequest,
+} from '@collectify/contracts';
 
 import {
   CustomerFormActions,
   CustomerFormFields,
+  type CustomerFormValues,
 } from './CustomerForm';
 
-const defaultValues: CreateCustomerRequest = {
-  name: '',
-  code: '',
-  phoneNumber: '',
-  address: '',
-};
+function getDefaultValues(customer: CustomerDetailsResponse): CustomerFormValues {
+  return {
+    name: customer.name,
+    code: customer.code,
+    phoneNumber: customer.phoneNumber,
+    address: customer.address ?? '',
+  };
+}
 
-export function CustomerCreateModal({
+export function CustomerEditModal({
+  customer,
   isSubmitting,
   onClose,
   onSubmit,
 }: {
+  customer: CustomerDetailsResponse;
   isSubmitting: boolean;
   onClose: () => void;
-  onSubmit: (request: CreateCustomerRequest) => Promise<void>;
+  onSubmit: (request: UpdateCustomerRequest) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const form = useForm<CreateCustomerRequest>({
-    defaultValues,
-    resolver: zodResolver(createCustomerRequestSchema),
+  const form = useForm<CustomerFormValues, unknown, UpdateCustomerRequest>({
+    defaultValues: getDefaultValues(customer),
+    resolver: zodResolver(updateCustomerRequestSchema),
   });
 
   return (
     <div
-      aria-labelledby="customer-create-title"
+      aria-labelledby="customer-edit-title"
       aria-modal="true"
       className="fixed inset-0 z-10 grid place-items-center bg-foreground/25 p-4"
       onMouseDown={(event) => {
@@ -48,12 +57,12 @@ export function CustomerCreateModal({
         <div className="flex items-center justify-between gap-3">
           <h2
             className="m-0 text-[1.15rem] font-black leading-tight tracking-normal"
-            id="customer-create-title"
+            id="customer-edit-title"
           >
-            {t('customers.create.title')}
+            {t('customers.edit.title')}
           </h2>
           <button
-            aria-label={t('customers.create.close')}
+            aria-label={t('customers.edit.close')}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-background text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-wait disabled:opacity-70"
             disabled={isSubmitting}
             onClick={onClose}

@@ -32,6 +32,10 @@ export const customerResources = {
           totalPaid: 'Total paid',
         },
         errors: customerApiErrorTranslations.en,
+        edit: {
+          close: 'Close customer form',
+          title: 'Edit customer',
+        },
         form: {
           addressLabel: 'Address',
           addressPlaceholder: 'Optional address',
@@ -141,6 +145,10 @@ export const customerResources = {
           totalPaid: 'Toplam odenen',
         },
         errors: customerApiErrorTranslations.tr,
+        edit: {
+          close: 'Musteri formunu kapat',
+          title: 'Musteriyi duzenle',
+        },
         form: {
           addressLabel: 'Adres',
           addressPlaceholder: 'Istege bagli adres',
@@ -250,6 +258,10 @@ export const customerResources = {
           totalPaid: 'إجمالي المدفوع',
         },
         errors: customerApiErrorTranslations.ar,
+        edit: {
+          close: 'أغلق نموذج العميل',
+          title: 'عدّل العميل',
+        },
         form: {
           addressLabel: 'العنوان',
           addressPlaceholder: 'عنوان اختياري',
