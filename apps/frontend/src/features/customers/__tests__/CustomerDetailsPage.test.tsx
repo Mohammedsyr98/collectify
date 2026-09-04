@@ -87,6 +87,45 @@ describe('CustomerDetailsPage', () => {
     await waitFor(() => expect(detailsRequestCount).toBe(1));
   });
 
+  it('opens a prefilled edit form from loaded details', async () => {
+    const user = userEvent.setup();
+    let detailsRequestCount = 0;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        detailsRequestCount += 1;
+
+        if (params.customerId !== customerWithAddress.id) {
+          return HttpResponse.json(
+            {
+              code: 'CUSTOMER_NOT_FOUND',
+              message: 'Customer was not found.',
+            },
+            { status: 404 },
+          );
+        }
+
+        return HttpResponse.json(customerWithAddress);
+      }),
+    );
+
+    renderCustomerRoutes([`/customers/${customerWithAddress.id}`]);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Acme Market' }),
+    ).toBeInTheDocument();
+    expect(detailsRequestCount).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: 'Edit customer' }));
+
+    expect(detailsRequestCount).toBe(1);
+    expect(screen.getByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
+    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
+    expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
+    expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+  });
+
   it('renders a customer-specific not-found state and routes back to customers', async () => {
     const user = userEvent.setup();
     server.use(
