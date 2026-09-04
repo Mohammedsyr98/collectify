@@ -14,8 +14,8 @@ export const createCustomerRequestSchema = z.object({
   address: z
     .string()
     .trim()
-    .optional()
-    .transform((address) => (address ? address : undefined)),
+    .transform((address) => (address ? address : undefined))
+    .optional(),
 });
 
 export const updateCustomerRequestSchema = z.object({
@@ -37,10 +37,10 @@ export const updateCustomerRequestSchema = z.object({
   address: z
     .string()
     .trim()
-    .optional()
     .transform((address) =>
-      address === undefined ? undefined : address || null,
-    ),
+      address ? address : null,
+    )
+    .optional(),
 });
 
 export const customerSchema = z.object({
