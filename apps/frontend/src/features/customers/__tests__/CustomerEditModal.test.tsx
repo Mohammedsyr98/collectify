@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { UpdateCustomerRequest } from '@collectify/contracts';
@@ -42,5 +42,35 @@ describe('CustomerEditModal', () => {
     expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
     expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
     expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+  });
+
+  it('submits edited customer values', async () => {
+    const onClose = vi.fn();
+    const onSubmit = vi.fn<(request: UpdateCustomerRequest) => Promise<void>>(
+      async () => undefined,
+    );
+
+    renderWithAppProviders(
+      <CustomerEditModal
+        customer={customerWithAddress}
+        isSubmitting={false}
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'Acme Wholesale' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Acme Wholesale',
+        code: 'ACME-001',
+        phoneNumber: '+90 555 123 45 67',
+        address: 'Istanbul',
+      }),
+    );
   });
 });
