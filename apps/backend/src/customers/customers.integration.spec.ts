@@ -75,6 +75,62 @@ describe('customer routes', () => {
     );
   });
 
+  it('updates only the submitted customer fields', async () => {
+    const owner = await signUpOwner('owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: 'Main Street 42',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const response = await updateCustomer(owner.cookieHeader, created.id, {
+      name: '  Acme Wholesale  ',
+    });
+
+    expect(response.status).toBe(200);
+    const updated = customerDetailsResponseSchema.parse(await response.json());
+    expect(updated).toMatchObject({
+      id: created.id,
+      name: 'Acme Wholesale',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: 'Main Street 42',
+    });
+  });
+
+  it('clears customer address when address is submitted blank', async () => {
+    const owner = await signUpOwner('owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: 'Main Street 42',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const clearAddressResponse = await updateCustomer(
+      owner.cookieHeader,
+      created.id,
+      {
+        address: '   ',
+      },
+    );
+
+    expect(clearAddressResponse.status).toBe(200);
+    const clearedAddress = customerDetailsResponseSchema.parse(
+      await clearAddressResponse.json(),
+    );
+    expect(clearedAddress).toMatchObject({
+      id: created.id,
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: null,
+    });
+  });
+
   it('rejects invalid customer create input with field errors', async () => {
     const owner = await signUpOwner('owner@example.com');
 
@@ -562,6 +618,21 @@ describe('customer routes', () => {
   ): Promise<Response> {
     return fetch(`${backend!.baseUrl}/customers`, {
       method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: cookieHeader,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  function updateCustomer(
+    cookieHeader: string,
+    customerId: string,
+    body: unknown,
+  ): Promise<Response> {
+    return fetch(`${backend!.baseUrl}/customers/${customerId}`, {
+      method: 'PATCH',
       headers: {
         'content-type': 'application/json',
         cookie: cookieHeader,

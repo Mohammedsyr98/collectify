@@ -18,6 +18,31 @@ export const createCustomerRequestSchema = z.object({
     .transform((address) => (address ? address : undefined)),
 });
 
+export const updateCustomerRequestSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, customerValidationCode.customerNameRequired)
+    .optional(),
+  code: z
+    .string()
+    .trim()
+    .min(1, customerValidationCode.customerCodeRequired)
+    .optional(),
+  phoneNumber: z
+    .string()
+    .trim()
+    .min(1, customerValidationCode.customerPhoneNumberRequired)
+    .optional(),
+  address: z
+    .string()
+    .trim()
+    .optional()
+    .transform((address) =>
+      address === undefined ? undefined : address || null,
+    ),
+});
+
 export const customerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -57,6 +82,8 @@ export const customerDetailsResponseSchema = customerSchema.extend({
 });
 
 export const createCustomerResponseSchema = customerDetailsResponseSchema;
+
+export const updateCustomerResponseSchema = customerDetailsResponseSchema;
 
 export const customerListItemSchema = customerSchema
   .omit({ address: true })
@@ -99,10 +126,12 @@ export const customerErrorResponseSchema = z.object({
 });
 
 export type CreateCustomerRequest = z.infer<typeof createCustomerRequestSchema>;
+export type UpdateCustomerRequest = z.infer<typeof updateCustomerRequestSchema>;
 export type Customer = z.infer<typeof customerSchema>;
 export type CustomerFinancialSummary = z.infer<typeof customerFinancialSummarySchema>;
 export type CustomerDetailsResponse = z.infer<typeof customerDetailsResponseSchema>;
 export type CreateCustomerResponse = z.infer<typeof createCustomerResponseSchema>;
+export type UpdateCustomerResponse = z.infer<typeof updateCustomerResponseSchema>;
 export type CustomerListCurrencyBalance = z.infer<
   typeof customerListCurrencyBalanceSchema
 >;
