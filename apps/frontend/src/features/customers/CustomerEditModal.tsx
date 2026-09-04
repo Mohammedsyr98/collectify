@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X } from 'lucide-react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -14,6 +14,10 @@ import {
   CustomerFormFields,
   type CustomerFormValues,
 } from './CustomerForm';
+
+const updateCustomerFormResolver = zodResolver(
+  updateCustomerRequestSchema,
+) as Resolver<CustomerFormValues, unknown, UpdateCustomerRequest>;
 
 function getDefaultValues(customer: CustomerDetailsResponse): CustomerFormValues {
   return {
@@ -38,7 +42,7 @@ export function CustomerEditModal({
   const { t } = useTranslation();
   const form = useForm<CustomerFormValues, unknown, UpdateCustomerRequest>({
     defaultValues: getDefaultValues(customer),
-    resolver: zodResolver(updateCustomerRequestSchema),
+    resolver: updateCustomerFormResolver,
   });
 
   return (

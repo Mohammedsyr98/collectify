@@ -79,6 +79,16 @@ describe('customer contracts', () => {
     });
   });
 
+  it('accepts a null customer update address as an explicit clear value', () => {
+    expect(
+      updateCustomerRequestSchema.parse({
+        address: null,
+      }),
+    ).toEqual({
+      address: null,
+    });
+  });
+
   it('returns stable customer validation codes for required input', () => {
     const result = createCustomerRequestSchema.safeParse({
       name: '   ',

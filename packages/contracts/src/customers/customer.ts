@@ -35,8 +35,7 @@ export const updateCustomerRequestSchema = z.object({
     .min(1, customerValidationCode.customerPhoneNumberRequired)
     .optional(),
   address: z
-    .string()
-    .trim()
+    .union([z.string().trim(), z.null()])
     .transform((address) =>
       address ? address : null,
     )
