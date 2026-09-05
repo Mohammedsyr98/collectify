@@ -40,11 +40,18 @@ export function useCustomerListQuery(query: CustomerListQuery) {
 }
 
 export function useCustomerDetailsQuery(customerId: string | undefined) {
-  return useQuery({
+  const query = useQuery({
     queryKey: customerDetailsQueryKey(customerId ?? ''),
     queryFn: () => getCustomer(customerId!),
     enabled: Boolean(customerId),
   });
+  const customer = query.data?.id === customerId ? query.data : undefined;
+
+  return {
+    ...query,
+    customer,
+    isLoadingCustomer: Boolean(customerId) && !customer && query.isPending,
+  };
 }
 
 export function useCreateCustomerMutation({

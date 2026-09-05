@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
-import { CustomerEditModal } from './CustomerEditModal';
+import {
+  CustomerEditLoadingModal,
+  CustomerEditModal,
+} from './CustomerEditModal';
 import {
   useCreateCustomerMutation,
   useCustomerDetailsQuery,
@@ -26,10 +29,7 @@ export function CustomersPage() {
   });
   const isTableLoading = status.status === 'loading';
   const showsCustomerTable = isTableLoading || status.status === 'ready';
-  const editingCustomer =
-    editingCustomerQuery.data?.id === editingCustomerId
-      ? editingCustomerQuery.data
-      : undefined;
+  const editingCustomer = editingCustomerQuery.customer;
 
   return (
     <main
@@ -162,6 +162,9 @@ export function CustomersPage() {
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={createCustomer}
         />
+      ) : null}
+      {editingCustomerQuery.isLoadingCustomer ? (
+        <CustomerEditLoadingModal onClose={() => setEditingCustomerId(undefined)} />
       ) : null}
       {editingCustomer ? (
         <CustomerEditModal

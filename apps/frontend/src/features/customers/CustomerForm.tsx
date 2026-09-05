@@ -1,6 +1,8 @@
 import { Hash, MapPin, Phone, UserRound } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { FormField } from '../../shared/ui/form/FormField';
 import { FormInput } from '../../shared/ui/form/FormInput';
 import { useCustomerValidationErrorFormatter } from './localization/useCustomerValidationErrorFormatter';
 
@@ -60,6 +62,69 @@ export function CustomerFormFields() {
         type="text"
       />
     </>
+  );
+}
+
+export function CustomerFormSkeletonFields() {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <CustomerFormSkeletonInput
+        icon={<UserRound aria-hidden="true" size={16} strokeWidth={2.2} />}
+        id="customer-form-skeleton-name"
+        label={t('customers.form.nameLabel')}
+        skeletonWidthClassName="w-32"
+      />
+      <CustomerFormSkeletonInput
+        icon={<Hash aria-hidden="true" size={16} strokeWidth={2.2} />}
+        id="customer-form-skeleton-code"
+        label={t('customers.form.codeLabel')}
+        skeletonWidthClassName="w-24"
+      />
+      <CustomerFormSkeletonInput
+        icon={<Phone aria-hidden="true" size={16} strokeWidth={2.2} />}
+        id="customer-form-skeleton-phone-number"
+        label={t('customers.form.phoneNumberLabel')}
+        skeletonWidthClassName="w-40"
+      />
+      <CustomerFormSkeletonInput
+        icon={<MapPin aria-hidden="true" size={16} strokeWidth={2.2} />}
+        id="customer-form-skeleton-address"
+        label={t('customers.form.addressLabel')}
+        skeletonWidthClassName="w-36"
+      />
+    </>
+  );
+}
+
+function CustomerFormSkeletonInput({
+  icon,
+  id,
+  label,
+  skeletonWidthClassName,
+}: {
+  icon: ReactNode;
+  id: string;
+  label: string;
+  skeletonWidthClassName: string;
+}) {
+  return (
+    <FormField htmlFor={id} icon={icon} label={label}>
+      <input
+        aria-busy="true"
+        className="min-h-10 w-full cursor-wait border-0 bg-transparent px-3.5 py-0 text-transparent outline-none disabled:opacity-100"
+        disabled
+        id={id}
+        readOnly
+        type="text"
+        value=""
+      />
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute start-9 h-3.5 rounded-[4px] bg-muted-foreground/20 motion-safe:animate-pulse ${skeletonWidthClassName}`}
+      />
+    </FormField>
   );
 }
 
