@@ -602,6 +602,35 @@ describe('CustomersPage', () => {
     expect(await screen.findByRole('heading', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
+  it('opens the edit flow from a customer row action', async () => {
+    const user = userEvent.setup();
+    const requestedCustomerIds: string[] = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+
+        return HttpResponse.json({
+          ...baseCustomer,
+          address: 'Main Street 42',
+        });
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    await user.click(
+      within(acmeRow).getByRole('button', {
+        name: 'Open actions for Acme Market',
+      }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+
+    expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
+    expect(requestedCustomerIds).toEqual([baseCustomer.id]);
+  });
+
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>

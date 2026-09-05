@@ -55,6 +55,7 @@ export const customerResources = {
         },
         list: {
           actions: {
+            edit: 'Edit customer',
             menuLabel: 'Actions for {{name}}',
             openDetails: 'Open details',
             openMenu: 'Open actions for {{name}}',
@@ -169,6 +170,7 @@ export const customerResources = {
         },
         list: {
           actions: {
+            edit: 'Musteriyi duzenle',
             menuLabel: '{{name}} icin islemler',
             openDetails: 'Detaylari ac',
             openMenu: '{{name}} icin islemleri ac',
@@ -278,6 +280,7 @@ export const customerResources = {
         },
         list: {
           actions: {
+            edit: 'تعديل العميل',
             menuLabel: 'إجراءات {{name}}',
             openDetails: 'افتح التفاصيل',
             openMenu: 'فتح إجراءات {{name}}',

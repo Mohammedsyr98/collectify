@@ -16,12 +16,17 @@ const customerColumnHelper = createColumnHelper<
 type CustomerTableProps = {
   customers: CustomerListItem[];
   isLoading?: boolean;
+  onEditCustomer: (customerId: string) => void;
 };
 
 const skeletonRows = Array.from({ length: 6 }, (_, index) => index);
 const skeletonCellWidths = ['w-36', 'w-24', 'w-36', 'w-28', 'w-28', 'w-24', 'w-16'];
 
-export function CustomerTable({ customers, isLoading = false }: CustomerTableProps) {
+export function CustomerTable({
+  customers,
+  isLoading = false,
+  onEditCustomer,
+}: CustomerTableProps) {
   const { t } = useTranslation();
   const customerColumns = useMemo(
     () =>
@@ -69,11 +74,12 @@ export function CustomerTable({ customers, isLoading = false }: CustomerTablePro
             <CustomerActionsCell
               customerId={row.original.id}
               customerName={row.original.name}
+              onEditCustomer={onEditCustomer}
             />
           ),
         }),
       ]),
-    [t],
+    [onEditCustomer, t],
   );
   const customerTable = useTable({
     features: customerTableFeatures,

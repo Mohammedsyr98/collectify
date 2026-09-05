@@ -1,5 +1,5 @@
-import { ArrowUpRight, MoreHorizontal } from 'lucide-react';
-import { useId, useRef } from 'react';
+import { ArrowUpRight, MoreHorizontal, Pencil } from 'lucide-react';
+import { useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -7,33 +7,38 @@ import { useNavigate } from 'react-router';
 import { useAnchoredPopup } from './useAnchoredPopup';
 
 const actionsMenuGap = 8;
-const actionsMenuEstimatedHeight = 48;
+const actionsMenuEstimatedHeight = 88;
 const actionsMenuWidth = 176;
 
 type CustomerActionsCellProps = {
   customerId: string;
   customerName: string;
+  onEditCustomer: (customerId: string) => void;
 };
 
 export function CustomerActionsCell({
   customerId,
   customerName,
+  onEditCustomer,
 }: CustomerActionsCellProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const menuId = useId();
-  const openDetailsRef = useRef<HTMLButtonElement>(null);
   const menu = useAnchoredPopup<HTMLButtonElement, HTMLDivElement>({
     estimatedHeight: actionsMenuEstimatedHeight,
     gap: actionsMenuGap,
     horizontalAlignment: 'visualEnd',
-    initialFocusRef: openDetailsRef,
     width: actionsMenuWidth,
   });
 
   const openDetails = () => {
     menu.close();
     void navigate(`/customers/${customerId}`);
+  };
+
+  const editCustomer = () => {
+    menu.close();
+    onEditCustomer(customerId);
   };
 
   return (
@@ -71,8 +76,16 @@ export function CustomerActionsCell({
             >
               <button
                 className="flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-[4px] border-0 bg-transparent px-2.5 text-start text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted focus:bg-muted focus:outline-none"
+                onClick={editCustomer}
+                role="menuitem"
+                type="button"
+              >
+                <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />
+                {t('customers.list.actions.edit')}
+              </button>
+              <button
+                className="flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-[4px] border-0 bg-transparent px-2.5 text-start text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted focus:bg-muted focus:outline-none"
                 onClick={openDetails}
-                ref={openDetailsRef}
                 role="menuitem"
                 type="button"
               >
