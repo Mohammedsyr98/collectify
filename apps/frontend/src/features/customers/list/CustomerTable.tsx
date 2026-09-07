@@ -17,6 +17,7 @@ type CustomerTableProps = {
   customers: CustomerListItem[];
   isLoading?: boolean;
   onEditCustomer: (customerId: string) => void;
+  onPrepareEditCustomer: (customerId: string) => void;
 };
 
 const skeletonRows = Array.from({ length: 6 }, (_, index) => index);
@@ -26,6 +27,7 @@ export function CustomerTable({
   customers,
   isLoading = false,
   onEditCustomer,
+  onPrepareEditCustomer,
 }: CustomerTableProps) {
   const { t } = useTranslation();
   const customerColumns = useMemo(
@@ -75,11 +77,12 @@ export function CustomerTable({
               customerId={row.original.id}
               customerName={row.original.name}
               onEditCustomer={onEditCustomer}
+              onPrepareEditCustomer={onPrepareEditCustomer}
             />
           ),
         }),
       ]),
-    [onEditCustomer, t],
+    [onEditCustomer, onPrepareEditCustomer, t],
   );
   const customerTable = useTable({
     features: customerTableFeatures,

@@ -14,12 +14,14 @@ type CustomerActionsCellProps = {
   customerId: string;
   customerName: string;
   onEditCustomer: (customerId: string) => void;
+  onPrepareEditCustomer: (customerId: string) => void;
 };
 
 export function CustomerActionsCell({
   customerId,
   customerName,
   onEditCustomer,
+  onPrepareEditCustomer,
 }: CustomerActionsCellProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -41,6 +43,14 @@ export function CustomerActionsCell({
     onEditCustomer(customerId);
   };
 
+  const toggleMenu = () => {
+    if (!menu.isOpen) {
+      onPrepareEditCustomer(customerId);
+    }
+
+    menu.toggle();
+  };
+
   return (
     <>
       <button
@@ -51,7 +61,7 @@ export function CustomerActionsCell({
           name: customerName,
         })}
         className="inline-flex size-8 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        onClick={menu.toggle}
+        onClick={toggleMenu}
         ref={menu.triggerRef}
         type="button"
       >

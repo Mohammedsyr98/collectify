@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -31,6 +32,8 @@ export const customerListPageQueryKey = (query: CustomerListQuery) =>
 export const customerDetailsQueryKey = (customerId: string) =>
   ['customers', customerId] as const;
 
+const customerDetailsStaleTimeMs = 30_000;
+
 export function useCustomerListQuery(query: CustomerListQuery) {
   return useQuery({
     queryKey: customerListPageQueryKey(query),
@@ -40,17 +43,30 @@ export function useCustomerListQuery(query: CustomerListQuery) {
 }
 
 export function useCustomerDetailsQuery(customerId: string | undefined) {
+  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: customerDetailsQueryKey(customerId ?? ''),
     queryFn: () => getCustomer(customerId!),
     enabled: Boolean(customerId),
+    staleTime: customerDetailsStaleTimeMs,
   });
   const customer = query.data?.id === customerId ? query.data : undefined;
+  const prefetch = useCallback(
+    (nextCustomerId: string) => {
+      void queryClient.prefetchQuery({
+        queryKey: customerDetailsQueryKey(nextCustomerId),
+        queryFn: () => getCustomer(nextCustomerId),
+        staleTime: customerDetailsStaleTimeMs,
+      });
+    },
+    [queryClient],
+  );
 
   return {
     ...query,
     customer,
     isLoadingCustomer: Boolean(customerId) && !customer && query.isPending,
+    prefetch,
   };
 }
 

@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { isCustomerApiErrorCode } from '@collectify/contracts';
 
@@ -10,9 +9,7 @@ import {
   CustomerEditLoadingModal,
   CustomerEditModal,
 } from './CustomerEditModal';
-import { getCustomer } from './api/get-customer';
 import {
-  customerDetailsQueryKey,
   useCreateCustomerMutation,
   useCustomerDetailsQuery,
   useUpdateCustomerMutation,
@@ -24,7 +21,6 @@ import { useToast } from '../../shared/ui/toast/toastContext';
 
 export function CustomersPage() {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState<string>();
@@ -40,27 +36,33 @@ export function CustomersPage() {
   const showsCustomerTable = isTableLoading || status.status === 'ready';
   const editingCustomer = editingCustomerQuery.customer;
 
-  const openCustomerEditor = async (customerId: string) => {
-    setEditingCustomerId(customerId);
-
-    try {
-      await queryClient.fetchQuery({
-        queryKey: customerDetailsQueryKey(customerId),
-        queryFn: () => getCustomer(customerId),
-      });
-    } catch (error) {
-      setEditingCustomerId(undefined);
-      showToast({
-        variant: 'error',
-        title: t('customers.toast.editLoad.errorTitle'),
-        description: resolveApiErrorDescription(error, {
-          describeKnownCode: (code) => t(`customers.errors.${code}`),
-          fallbackDescription: t('errors.genericDescription'),
-          isKnownCode: isCustomerApiErrorCode,
-        }),
-      });
+  useEffect(() => {
+    if (
+      !editingCustomerId ||
+      !editingCustomerQuery.isError ||
+      editingCustomerQuery.isFetching
+    ) {
+      return;
     }
-  };
+
+    setEditingCustomerId(undefined);
+    showToast({
+      variant: 'error',
+      title: t('customers.toast.editLoad.errorTitle'),
+      description: resolveApiErrorDescription(editingCustomerQuery.error, {
+        describeKnownCode: (code) => t(`customers.errors.${code}`),
+        fallbackDescription: t('errors.genericDescription'),
+        isKnownCode: isCustomerApiErrorCode,
+      }),
+    });
+  }, [
+    editingCustomerId,
+    editingCustomerQuery.error,
+    editingCustomerQuery.isFetching,
+    editingCustomerQuery.isError,
+    showToast,
+    t,
+  ]);
 
   return (
     <main
@@ -155,9 +157,8 @@ export function CustomersPage() {
             <CustomerTable
               customers={customers}
               isLoading={isTableLoading}
-              onEditCustomer={(customerId) => {
-                void openCustomerEditor(customerId);
-              }}
+              onEditCustomer={setEditingCustomerId}
+              onPrepareEditCustomer={editingCustomerQuery.prefetch}
             />
           </div>
         ) : null}
