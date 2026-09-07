@@ -75,6 +75,169 @@ describe('customer routes', () => {
     );
   });
 
+  it('updates only the submitted customer fields', async () => {
+    const owner = await signUpOwner('owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: 'Main Street 42',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const response = await updateCustomer(owner.cookieHeader, created.id, {
+      name: '  Acme Wholesale  ',
+    });
+
+    expect(response.status).toBe(200);
+    const updated = customerDetailsResponseSchema.parse(await response.json());
+    expect(updated).toMatchObject({
+      id: created.id,
+      name: 'Acme Wholesale',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: 'Main Street 42',
+    });
+  });
+
+  it('clears customer address when address is submitted blank', async () => {
+    const owner = await signUpOwner('owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: 'Main Street 42',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const clearAddressResponse = await updateCustomer(
+      owner.cookieHeader,
+      created.id,
+      {
+        address: '   ',
+      },
+    );
+
+    expect(clearAddressResponse.status).toBe(200);
+    const clearedAddress = customerDetailsResponseSchema.parse(
+      await clearAddressResponse.json(),
+    );
+    expect(clearedAddress).toMatchObject({
+      id: created.id,
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+      address: null,
+    });
+  });
+
+  it('rejects invalid customer update input with field errors', async () => {
+    const owner = await signUpOwner('owner@example.com');
+
+    const response = await updateCustomer(owner.cookieHeader, 'customer_123', {
+      name: '   ',
+      code: '',
+      phoneNumber: '  ',
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'Check the highlighted fields.',
+      fieldErrors: {
+        name: ['Customer name is required.'],
+        code: ['Customer code is required.'],
+        phoneNumber: ['Phone number is required.'],
+      },
+    });
+  });
+
+  it('rejects duplicate customer code on update only within the same owner', async () => {
+    const firstOwner = await signUpOwner('first-owner@example.com');
+    const secondOwner = await signUpOwner('second-owner@example.com');
+
+    expect(
+      await createCustomer(firstOwner.cookieHeader, {
+        name: 'Acme Market',
+        code: 'ACME',
+        phoneNumber: '+90 555 111 11 11',
+      }),
+    ).toHaveProperty('status', 201);
+    const firstOwnerSecondCustomerResponse = await createCustomer(
+      firstOwner.cookieHeader,
+      {
+        name: 'Harbor Supplies',
+        code: 'HARBOR',
+        phoneNumber: '+90 555 222 22 22',
+      },
+    );
+    expect(firstOwnerSecondCustomerResponse).toHaveProperty('status', 201);
+    expect(
+      await createCustomer(secondOwner.cookieHeader, {
+        name: 'Other Acme',
+        code: 'acme',
+        phoneNumber: '+90 555 333 33 33',
+      }),
+    ).toHaveProperty('status', 201);
+    const firstOwnerSecondCustomer = createCustomerResponseSchema.parse(
+      await firstOwnerSecondCustomerResponse.json(),
+    );
+
+    const duplicateResponse = await updateCustomer(
+      firstOwner.cookieHeader,
+      firstOwnerSecondCustomer.id,
+      {
+        code: ' acme ',
+      },
+    );
+
+    expect(duplicateResponse.status).toBe(409);
+    await expect(duplicateResponse.json()).resolves.toEqual({
+      code: 'CUSTOMER_CODE_ALREADY_EXISTS',
+      message: 'A customer with this code already exists.',
+      fieldErrors: {
+        code: ['A customer with this code already exists.'],
+      },
+    });
+  });
+
+  it('returns the same not-found response when updating missing and non-owned customers', async () => {
+    const firstOwner = await signUpOwner('first-owner@example.com');
+    const secondOwner = await signUpOwner('second-owner@example.com');
+    const createResponse = await createCustomer(firstOwner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME',
+      phoneNumber: '+90 555 111 11 11',
+    });
+    const created = createCustomerResponseSchema.parse(await createResponse.json());
+
+    const missingResponse = await updateCustomer(
+      firstOwner.cookieHeader,
+      'missing',
+      {
+        name: 'Missing Customer',
+      },
+    );
+    const nonOwnedResponse = await updateCustomer(
+      secondOwner.cookieHeader,
+      created.id,
+      {
+        name: 'Stolen Customer',
+      },
+    );
+
+    expect(missingResponse.status).toBe(404);
+    expect(nonOwnedResponse.status).toBe(404);
+    await expect(missingResponse.json()).resolves.toEqual({
+      code: 'CUSTOMER_NOT_FOUND',
+      message: 'Customer was not found.',
+    });
+    await expect(nonOwnedResponse.json()).resolves.toEqual({
+      code: 'CUSTOMER_NOT_FOUND',
+      message: 'Customer was not found.',
+    });
+  });
+
   it('rejects invalid customer create input with field errors', async () => {
     const owner = await signUpOwner('owner@example.com');
 
@@ -562,6 +725,21 @@ describe('customer routes', () => {
   ): Promise<Response> {
     return fetch(`${backend!.baseUrl}/customers`, {
       method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: cookieHeader,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  function updateCustomer(
+    cookieHeader: string,
+    customerId: string,
+    body: unknown,
+  ): Promise<Response> {
+    return fetch(`${backend!.baseUrl}/customers/${customerId}`, {
+      method: 'PATCH',
       headers: {
         'content-type': 'application/json',
         cookie: cookieHeader,

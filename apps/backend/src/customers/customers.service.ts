@@ -8,6 +8,8 @@ import {
   type CustomerListItem,
   type CustomerListFinancialSummary,
   type CustomerListResponse,
+  type UpdateCustomerRequest,
+  type UpdateCustomerResponse,
 } from '@collectify/contracts';
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -78,6 +80,42 @@ export class CustomersService {
     }
 
     return toCustomerDetailsResponse(customer);
+  }
+
+  async updateCustomer(
+    currentOwner: AuthenticatedOwner,
+    customerId: string,
+    request: UpdateCustomerRequest,
+  ): Promise<UpdateCustomerResponse> {
+    const updateValues: Partial<typeof customers.$inferInsert> = {
+      ...request,
+      updatedAt: new Date(),
+    };
+
+    try {
+      const [customer] = await this.databaseService.db
+        .update(customers)
+        .set(updateValues)
+        .where(
+          and(
+            eq(customers.id, customerId),
+            eq(customers.ownerProfileId, currentOwner.ownerProfile.id),
+          ),
+        )
+        .returning();
+
+      if (!customer) {
+        throw customerException(customerApiErrorCode.customerNotFound);
+      }
+
+      return toCustomerDetailsResponse(customer);
+    } catch (error) {
+      if (isCustomerCodeUniqueViolation(error)) {
+        throw customerException(customerApiErrorCode.customerCodeAlreadyExists);
+      }
+
+      throw error;
+    }
   }
 
   async listCustomers(

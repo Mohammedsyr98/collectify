@@ -9,21 +9,13 @@ export const customerResources = {
         actions: {
           addDebt: 'Add debt',
           create: 'Create customer',
+          edit: 'Edit customer',
           recordPayment: 'Record payment',
           save: 'Save customer',
           saving: 'Saving',
         },
         create: {
-          addressLabel: 'Address',
-          addressPlaceholder: 'Optional address',
-          cancel: 'Cancel',
           close: 'Close customer form',
-          codeLabel: 'Code',
-          codePlaceholder: 'ACME-001',
-          nameLabel: 'Name',
-          namePlaceholder: 'Acme Market',
-          phoneNumberLabel: 'Phone number',
-          phoneNumberPlaceholder: '+90 555 123 45 67',
           title: 'Create customer',
         },
         details: {
@@ -41,6 +33,21 @@ export const customerResources = {
           totalPaid: 'Total paid',
         },
         errors: customerApiErrorTranslations.en,
+        edit: {
+          close: 'Close customer form',
+          title: 'Edit customer',
+        },
+        form: {
+          addressLabel: 'Address',
+          addressPlaceholder: 'Optional address',
+          cancel: 'Cancel',
+          codeLabel: 'Code',
+          codePlaceholder: 'ACME-001',
+          nameLabel: 'Name',
+          namePlaceholder: 'Acme Market',
+          phoneNumberLabel: 'Phone number',
+          phoneNumberPlaceholder: '+90 555 123 45 67',
+        },
         notFound: {
           action: 'Back to Customers',
           detail: 'This customer may have been removed or belongs to another owner.',
@@ -48,6 +55,7 @@ export const customerResources = {
         },
         list: {
           actions: {
+            edit: 'Edit customer',
             menuLabel: 'Actions for {{name}}',
             openDetails: 'Open details',
             openMenu: 'Open actions for {{name}}',
@@ -100,6 +108,14 @@ export const customerResources = {
             successDescription: '{{name}} is ready for debt tracking.',
             successTitle: 'Customer created',
           },
+          editLoad: {
+            errorTitle: 'Could not open customer editor',
+          },
+          update: {
+            errorTitle: 'Could not update customer',
+            successDescription: '{{name}} changes were saved.',
+            successTitle: 'Customer updated',
+          },
         },
         validation: customerValidationTranslations.en,
       },
@@ -111,21 +127,13 @@ export const customerResources = {
         actions: {
           addDebt: 'Borc ekle',
           create: 'Musteri olustur',
+          edit: 'Musteriyi duzenle',
           recordPayment: 'Odeme kaydet',
           save: 'Musteriyi kaydet',
           saving: 'Kaydediliyor',
         },
         create: {
-          addressLabel: 'Adres',
-          addressPlaceholder: 'Istege bagli adres',
-          cancel: 'Iptal',
           close: 'Musteri formunu kapat',
-          codeLabel: 'Kod',
-          codePlaceholder: 'ACME-001',
-          nameLabel: 'Ad',
-          namePlaceholder: 'Acme Market',
-          phoneNumberLabel: 'Telefon numarasi',
-          phoneNumberPlaceholder: '+90 555 123 45 67',
           title: 'Musteri olustur',
         },
         details: {
@@ -143,6 +151,21 @@ export const customerResources = {
           totalPaid: 'Toplam odenen',
         },
         errors: customerApiErrorTranslations.tr,
+        edit: {
+          close: 'Musteri formunu kapat',
+          title: 'Musteriyi duzenle',
+        },
+        form: {
+          addressLabel: 'Adres',
+          addressPlaceholder: 'Istege bagli adres',
+          cancel: 'Iptal',
+          codeLabel: 'Kod',
+          codePlaceholder: 'ACME-001',
+          nameLabel: 'Ad',
+          namePlaceholder: 'Acme Market',
+          phoneNumberLabel: 'Telefon numarasi',
+          phoneNumberPlaceholder: '+90 555 123 45 67',
+        },
         notFound: {
           action: 'Musterilere don',
           detail: 'Bu musteri silinmis veya baska bir sahibe ait olabilir.',
@@ -150,6 +173,7 @@ export const customerResources = {
         },
         list: {
           actions: {
+            edit: 'Musteriyi duzenle',
             menuLabel: '{{name}} icin islemler',
             openDetails: 'Detaylari ac',
             openMenu: '{{name}} icin islemleri ac',
@@ -202,6 +226,14 @@ export const customerResources = {
             successDescription: '{{name}} borc takibi icin hazir.',
             successTitle: 'Musteri olusturuldu',
           },
+          editLoad: {
+            errorTitle: 'Musteri duzenleyici acilamadi',
+          },
+          update: {
+            errorTitle: 'Musteri guncellenemedi',
+            successDescription: '{{name}} degisiklikleri kaydedildi.',
+            successTitle: 'Musteri guncellendi',
+          },
         },
         validation: customerValidationTranslations.tr,
       },
@@ -213,21 +245,13 @@ export const customerResources = {
         actions: {
           addDebt: 'أضف دينًا',
           create: 'أنشئ عميلًا',
+          edit: 'عدّل العميل',
           recordPayment: 'سجل دفعة',
           save: 'احفظ العميل',
           saving: 'جارٍ الحفظ',
         },
         create: {
-          addressLabel: 'العنوان',
-          addressPlaceholder: 'عنوان اختياري',
-          cancel: 'إلغاء',
           close: 'أغلق نموذج العميل',
-          codeLabel: 'الرمز',
-          codePlaceholder: 'ACME-001',
-          nameLabel: 'الاسم',
-          namePlaceholder: 'سوق أكمي',
-          phoneNumberLabel: 'رقم الهاتف',
-          phoneNumberPlaceholder: '+90 555 123 45 67',
           title: 'أنشئ عميلًا',
         },
         details: {
@@ -245,8 +269,24 @@ export const customerResources = {
           totalPaid: 'إجمالي المدفوع',
         },
         errors: customerApiErrorTranslations.ar,
+        edit: {
+          close: 'أغلق نموذج العميل',
+          title: 'عدّل العميل',
+        },
+        form: {
+          addressLabel: 'العنوان',
+          addressPlaceholder: 'عنوان اختياري',
+          cancel: 'إلغاء',
+          codeLabel: 'الرمز',
+          codePlaceholder: 'ACME-001',
+          nameLabel: 'الاسم',
+          namePlaceholder: 'سوق أكمي',
+          phoneNumberLabel: 'رقم الهاتف',
+          phoneNumberPlaceholder: '+90 555 123 45 67',
+        },
         list: {
           actions: {
+            edit: 'تعديل العميل',
             menuLabel: 'إجراءات {{name}}',
             openDetails: 'افتح التفاصيل',
             openMenu: 'فتح إجراءات {{name}}',
@@ -303,6 +343,14 @@ export const customerResources = {
             errorTitle: 'تعذر إنشاء العميل',
             successDescription: '{{name}} جاهز لمتابعة الديون.',
             successTitle: 'تم إنشاء العميل',
+          },
+          editLoad: {
+            errorTitle: 'تعذر فتح محرر العميل',
+          },
+          update: {
+            errorTitle: 'تعذر تحديث العميل',
+            successDescription: 'تم حفظ تغييرات {{name}}.',
+            successTitle: 'تم تحديث العميل',
           },
         },
         validation: customerValidationTranslations.ar,

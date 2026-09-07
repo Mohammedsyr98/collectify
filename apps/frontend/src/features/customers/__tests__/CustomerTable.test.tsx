@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { CustomerTable } from '../list/CustomerTable';
@@ -20,7 +20,13 @@ describe('CustomerTable', () => {
   });
 
   it('renders customer directory columns and identity cells', () => {
-    renderWithAppProviders(<CustomerTable customers={customerList.items} />);
+    renderWithAppProviders(
+      <CustomerTable
+        customers={customerList.items}
+        onEditCustomer={vi.fn()}
+        onPrepareEditCustomer={vi.fn()}
+      />,
+    );
 
     expect(
       screen.getByRole('columnheader', { name: 'Name' }),
@@ -56,7 +62,11 @@ describe('CustomerTable', () => {
 
   it('renders financial summary cells for customers with and without balances', () => {
     renderWithAppProviders(
-      <CustomerTable customers={[financialCustomer, customerList.items[0]]} />,
+      <CustomerTable
+        customers={[financialCustomer, customerList.items[0]]}
+        onEditCustomer={vi.fn()}
+        onPrepareEditCustomer={vi.fn()}
+      />,
     );
 
     const financialRow = screen.getByRole('row', { name: /South Ledger/ });
@@ -81,7 +91,14 @@ describe('CustomerTable', () => {
   });
 
   it('renders decorative skeleton rows in loading mode', () => {
-    renderWithAppProviders(<CustomerTable customers={customerList.items} isLoading />);
+    renderWithAppProviders(
+      <CustomerTable
+        customers={customerList.items}
+        isLoading
+        onEditCustomer={vi.fn()}
+        onPrepareEditCustomer={vi.fn()}
+      />,
+    );
 
     expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
     expect(

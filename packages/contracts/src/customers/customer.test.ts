@@ -7,6 +7,7 @@ import {
   customerErrorResponseSchema,
   customerListPageSize,
   customerListResponseSchema,
+  updateCustomerRequestSchema,
 } from './customer.js';
 import { customerApiErrorCode } from './api-error-codes.js';
 import { customerValidationCode } from './validation-codes.js';
@@ -52,6 +53,39 @@ describe('customer contracts', () => {
       name: 'Acme Market',
       code: 'ACME-001',
       phoneNumber: '+90 555 123 45 67',
+    });
+  });
+
+  it('normalizes a customer update request to only submitted fields', () => {
+    const parsed = updateCustomerRequestSchema.parse({
+      name: '  Acme Wholesale  ',
+    });
+
+    expect(parsed).toEqual({
+      name: 'Acme Wholesale',
+    });
+    expect(Object.hasOwn(parsed, 'code')).toBe(false);
+    expect(Object.hasOwn(parsed, 'phoneNumber')).toBe(false);
+    expect(Object.hasOwn(parsed, 'address')).toBe(false);
+  });
+
+  it('normalizes a blank customer update address into an explicit clear value', () => {
+    expect(
+      updateCustomerRequestSchema.parse({
+        address: '   ',
+      }),
+    ).toEqual({
+      address: null,
+    });
+  });
+
+  it('accepts a null customer update address as an explicit clear value', () => {
+    expect(
+      updateCustomerRequestSchema.parse({
+        address: null,
+      }),
+    ).toEqual({
+      address: null,
     });
   });
 

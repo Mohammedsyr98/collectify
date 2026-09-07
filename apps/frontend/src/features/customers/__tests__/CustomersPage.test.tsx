@@ -602,6 +602,136 @@ describe('CustomersPage', () => {
     expect(await screen.findByRole('heading', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
 
+  it('opens the edit flow from a customer row action', async () => {
+    const user = userEvent.setup();
+    const requestedCustomerIds: string[] = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+
+        return HttpResponse.json({
+          ...baseCustomer,
+          address: 'Main Street 42',
+        });
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    await user.click(
+      within(acmeRow).getByRole('button', {
+        name: 'Open actions for Acme Market',
+      }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+
+    expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
+    expect(requestedCustomerIds).toEqual([baseCustomer.id]);
+  });
+
+  it('prefetches customer details when a row actions menu opens', async () => {
+    const user = userEvent.setup();
+    const requestedCustomerIds: string[] = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+
+        return HttpResponse.json({
+          ...baseCustomer,
+          address: 'Main Street 42',
+        });
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    await user.click(
+      within(acmeRow).getByRole('button', {
+        name: 'Open actions for Acme Market',
+      }),
+    );
+
+    await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
+
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+
+    expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
+    expect(requestedCustomerIds).toEqual([baseCustomer.id]);
+  });
+
+  it('shows disabled customer form fields while row edit details load', async () => {
+    const user = userEvent.setup();
+    const requestedCustomerIds: string[] = [];
+    let resolveCustomerDetailsRequest!: () => void;
+    const pendingCustomerDetailsRequest = new Promise<void>((resolve) => {
+      resolveCustomerDetailsRequest = resolve;
+    });
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, async ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+        await pendingCustomerDetailsRequest;
+
+        return HttpResponse.json(baseCustomer);
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    await user.click(
+      within(acmeRow).getByRole('button', {
+        name: 'Open actions for Acme Market',
+      }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
+
+    try {
+      const editDialog = screen.getByRole('dialog', { name: 'Edit customer' });
+      expect(within(editDialog).getByLabelText('Name')).toBeDisabled();
+      expect(within(editDialog).getByLabelText('Code')).toBeDisabled();
+      expect(within(editDialog).getByLabelText('Phone number')).toBeDisabled();
+      expect(within(editDialog).getByLabelText('Address')).toBeDisabled();
+      expect(within(editDialog).getByRole('button', { name: 'Save customer' })).toBeDisabled();
+    } finally {
+      resolveCustomerDetailsRequest();
+    }
+  });
+
+  it('closes row edit loading and shows an error toast when customer details fail to load', async () => {
+    const user = userEvent.setup();
+    const requestedCustomerIds: string[] = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+
+        return HttpResponse.text('Internal server error', { status: 500 });
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    await user.click(
+      within(acmeRow).getByRole('button', {
+        name: 'Open actions for Acme Market',
+      }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await waitFor(() => expect(requestedCustomerIds).toContain(baseCustomer.id));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not open customer editor' }),
+    ).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument();
+  });
+
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>
