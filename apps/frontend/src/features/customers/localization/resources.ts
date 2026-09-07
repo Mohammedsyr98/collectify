@@ -108,6 +108,9 @@ export const customerResources = {
             successDescription: '{{name}} is ready for debt tracking.',
             successTitle: 'Customer created',
           },
+          editLoad: {
+            errorTitle: 'Could not open customer editor',
+          },
           update: {
             errorTitle: 'Could not update customer',
             successDescription: '{{name}} changes were saved.',
@@ -223,6 +226,9 @@ export const customerResources = {
             successDescription: '{{name}} borc takibi icin hazir.',
             successTitle: 'Musteri olusturuldu',
           },
+          editLoad: {
+            errorTitle: 'Musteri duzenleyici acilamadi',
+          },
           update: {
             errorTitle: 'Musteri guncellenemedi',
             successDescription: '{{name}} degisiklikleri kaydedildi.',
@@ -337,6 +343,9 @@ export const customerResources = {
             errorTitle: 'تعذر إنشاء العميل',
             successDescription: '{{name}} جاهز لمتابعة الديون.',
             successTitle: 'تم إنشاء العميل',
+          },
+          editLoad: {
+            errorTitle: 'تعذر فتح محرر العميل',
           },
           update: {
             errorTitle: 'تعذر تحديث العميل',

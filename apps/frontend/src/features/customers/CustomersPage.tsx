@@ -1,22 +1,31 @@
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { isCustomerApiErrorCode } from '@collectify/contracts';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
 import {
   CustomerEditLoadingModal,
   CustomerEditModal,
 } from './CustomerEditModal';
+import { getCustomer } from './api/get-customer';
 import {
+  customerDetailsQueryKey,
   useCreateCustomerMutation,
   useCustomerDetailsQuery,
   useUpdateCustomerMutation,
 } from './customerQueries';
 import { CustomerTable } from './list/CustomerTable';
 import { useCustomerListView } from './useCustomerListView';
+import { resolveApiErrorDescription } from '../../shared/api/http';
+import { useToast } from '../../shared/ui/toast/toastContext';
 
 export function CustomersPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState<string>();
   const { customers, pagination, search, status } = useCustomerListView();
@@ -30,6 +39,28 @@ export function CustomersPage() {
   const isTableLoading = status.status === 'loading';
   const showsCustomerTable = isTableLoading || status.status === 'ready';
   const editingCustomer = editingCustomerQuery.customer;
+
+  const openCustomerEditor = async (customerId: string) => {
+    setEditingCustomerId(customerId);
+
+    try {
+      await queryClient.fetchQuery({
+        queryKey: customerDetailsQueryKey(customerId),
+        queryFn: () => getCustomer(customerId),
+      });
+    } catch (error) {
+      setEditingCustomerId(undefined);
+      showToast({
+        variant: 'error',
+        title: t('customers.toast.editLoad.errorTitle'),
+        description: resolveApiErrorDescription(error, {
+          describeKnownCode: (code) => t(`customers.errors.${code}`),
+          fallbackDescription: t('errors.genericDescription'),
+          isKnownCode: isCustomerApiErrorCode,
+        }),
+      });
+    }
+  };
 
   return (
     <main
@@ -124,7 +155,9 @@ export function CustomersPage() {
             <CustomerTable
               customers={customers}
               isLoading={isTableLoading}
-              onEditCustomer={setEditingCustomerId}
+              onEditCustomer={(customerId) => {
+                void openCustomerEditor(customerId);
+              }}
             />
           </div>
         ) : null}

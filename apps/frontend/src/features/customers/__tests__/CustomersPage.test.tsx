@@ -671,6 +671,35 @@ describe('CustomersPage', () => {
     }
   });
 
+  it('closes row edit loading and shows an error toast when customer details fail to load', async () => {
+    const user = userEvent.setup();
+    const requestedCustomerIds: string[] = [];
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
+        requestedCustomerIds.push(String(params.customerId));
+
+        return HttpResponse.text('Internal server error', { status: 500 });
+      }),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    await user.click(
+      within(acmeRow).getByRole('button', {
+        name: 'Open actions for Acme Market',
+      }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not open customer editor' }),
+    ).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument();
+  });
+
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>
