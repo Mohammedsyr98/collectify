@@ -47,17 +47,15 @@ describe('customer routes', () => {
     });
 
     expect(createResponse.status).toBe(201);
-    const created = createCustomerResponseSchema.parse(await createResponse.json());
+    const createdBody = await createResponse.json();
+    expect(createdBody.financialSummary).toEqual([]);
+    const created = createCustomerResponseSchema.parse(createdBody);
     expect(created).toMatchObject({
       name: 'Acme Market',
       code: 'ACME-001',
       phoneNumber: '+90 555 123 45 67',
       address: null,
-      financialSummary: {
-        totalDebtAmount: '0.00',
-        totalPaidAmount: '0.00',
-        balanceAmount: '0.00',
-      },
+      financialSummary: [],
     });
 
     const detailsResponse = await fetch(

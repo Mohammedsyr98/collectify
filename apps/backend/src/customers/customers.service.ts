@@ -186,11 +186,7 @@ function toCustomerDetailsResponse(
     address: customer.address,
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),
-    financialSummary: {
-      totalDebtAmount: '0.00',
-      totalPaidAmount: '0.00',
-      balanceAmount: '0.00',
-    },
+    financialSummary: [],
   };
 }
 
