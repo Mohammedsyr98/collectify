@@ -10,7 +10,7 @@ export const authResources = {
         errors: authApiErrorTranslations.en,
         entry: {
           createAccountTab: 'Create account',
-          showCreateAccountForm: 'Show create account form',
+          modeLabel: 'Account access',
           signIn: {
             subtitle: 'Use your owner credentials to enter Collectify.',
             title: 'Sign in',
@@ -70,7 +70,7 @@ export const authResources = {
         errors: authApiErrorTranslations.tr,
         entry: {
           createAccountTab: 'Hesap olu\u015ftur',
-          showCreateAccountForm: 'Hesap olu\u015fturma formunu g\u00f6ster',
+          modeLabel: 'Hesap eri\u015fimi',
           signIn: {
             subtitle: 'Collectify\u2019a girmek i\u00e7in sahip bilgilerinizi kullan\u0131n.',
             title: 'Giri\u015f yap',
@@ -131,7 +131,7 @@ export const authResources = {
         errors: authApiErrorTranslations.ar,
         entry: {
           createAccountTab: 'إنشاء حساب',
-          showCreateAccountForm: 'عرض نموذج إنشاء الحساب',
+          modeLabel: 'وضع الحساب',
           signIn: {
             subtitle: 'استخدم بيانات اعتماد المالك للدخول إلى Collectify.',
             title: 'تسجيل الدخول',
