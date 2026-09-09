@@ -111,7 +111,7 @@ describe('customer contracts', () => {
     ]);
   });
 
-  it('accepts customer details with nullable address and neutral financial summary', () => {
+  it('accepts customer details with an empty currency financial summary', () => {
     expect(
       customerDetailsResponseSchema.parse({
         id: 'customer_123',
@@ -121,11 +121,7 @@ describe('customer contracts', () => {
         address: null,
         createdAt: '2026-08-28T12:00:00.000Z',
         updatedAt: '2026-08-28T12:00:00.000Z',
-        financialSummary: {
-          totalDebtAmount: '0.00',
-          totalPaidAmount: '0.00',
-          balanceAmount: '0.00',
-        },
+        financialSummary: [],
       }),
     ).toEqual({
       id: 'customer_123',
@@ -135,11 +131,7 @@ describe('customer contracts', () => {
       address: null,
       createdAt: '2026-08-28T12:00:00.000Z',
       updatedAt: '2026-08-28T12:00:00.000Z',
-      financialSummary: {
-        totalDebtAmount: '0.00',
-        totalPaidAmount: '0.00',
-        balanceAmount: '0.00',
-      },
+      financialSummary: [],
     });
   });
 
