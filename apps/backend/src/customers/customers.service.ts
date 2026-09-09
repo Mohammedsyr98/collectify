@@ -6,7 +6,6 @@ import {
   type CustomerDetailsResponse,
   type CustomerListQuery,
   type CustomerListItem,
-  type CustomerListFinancialSummary,
   type CustomerListResponse,
   type UpdateCustomerRequest,
   type UpdateCustomerResponse,
@@ -198,14 +197,9 @@ function toCustomerListItemResponse(customer: CustomerRow): CustomerListItem {
     phoneNumber: customer.phoneNumber,
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),
-    financialSummary: neutralCustomerListFinancialSummary(),
-  };
-}
-
-function neutralCustomerListFinancialSummary(): CustomerListFinancialSummary {
-  return {
-    balancesByCurrency: [],
-    nextDueDate: null,
+    financialSummary: {
+      balancesByCurrency: [],
+    },
   };
 }
 

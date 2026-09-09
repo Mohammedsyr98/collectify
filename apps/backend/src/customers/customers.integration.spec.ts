@@ -378,7 +378,11 @@ describe('customer routes', () => {
     });
 
     expect(response.status).toBe(200);
-    const list = customerListResponseSchema.parse(await response.json());
+    const listBody = await response.json();
+    expect(listBody.items[0].financialSummary).toEqual({
+      balancesByCurrency: [],
+    });
+    const list = customerListResponseSchema.parse(listBody);
 
     expect(list.items).toEqual([
       {
@@ -390,7 +394,6 @@ describe('customer routes', () => {
         updatedAt: created.updatedAt,
         financialSummary: {
           balancesByCurrency: [],
-          nextDueDate: null,
         },
       },
     ]);

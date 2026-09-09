@@ -75,10 +75,6 @@ export const customerListCurrencyBalanceSchema = z.object({
 
 export const customerListFinancialSummarySchema = z.object({
   balancesByCurrency: z.array(customerListCurrencyBalanceSchema),
-  nextDueDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
 });
 
 export const customerDetailsResponseSchema = customerSchema.extend({
