@@ -21,6 +21,27 @@ const customerWithAddress = {
   address: 'Istanbul',
 };
 
+const customerWithFinancialActivity = {
+  ...baseCustomer,
+  id: 'customer_financial_details',
+  name: 'South Ledger',
+  code: 'SL-003',
+  financialSummary: [
+    {
+      currency: 'EUR',
+      totalDebtAmount: '180.25',
+      totalPaidAmount: '40.50',
+      remainingAmount: '139.75',
+    },
+    {
+      currency: 'USD',
+      totalDebtAmount: '75.00',
+      totalPaidAmount: '75.00',
+      remainingAmount: '0.00',
+    },
+  ],
+};
+
 function renderCustomerRoutes(initialEntries: string[]) {
   return renderWithAppProviders(
     <Routes>
@@ -124,6 +145,27 @@ describe('CustomerDetailsPage', () => {
     expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
     expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
     expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+  });
+
+  it('renders populated financial summary values without combining currencies', async () => {
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(customerWithFinancialActivity),
+      ),
+    );
+
+    renderCustomerRoutes([
+      `/customers/${customerWithFinancialActivity.id}`,
+    ]);
+
+    const summary = await screen.findByRole('region', {
+      name: 'Financial summary',
+    });
+
+    expect(summary).toHaveTextContent('EUR');
+    expect(summary).toHaveTextContent('180.25');
+    expect(summary).toHaveTextContent('40.50');
+    expect(summary).toHaveTextContent('139.75');
   });
 
   it('renders a customer-specific not-found state and routes back to customers', async () => {
