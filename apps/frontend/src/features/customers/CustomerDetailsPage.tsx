@@ -115,20 +115,11 @@ export function CustomerDetailsPage() {
               <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
                 {t('customers.details.financialSummary')}
               </h2>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <SummaryMetric
-                  label={t('customers.details.totalDebt')}
-                  value={customer.financialSummary.totalDebtAmount}
-                />
-                <SummaryMetric
-                  label={t('customers.details.totalPaid')}
-                  value={customer.financialSummary.totalPaidAmount}
-                />
-                <SummaryMetric
-                  label={t('customers.details.balance')}
-                  value={customer.financialSummary.balanceAmount}
-                />
-              </div>
+              {customer.financialSummary.length === 0 ? (
+                <p className="m-0 rounded-[5px] bg-background p-3 text-[0.82rem] font-bold text-muted-foreground">
+                  {t('customers.details.noFinancialActivity')}
+                </p>
+              ) : null}
             </section>
           </section>
 
@@ -171,17 +162,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <span className="text-[0.88rem] font-bold">{value}</span>
-    </div>
-  );
-}
-
-function SummaryMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid gap-1 rounded-[5px] bg-background p-3">
-      <span className="text-[0.68rem] font-black text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-[1.15rem] font-black leading-tight">{value}</span>
     </div>
   );
 }

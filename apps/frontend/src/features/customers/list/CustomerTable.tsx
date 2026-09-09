@@ -21,7 +21,7 @@ type CustomerTableProps = {
 };
 
 const skeletonRows = Array.from({ length: 6 }, (_, index) => index);
-const skeletonCellWidths = ['w-36', 'w-24', 'w-36', 'w-28', 'w-28', 'w-24', 'w-16'];
+const skeletonCellWidths = ['w-36', 'w-24', 'w-36', 'w-28', 'w-28', 'w-16'];
 
 export function CustomerTable({
   customers,
@@ -61,13 +61,6 @@ export function CustomerTable({
               variant="overdueAmount"
             />
           ),
-        }),
-        customerColumnHelper.display({
-          id: 'nextDueDate',
-          header: t('customers.list.columns.nextDueDate'),
-          cell: ({ row }) =>
-            row.original.financialSummary.nextDueDate ??
-            t('customers.list.emptyFinancial.nextDueDate'),
         }),
         customerColumnHelper.display({
           id: 'actions',

@@ -12,11 +12,7 @@ export const baseCustomer: CustomerDetailsResponse = {
   address: null,
   createdAt: '2026-08-28T12:00:00.000Z',
   updatedAt: '2026-08-28T12:00:00.000Z',
-  financialSummary: {
-    totalDebtAmount: '0.00',
-    totalPaidAmount: '0.00',
-    balanceAmount: '0.00',
-  },
+  financialSummary: [],
 };
 
 export const northStarCustomer: CustomerDetailsResponse = {
@@ -40,7 +36,6 @@ export const customerList: CustomerListResponse = {
       updatedAt: '2026-08-28T12:00:00.000Z',
       financialSummary: {
         balancesByCurrency: [],
-        nextDueDate: null,
       },
     },
     {
@@ -52,7 +47,6 @@ export const customerList: CustomerListResponse = {
       updatedAt: '2026-08-29T12:00:00.000Z',
       financialSummary: {
         balancesByCurrency: [],
-        nextDueDate: null,
       },
     },
   ],
@@ -95,7 +89,6 @@ export const financialCustomer: CustomerListItem = {
         overdueAmount: '2.00',
       },
     ],
-    nextDueDate: '2026-09-15',
   },
 };
 

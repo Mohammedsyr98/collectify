@@ -73,9 +73,9 @@ describe('CustomerDetailsPage', () => {
     expect(screen.getByText('Code: ACME-001')).toBeInTheDocument();
     expect(screen.getByText('+90 555 123 45 67')).toBeInTheDocument();
     expect(screen.getByText('Istanbul')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Financial summary' })).toHaveTextContent(
-      '0.00',
-    );
+    expect(
+      screen.getByRole('region', { name: 'Financial summary' }),
+    ).toHaveTextContent('No financial activity');
     expect(screen.getByRole('region', { name: 'Debts' })).toHaveTextContent(
       'No debts yet.',
     );

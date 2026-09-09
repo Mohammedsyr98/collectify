@@ -29,22 +29,15 @@ describe('CustomerTable', () => {
     );
 
     expect(
-      screen.getByRole('columnheader', { name: 'Name' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Code' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Phone' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Remaining debt' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Overdue amount' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Next due date' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Actions' }),
-    ).toBeInTheDocument();
+      screen.getAllByRole('columnheader').map((header) => header.textContent),
+    ).toEqual([
+      'Name',
+      'Code',
+      'Phone',
+      'Remaining debt',
+      'Overdue amount',
+      'Actions',
+    ]);
 
     expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'ACME-001' })).toBeInTheDocument();
@@ -72,7 +65,6 @@ describe('CustomerTable', () => {
     const financialRow = screen.getByRole('row', { name: /South Ledger/ });
     expect(within(financialRow).getByText(/125\.50 USD/)).toBeInTheDocument();
     expect(within(financialRow).getByText(/5\.00 USD/)).toBeInTheDocument();
-    expect(within(financialRow).getByText('2026-09-15')).toBeInTheDocument();
     expect(
       within(financialRow).getByRole('button', {
         name: 'Show 2 more remaining debt currencies for South Ledger',
@@ -87,7 +79,6 @@ describe('CustomerTable', () => {
     const emptyFinancialRow = screen.getByRole('row', { name: /Acme Market/ });
     expect(within(emptyFinancialRow).getByText('No debt')).toBeInTheDocument();
     expect(within(emptyFinancialRow).getByText('No overdue')).toBeInTheDocument();
-    expect(within(emptyFinancialRow).getByText('No due date')).toBeInTheDocument();
   });
 
   it('renders decorative skeleton rows in loading mode', () => {
