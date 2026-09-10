@@ -168,6 +168,35 @@ describe('CustomerDetailsPage', () => {
     expect(summary).toHaveTextContent('139.75');
   });
 
+  it('shows all currency summaries by default and filters to one currency', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(customerWithFinancialActivity),
+      ),
+    );
+
+    renderCustomerRoutes([
+      `/customers/${customerWithFinancialActivity.id}`,
+    ]);
+
+    const summary = await screen.findByRole('region', {
+      name: 'Financial summary',
+    });
+    const allCurrencies = screen.getByRole('button', { name: 'All currencies' });
+    const usd = screen.getByRole('button', { name: 'USD' });
+
+    expect(allCurrencies).toHaveAttribute('aria-pressed', 'true');
+    expect(summary).toHaveTextContent('180.25');
+    expect(summary).toHaveTextContent('75.00');
+
+    await user.click(usd);
+
+    expect(usd).toHaveAttribute('aria-pressed', 'true');
+    expect(summary).toHaveTextContent('75.00');
+    expect(summary).not.toHaveTextContent('180.25');
+  });
+
   it('renders a customer-specific not-found state and routes back to customers', async () => {
     const user = userEvent.setup();
     server.use(

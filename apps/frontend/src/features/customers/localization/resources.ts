@@ -20,6 +20,7 @@ export const customerResources = {
         },
         details: {
           address: 'Address',
+          allCurrencies: 'All currencies',
           balance: 'Balance',
           code: 'Code',
           currency: 'Currency',
@@ -140,6 +141,7 @@ export const customerResources = {
         },
         details: {
           address: 'Adres',
+          allCurrencies: 'Tum para birimleri',
           balance: 'Bakiye',
           code: 'Kod',
           currency: 'Para birimi',
@@ -260,6 +262,7 @@ export const customerResources = {
         },
         details: {
           address: 'العنوان',
+          allCurrencies: 'جميع العملات',
           balance: 'الرصيد',
           code: 'الرمز',
           currency: 'العملة',

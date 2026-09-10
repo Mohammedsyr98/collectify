@@ -9,8 +9,14 @@ import { isApiError } from '../../shared/api/http';
 import { useLocalization } from '../../shared/localization';
 import { ErrorStatePage } from '../../shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
+import {
+  SegmentedControl,
+  type SegmentedControlOption,
+} from '../../shared/ui/segmented-control/SegmentedControl';
 import { CustomerEditModal } from './CustomerEditModal';
 import { useCustomerDetailsQuery, useUpdateCustomerMutation } from './customerQueries';
+
+type CurrencySelection = 'all' | CustomerCurrencySummary['currency'];
 
 export function CustomerDetailsPage() {
   const { customerId } = useParams();
@@ -18,7 +24,7 @@ export function CustomerDetailsPage() {
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState<string>();
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
   const customerQuery = useCustomerDetailsQuery(customerId);
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
     onUpdated: () => setIsEditModalOpen(false),
@@ -175,41 +181,77 @@ function CurrencySummaryCard({
 }: {
   currencySummaries: CustomerCurrencySummary[];
   locale: string;
-  onCurrencyChange: (currency: string) => void;
-  selectedCurrency: string | undefined;
+  onCurrencyChange: (currency: CurrencySelection) => void;
+  selectedCurrency: CurrencySelection;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  const selectedSummary =
-    currencySummaries.find((summary) => summary.currency === selectedCurrency) ??
-    currencySummaries[0];
-  const paidRatio = resolvePaidRatio(selectedSummary);
-  const paidPercentage = Math.round(paidRatio * 100);
+  const orderedSummaries = [...currencySummaries].sort((left, right) =>
+    left.currency.localeCompare(right.currency),
+  );
+  const hasSelectedCurrency = orderedSummaries.some(
+    (summary) => summary.currency === selectedCurrency,
+  );
+  const effectiveSelection =
+    selectedCurrency === 'all' || hasSelectedCurrency ? selectedCurrency : 'all';
+  const visibleSummaries =
+    effectiveSelection === 'all'
+      ? orderedSummaries
+      : orderedSummaries.filter((summary) => summary.currency === effectiveSelection);
+  const currencyOptions: SegmentedControlOption<CurrencySelection>[] = [
+    {
+      label: t('customers.details.allCurrencies'),
+      value: 'all',
+    },
+    ...orderedSummaries.map((summary) => ({
+      label: summary.currency,
+      value: summary.currency,
+    })),
+  ];
 
   return (
     <div className="grid gap-3 border-t border-border pt-3">
+      {orderedSummaries.length > 1 ? (
+        <SegmentedControl
+          ariaLabel={t('customers.details.currency')}
+          onChange={onCurrencyChange}
+          options={currencyOptions}
+          value={effectiveSelection}
+        />
+      ) : null}
+
+      <div className="grid gap-3">
+        {visibleSummaries.map((summary) => (
+          <CurrencySummaryBlock
+            key={summary.currency}
+            locale={locale}
+            summary={summary}
+            t={t}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CurrencySummaryBlock({
+  locale,
+  summary,
+  t,
+}: {
+  locale: string;
+  summary: CustomerCurrencySummary;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const paidRatio = resolvePaidRatio(summary);
+  const paidPercentage = Math.round(paidRatio * 100);
+
+  return (
+    <div className="grid gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {currencySummaries.length > 1 ? (
-          <label className="grid gap-1 text-[0.68rem] font-black text-muted-foreground">
-            <span>{t('customers.details.currency')}</span>
-            <select
-              aria-label={t('customers.details.currency')}
-              className="min-h-9 rounded-[5px] border border-border bg-background px-2.5 text-[0.82rem] font-black text-foreground"
-              onChange={(event) => onCurrencyChange(event.target.value)}
-              value={selectedSummary.currency}
-            >
-              {currencySummaries.map((summary) => (
-                <option key={summary.currency} value={summary.currency}>
-                  {summary.currency}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <span className="inline-flex min-h-8 items-center rounded-[5px] bg-muted px-2.5 text-[0.76rem] font-black text-foreground">
-            {selectedSummary.currency}
-          </span>
-        )}
-        {selectedSummary.remainingAmount === '0.00' ? (
+        <span className="inline-flex min-h-8 items-center rounded-[5px] bg-muted px-2.5 text-[0.76rem] font-black text-foreground">
+          {summary.currency}
+        </span>
+        {summary.remainingAmount === '0.00' ? (
           <span className="text-[0.76rem] font-black text-status-paid-foreground">
             {t('customers.details.paidInFull')}
           </span>
@@ -219,34 +261,22 @@ function CurrencySummaryCard({
       <div className="grid gap-3 sm:grid-cols-3">
         <SummaryMetric
           label={t('customers.details.totalDebt')}
-          value={formatCurrencyAmount(
-            selectedSummary.totalDebtAmount,
-            selectedSummary.currency,
-            locale,
-          )}
+          value={formatCurrencyAmount(summary.totalDebtAmount, summary.currency, locale)}
         />
         <SummaryMetric
           label={t('customers.details.totalPaid')}
-          value={formatCurrencyAmount(
-            selectedSummary.totalPaidAmount,
-            selectedSummary.currency,
-            locale,
-          )}
+          value={formatCurrencyAmount(summary.totalPaidAmount, summary.currency, locale)}
         />
         <SummaryMetric
           label={t('customers.details.balance')}
-          value={formatCurrencyAmount(
-            selectedSummary.remainingAmount,
-            selectedSummary.currency,
-            locale,
-          )}
+          value={formatCurrencyAmount(summary.remainingAmount, summary.currency, locale)}
         />
       </div>
 
       <div className="grid grid-cols-[1fr_auto] items-center gap-2">
         <div
           aria-label={t('customers.details.paymentProgress', {
-            currency: selectedSummary.currency,
+            currency: summary.currency,
           })}
           aria-valuemax={100}
           aria-valuemin={0}
