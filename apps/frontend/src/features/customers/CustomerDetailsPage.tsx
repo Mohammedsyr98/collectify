@@ -299,9 +299,9 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-1">
       <span className="text-[0.68rem] font-black text-muted-foreground">{label}</span>
-      <span className="text-[1.05rem] font-black leading-tight" dir="ltr">
+      <bdi className="text-[1.05rem] font-black leading-tight" dir="ltr">
         {value}
-      </span>
+      </bdi>
     </div>
   );
 }

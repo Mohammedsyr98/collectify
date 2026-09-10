@@ -6,6 +6,7 @@ import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getBackendUrl } from '../../../shared/api/http';
+import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
@@ -195,6 +196,33 @@ describe('CustomerDetailsPage', () => {
     expect(usd).toHaveAttribute('aria-pressed', 'true');
     expect(summary).toHaveTextContent('75.00');
     expect(summary).not.toHaveTextContent('180.25');
+  });
+
+  it('isolates localized currency amounts for Arabic reading order', async () => {
+    window.localStorage.setItem(localeStorageKey, 'ar');
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(customerWithFinancialActivity),
+      ),
+    );
+
+    renderCustomerRoutes([
+      `/customers/${customerWithFinancialActivity.id}`,
+    ]);
+
+    const summary = await screen.findByRole('region', {
+      name: 'الملخص المالي',
+    });
+    const amount = Array.from(summary.querySelectorAll('[dir="ltr"]')).find(
+      (element) => element.textContent?.includes('€'),
+    );
+
+    if (!amount) {
+      throw new Error('Expected an isolated EUR amount in the financial summary.');
+    }
+
+    expect(amount.tagName).toBe('BDI');
+    expect(amount).toHaveAttribute('dir', 'ltr');
   });
 
   it('renders a customer-specific not-found state and routes back to customers', async () => {
