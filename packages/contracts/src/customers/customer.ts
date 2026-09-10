@@ -56,11 +56,16 @@ const moneyAmountSchema = z.string().regex(/^-?\d+(\.\d{2})$/);
 
 export const customerListPageSize = 25;
 
-export const customerFinancialSummarySchema = z.object({
+export const customerCurrencySummarySchema = z.object({
+  currency: currencySchema,
   totalDebtAmount: moneyAmountSchema,
   totalPaidAmount: moneyAmountSchema,
-  balanceAmount: moneyAmountSchema,
+  remainingAmount: moneyAmountSchema,
 });
+
+export const customerFinancialSummarySchema = z.array(
+  customerCurrencySummarySchema,
+);
 
 export const customerListCurrencyBalanceSchema = z.object({
   currency: currencySchema,
@@ -70,10 +75,6 @@ export const customerListCurrencyBalanceSchema = z.object({
 
 export const customerListFinancialSummarySchema = z.object({
   balancesByCurrency: z.array(customerListCurrencyBalanceSchema),
-  nextDueDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
 });
 
 export const customerDetailsResponseSchema = customerSchema.extend({
@@ -127,6 +128,9 @@ export const customerErrorResponseSchema = z.object({
 export type CreateCustomerRequest = z.infer<typeof createCustomerRequestSchema>;
 export type UpdateCustomerRequest = z.infer<typeof updateCustomerRequestSchema>;
 export type Customer = z.infer<typeof customerSchema>;
+export type CustomerCurrencySummary = z.infer<
+  typeof customerCurrencySummarySchema
+>;
 export type CustomerFinancialSummary = z.infer<typeof customerFinancialSummarySchema>;
 export type CustomerDetailsResponse = z.infer<typeof customerDetailsResponseSchema>;
 export type CreateCustomerResponse = z.infer<typeof createCustomerResponseSchema>;

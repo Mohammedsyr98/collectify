@@ -6,6 +6,7 @@ import { OwnerSignInForm } from './sign-in/OwnerSignInForm';
 import { useOwnerSignInSubmit } from './sign-in/useOwnerSignInSubmit';
 import { OwnerSignUpForm } from './sign-up/OwnerSignUpForm';
 import { useOwnerSignUpSubmit } from './sign-up/useOwnerSignUpSubmit';
+import { SegmentedControl } from '../../shared/ui/segmented-control/SegmentedControl';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
@@ -25,24 +26,22 @@ export function AuthEntryPage() {
           : t('auth.entry.signUp.subtitle')
       }
     >
-      <div className="mb-4 grid grid-cols-2 rounded-[5px] border border-border bg-background p-1">
-        <button
-          aria-label={t('auth.entry.showCreateAccountForm')}
-          aria-pressed={!isSignIn}
-          className={authModeButtonClassName(!isSignIn)}
-          onClick={() => setMode('sign-up')}
-          type="button"
-        >
-          {t('auth.entry.createAccountTab')}
-        </button>
-        <button
-          aria-pressed={isSignIn}
-          className={authModeButtonClassName(isSignIn)}
-          onClick={() => setMode('sign-in')}
-          type="button"
-        >
-          {t('auth.entry.signInTab')}
-        </button>
+      <div className="mb-4">
+        <SegmentedControl
+          ariaLabel={t('auth.entry.modeLabel')}
+          onChange={setMode}
+          options={[
+            {
+              label: t('auth.entry.createAccountTab'),
+              value: 'sign-up',
+            },
+            {
+              label: t('auth.entry.signInTab'),
+              value: 'sign-in',
+            },
+          ]}
+          value={mode}
+        />
       </div>
 
       {isSignIn ? (
@@ -58,13 +57,4 @@ export function AuthEntryPage() {
       )}
     </AuthShell>
   );
-}
-
-function authModeButtonClassName(isActive: boolean) {
-  return [
-    'min-h-9 cursor-pointer rounded-[4px] border-0 px-3 text-[0.78rem] font-extrabold transition',
-    isActive
-      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
-      : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
-  ].join(' ');
 }

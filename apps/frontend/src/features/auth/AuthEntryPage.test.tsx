@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -172,6 +172,19 @@ describe('AuthEntryPage', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('exposes the sign-in and sign-up switch as an accessible segmented group', async () => {
+    renderAuthEntryPage();
+
+    const modeSwitch = await screen.findByRole('group');
+
+    expect(
+      within(modeSwitch).getByRole('button', { name: 'Create account' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(modeSwitch).getByRole('button', { name: 'Sign in' }),
+    ).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('syncs the returned profile language, caches the session, and shows a localized sign-in success toast', async () => {
