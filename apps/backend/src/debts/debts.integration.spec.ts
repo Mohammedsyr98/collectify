@@ -11,6 +11,7 @@ import {
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
+import { getIstanbulBusinessDate } from './debt-timing';
 
 describe('debt routes', () => {
   let postgres: IntegrationPostgres | undefined;
@@ -108,6 +109,77 @@ describe('debt routes', () => {
         position: 1,
         amount: '125.50',
       },
+    ]);
+  });
+
+  it('returns the Istanbul timing for a debt schedule item', async () => {
+    const owner = await signUpOwner('debt-timing-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    const dueDate = '2999-01-01';
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Timing debt',
+          totalAmount: '125.50',
+          currency: 'USD',
+          paymentPlan: {
+            type: 'onePayment',
+            dueDate,
+          },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(201);
+    const created = await response.json();
+
+    expect(created.scheduleItems[0]).toMatchObject({
+      dueDate,
+      timing: 'upcoming',
+    });
+  });
+
+  it('returns due-today and overdue timing for listed debts', async () => {
+    const owner = await signUpOwner('debt-timing-list-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_timing_today',
+      createdAt: '2026-09-07 10:00:00',
+      dueDate: getIstanbulBusinessDate(new Date()),
+    });
+    await insertDebt({
+      id: 'debt_timing_overdue',
+      createdAt: '2026-09-06 10:00:00',
+      dueDate: '1900-01-01',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+
+    expect(
+      list.items.map((debt) => [
+        debt.id,
+        debt.scheduleItems[0].timing,
+      ]),
+    ).toEqual([
+      ['debt_timing_today', 'dueToday'],
+      ['debt_timing_overdue', 'overdue'],
     ]);
   });
 
@@ -367,10 +439,12 @@ describe('debt routes', () => {
   async function insertDebt({
     customerId = 'customer_debt',
     createdAt,
+    dueDate = '2026-09-30',
     id,
   }: {
     customerId?: string;
     createdAt: string;
+    dueDate?: string;
     id: string;
   }): Promise<void> {
     await postgres!.query(
@@ -400,9 +474,9 @@ describe('debt routes', () => {
           "created_at",
           "updated_at"
         )
-        VALUES ($1, $2, 1, '125.50', '2026-09-30'::date, $3::timestamp, $3::timestamp)
+        VALUES ($1, $2, 1, '125.50', $3::date, $4::timestamp, $4::timestamp)
       `,
-      [`${id}_schedule`, id, createdAt],
+      [`${id}_schedule`, id, dueDate, createdAt],
     );
   }
 });

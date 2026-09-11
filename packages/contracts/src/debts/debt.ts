@@ -51,6 +51,7 @@ const onePaymentScheduleItemSchema = z.object({
   position: z.literal(1),
   amount: canonicalDebtAmountSchema,
   dueDate: z.iso.date(),
+  timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
 
 export const debtResponseSchema = z.object({

@@ -13,6 +13,7 @@ import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
+import { getScheduleItemTiming } from './debt-timing';
 
 type DebtRow = typeof debts.$inferSelect;
 type DebtScheduleItemRow = typeof debtScheduleItems.$inferSelect;
@@ -28,7 +29,7 @@ export class DebtsService {
   ): Promise<DebtResponse> {
     await this.requireOwnedCustomer(currentOwner, customerId);
 
-    const now = new Date();
+    const operationInstant = new Date();
     const debtId = randomUUID();
     const scheduleItemId = randomUUID();
 
@@ -41,8 +42,8 @@ export class DebtsService {
           description: request.description,
           totalAmount: request.totalAmount,
           currency: request.currency,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: operationInstant,
+          updatedAt: operationInstant,
         })
         .returning();
 
@@ -54,15 +55,19 @@ export class DebtsService {
           position: 1,
           amount: request.totalAmount,
           dueDate: request.paymentPlan.dueDate,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: operationInstant,
+          updatedAt: operationInstant,
         })
         .returning();
 
       return { debt: debt!, scheduleItem: scheduleItem! };
     });
 
-    return toDebtResponse(created.debt, [created.scheduleItem]);
+    return toDebtResponse(
+      created.debt,
+      [created.scheduleItem],
+      operationInstant,
+    );
   }
 
   async listDebts(
@@ -70,6 +75,7 @@ export class DebtsService {
     customerId: string,
   ): Promise<DebtListResponse> {
     await this.requireOwnedCustomer(currentOwner, customerId);
+    const operationInstant = new Date();
 
     const listFilter = eq(debts.customerId, customerId);
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
@@ -98,7 +104,11 @@ export class DebtsService {
 
     return {
       items: debtRows.map((debt) =>
-        toDebtResponse(debt, scheduleItemsByDebtId.get(debt.id) ?? []),
+        toDebtResponse(
+          debt,
+          scheduleItemsByDebtId.get(debt.id) ?? [],
+          operationInstant,
+        ),
       ),
       page: 1,
       pageSize: debtListPageSize,
@@ -145,6 +155,7 @@ function groupScheduleItemsByDebtId(
 function toDebtResponse(
   debt: DebtRow,
   scheduleRows: DebtScheduleItemRow[],
+  operationInstant: Date,
 ): DebtResponse {
   return {
     id: debt.id,
@@ -158,6 +169,7 @@ function toDebtResponse(
       position: scheduleItem.position as 1,
       amount: scheduleItem.amount,
       dueDate: scheduleItem.dueDate,
+      timing: getScheduleItemTiming(scheduleItem.dueDate, operationInstant),
     })) as DebtResponse['scheduleItems'],
     createdAt: debt.createdAt.toISOString(),
     updatedAt: debt.updatedAt.toISOString(),
