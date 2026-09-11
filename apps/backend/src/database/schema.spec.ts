@@ -5,6 +5,9 @@ import {
   account,
   customerConstraints,
   customers,
+  debtConstraints,
+  debtScheduleItems,
+  debts,
   ownerLanguageEnum,
   ownerProfiles,
   session,
@@ -81,6 +84,38 @@ describe('database schema', () => {
     expect(customerConfig.foreignKeys).toHaveLength(1);
     expect(customerConfig.indexes.map((index) => index.config.name)).toContain(
       customerConstraints.ownerProfileLowerCodeUnique,
+    );
+  });
+
+  it('defines debts with ordered schedule items', () => {
+    const debtConfig = getTableConfig(debts);
+    const scheduleConfig = getTableConfig(debtScheduleItems);
+
+    expect(debtConfig.name).toBe('debts');
+    expect(columnNames(debts)).toEqual([
+      'id',
+      'customer_id',
+      'description',
+      'total_amount',
+      'currency',
+      'created_at',
+      'updated_at',
+    ]);
+    expect(debtConfig.foreignKeys).toHaveLength(1);
+
+    expect(scheduleConfig.name).toBe('debt_schedule_items');
+    expect(columnNames(debtScheduleItems)).toEqual([
+      'id',
+      'debt_id',
+      'position',
+      'amount',
+      'due_date',
+      'created_at',
+      'updated_at',
+    ]);
+    expect(scheduleConfig.foreignKeys).toHaveLength(1);
+    expect(scheduleConfig.indexes.map((index) => index.config.name)).toContain(
+      debtConstraints.debtPositionUnique,
     );
   });
 });

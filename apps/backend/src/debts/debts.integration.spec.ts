@@ -234,6 +234,81 @@ describe('debt routes', () => {
     });
   });
 
+  it('rolls back the debt when schedule insertion fails', async () => {
+    await postgres!.query(`
+      CREATE FUNCTION fail_debt_schedule_insert()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        IF NEW.amount = 999.99::numeric THEN
+          RAISE EXCEPTION 'Injected schedule insert failure'
+            USING ERRCODE = 'P0001';
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await postgres!.query(`
+      CREATE TRIGGER debt_schedule_items_injected_failure
+      BEFORE INSERT ON "debt_schedule_items"
+      FOR EACH ROW
+      EXECUTE FUNCTION fail_debt_schedule_insert()
+    `);
+
+    try {
+      const owner = await signUpOwner('debt-rollback-owner@example.com');
+      await insertCustomer(owner.ownerProfileId, {
+        id: 'customer_rollback',
+        code: 'DEBT-ROLLBACK',
+      });
+
+      const response = await fetch(
+        `${backend!.baseUrl}/customers/customer_rollback/debts`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            cookie: owner.cookieHeader,
+          },
+          body: JSON.stringify({
+            description: 'Injected failure debt',
+            totalAmount: '999.99',
+            currency: 'USD',
+            paymentPlan: {
+              type: 'onePayment',
+              dueDate: '2026-09-30',
+            },
+          }),
+        },
+      );
+
+      expect(response.status).toBe(500);
+
+      const remainingDebts = await postgres!.query<{ count: number }>(
+        'SELECT count(*)::int AS count FROM "debts" WHERE "customer_id" = $1',
+        ['customer_rollback'],
+      );
+      const remainingScheduleItems = await postgres!.query<{ count: number }>(
+        `
+          SELECT count(*)::int AS count
+          FROM "debt_schedule_items"
+          JOIN "debts" ON "debts"."id" = "debt_schedule_items"."debt_id"
+          WHERE "debts"."customer_id" = $1
+        `,
+        ['customer_rollback'],
+      );
+
+      expect(remainingDebts).toEqual([{ count: 0 }]);
+      expect(remainingScheduleItems).toEqual([{ count: 0 }]);
+    } finally {
+      await postgres!.query(
+        'DROP TRIGGER debt_schedule_items_injected_failure ON "debt_schedule_items"',
+      );
+      await postgres!.query('DROP FUNCTION fail_debt_schedule_insert()');
+    }
+  });
+
   async function signUpOwner(
     email: string,
   ): Promise<{ cookieHeader: string; ownerProfileId: string }> {
