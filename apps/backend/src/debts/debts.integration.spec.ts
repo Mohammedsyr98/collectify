@@ -153,6 +153,87 @@ describe('debt routes', () => {
     });
   });
 
+  it('returns the same not-found response for missing and non-owned customers', async () => {
+    const firstOwner = await signUpOwner('debt-first-owner@example.com');
+    const secondOwner = await signUpOwner('debt-second-owner@example.com');
+    await insertCustomer(firstOwner.ownerProfileId);
+
+    const missingResponse = await fetch(
+      `${backend!.baseUrl}/customers/missing/debts`,
+      {
+        headers: {
+          cookie: firstOwner.cookieHeader,
+        },
+      },
+    );
+    const nonOwnedResponse = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: {
+          cookie: secondOwner.cookieHeader,
+        },
+      },
+    );
+
+    expect(missingResponse.status).toBe(404);
+    expect(nonOwnedResponse.status).toBe(404);
+    await expect(missingResponse.json()).resolves.toEqual({
+      code: 'CUSTOMER_NOT_FOUND',
+      message: 'Customer was not found.',
+    });
+    await expect(nonOwnedResponse.json()).resolves.toEqual({
+      code: 'CUSTOMER_NOT_FOUND',
+      message: 'Customer was not found.',
+    });
+  });
+
+  it('does not expose one owner’s debts to another owner', async () => {
+    const firstOwner = await signUpOwner('debt-isolation-first@example.com');
+    const secondOwner = await signUpOwner('debt-isolation-second@example.com');
+    await insertCustomer(firstOwner.ownerProfileId, {
+      id: 'customer_isolation_first',
+      code: 'DEBT-FIRST',
+    });
+    await insertCustomer(secondOwner.ownerProfileId, {
+      id: 'customer_isolation_second',
+      code: 'DEBT-SECOND',
+    });
+    await insertDebt({
+      id: 'debt_isolation_first',
+      customerId: 'customer_isolation_first',
+      createdAt: '2026-09-05 10:00:00',
+    });
+
+    const firstOwnerResponse = await fetch(
+      `${backend!.baseUrl}/customers/customer_isolation_first/debts`,
+      {
+        headers: {
+          cookie: firstOwner.cookieHeader,
+        },
+      },
+    );
+    const secondOwnerResponse = await fetch(
+      `${backend!.baseUrl}/customers/customer_isolation_first/debts`,
+      {
+        headers: {
+          cookie: secondOwner.cookieHeader,
+        },
+      },
+    );
+
+    expect(firstOwnerResponse.status).toBe(200);
+    expect(
+      debtListResponseSchema.parse(await firstOwnerResponse.json()).items.map(
+        (debt) => debt.id,
+      ),
+    ).toEqual(['debt_isolation_first']);
+    expect(secondOwnerResponse.status).toBe(404);
+    await expect(secondOwnerResponse.json()).resolves.toEqual({
+      code: 'CUSTOMER_NOT_FOUND',
+      message: 'Customer was not found.',
+    });
+  });
+
   async function signUpOwner(
     email: string,
   ): Promise<{ cookieHeader: string; ownerProfileId: string }> {
@@ -184,7 +265,13 @@ describe('debt routes', () => {
     };
   }
 
-  function insertCustomer(ownerProfileId: string): Promise<unknown[]> {
+  function insertCustomer(
+    ownerProfileId: string,
+    {
+      code = 'DEBT-001',
+      id = 'customer_debt',
+    }: { code?: string; id?: string } = {},
+  ): Promise<unknown[]> {
     return postgres!.query(
       `
         INSERT INTO "customers" (
@@ -198,20 +285,16 @@ describe('debt routes', () => {
         )
         VALUES ($1, $2, $3, $4, $5, now(), now())
       `,
-      [
-        'customer_debt',
-        ownerProfileId,
-        'Debt Customer',
-        'DEBT-001',
-        '+90 555 123 45 67',
-      ],
+      [id, ownerProfileId, 'Debt Customer', code, '+90 555 123 45 67'],
     );
   }
 
   async function insertDebt({
+    customerId = 'customer_debt',
     createdAt,
     id,
   }: {
+    customerId?: string;
     createdAt: string;
     id: string;
   }): Promise<void> {
@@ -226,9 +309,9 @@ describe('debt routes', () => {
           "created_at",
           "updated_at"
         )
-        VALUES ($1, 'customer_debt', 'Page debt', '125.50', 'USD', $2::timestamp, $2::timestamp)
+        VALUES ($1, $2, 'Page debt', '125.50', 'USD', $3::timestamp, $3::timestamp)
       `,
-      [id, createdAt],
+      [id, customerId, createdAt],
     );
 
     await postgres!.query(
