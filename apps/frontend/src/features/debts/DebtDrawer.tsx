@@ -12,6 +12,7 @@ import {
 
 import { FormInput } from '../../shared/ui/form/FormInput';
 import { FormSelect } from '../../shared/ui/form/FormSelect';
+import { useDebtValidationErrorFormatter } from './localization/useDebtValidationErrorFormatter';
 
 type DebtFormValues = {
   description: string;
@@ -39,6 +40,7 @@ export function DebtDrawer({
   onSubmit: (request: CreateDebtRequest) => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const formatValidationError = useDebtValidationErrorFormatter();
   const form = useForm<DebtFormValues, unknown, CreateDebtRequest>({
     defaultValues: {
       description: '',
@@ -102,6 +104,7 @@ export function DebtDrawer({
                 name="description"
                 placeholder={t('debts.form.descriptionPlaceholder')}
                 type="text"
+                formatError={formatValidationError}
               />
               <FormInput<DebtFormValues>
                 autoComplete="off"
@@ -117,6 +120,7 @@ export function DebtDrawer({
                 placeholder={t('debts.form.totalAmountPlaceholder')}
                 type="text"
                 inputMode="decimal"
+                formatError={formatValidationError}
               />
               <FormSelect<DebtFormValues>
                 icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
@@ -127,6 +131,7 @@ export function DebtDrawer({
                   { label: 'USD', value: 'USD' },
                   { label: 'EUR', value: 'EUR' },
                 ]}
+                formatError={formatValidationError}
               />
               <FormInput<DebtFormValues>
                 autoComplete="off"
@@ -134,6 +139,7 @@ export function DebtDrawer({
                 label={t('debts.form.dueDateLabel')}
                 name="paymentPlan.dueDate"
                 type="date"
+                formatError={formatValidationError}
               />
               <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
                 <Dialog.Close asChild>

@@ -15,10 +15,14 @@ import {
 
 import { CurrentOwner, type AuthenticatedOwner } from '../auth';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { resolveDebtValidationMessage } from './debts.errors';
 import { DebtsService } from './debts.service';
 
 const createDebtValidationPipe = new ZodValidationPipe(
   createDebtRequestSchema,
+  {
+    resolveIssueMessage: resolveDebtValidationMessage,
+  },
 );
 
 @Controller('customers/:customerId/debts')

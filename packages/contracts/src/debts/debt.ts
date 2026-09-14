@@ -1,13 +1,23 @@
 import { z } from 'zod';
 
 import { currencySchema } from '../owner-profile/owner-profile.js';
+import { debtValidationCode } from './validation-codes.js';
 
 const createDebtAmountSchema = z
   .string()
   .trim()
-  .regex(/^\d+(?:\.\d{1,2})?$/)
-  .refine(isPositiveDebtAmount)
-  .refine(isWithinNumeric182Precision)
+  .regex(
+    /^\d+(?:\.\d{1,2})?$/,
+    debtValidationCode.debtTotalAmountInvalid,
+  )
+  .refine(
+    isPositiveDebtAmount,
+    debtValidationCode.debtTotalAmountMustBePositive,
+  )
+  .refine(
+    isWithinNumeric182Precision,
+    debtValidationCode.debtTotalAmountTooLarge,
+  )
   .transform((amount) => {
     const [wholeAmount, fractionalAmount = ''] = amount.split('.');
     const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
@@ -35,12 +45,19 @@ function isWithinNumeric182Precision(amount: string): boolean {
 const onePaymentPlanSchema = z
   .object({
     type: z.literal('onePayment'),
-    dueDate: z.iso.date(),
+    dueDate: z
+      .string()
+      .min(1, debtValidationCode.debtDueDateRequired)
+      .pipe(z.iso.date(debtValidationCode.debtDueDateInvalid)),
   })
   .strict();
 
 export const createDebtRequestSchema = z.object({
-  description: z.string().trim().min(1).max(200),
+  description: z
+    .string()
+    .trim()
+    .min(1, debtValidationCode.debtDescriptionRequired)
+    .max(200, debtValidationCode.debtDescriptionTooLong),
   totalAmount: createDebtAmountSchema,
   currency: currencySchema,
   paymentPlan: onePaymentPlanSchema,

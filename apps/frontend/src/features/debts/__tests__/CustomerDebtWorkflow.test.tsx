@@ -130,5 +130,100 @@ describe('Customer debt workflow', () => {
     });
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
+  }, 10_000);
+
+  it('shows backend validation failure in a toast and preserves the draft', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get(`${getBackendUrl()}/session`, () =>
+        HttpResponse.json(ownerSession),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(emptyDebtList),
+      ),
+      http.post(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(
+          {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the highlighted fields.',
+            fieldErrors: {
+              paymentPlan: ['DEBT_DUE_DATE_INVALID'],
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    renderWithAppProviders(<App />, {
+      initialEntries: [`/customers/${baseCustomer.id}`],
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: baseCustomer.name }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add debt' }));
+
+    const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
+    await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
+    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not create debt' }),
+    ).toHaveTextContent('Check the highlighted fields.');
+    expect(screen.queryByText('Enter a valid due date.')).not.toBeInTheDocument();
+    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-09-30');
+    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+      'Website redesign',
+    );
+    expect(drawer).toBeInTheDocument();
   });
+
+  it('keeps the drawer and draft after an unexpected create failure', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get(`${getBackendUrl()}/session`, () =>
+        HttpResponse.json(ownerSession),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(emptyDebtList),
+      ),
+      http.post(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.text('Internal server error', { status: 500 }),
+      ),
+    );
+
+    renderWithAppProviders(<App />, {
+      initialEntries: [`/customers/${baseCustomer.id}`],
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: baseCustomer.name }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add debt' }));
+
+    const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
+    await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
+    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not create debt' }),
+    ).toHaveTextContent('Something went wrong. Try again.');
+    expect(drawer).toBeInTheDocument();
+    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+      'Website redesign',
+    );
+  }, 10_000);
 });

@@ -112,6 +112,39 @@ describe('debt routes', () => {
     ]);
   });
 
+  it('returns human-readable validation messages for invalid debt input', async () => {
+    const owner = await signUpOwner('debt-validation-owner@example.com');
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Website redesign',
+          totalAmount: '125.50',
+          currency: 'USD',
+          paymentPlan: {
+            type: 'onePayment',
+            dueDate: 'not-a-date',
+          },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'Check the highlighted fields.',
+      fieldErrors: {
+        paymentPlan: ['Enter a valid due date.'],
+      },
+    });
+  });
+
   it('returns the Istanbul timing for a debt schedule item', async () => {
     const owner = await signUpOwner('debt-timing-owner@example.com');
     await insertCustomer(owner.ownerProfileId);

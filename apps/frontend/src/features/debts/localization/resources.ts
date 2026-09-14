@@ -1,4 +1,5 @@
 import type { SupportedLocale } from '../../../shared/localization';
+import { debtValidationTranslations } from './debtValidationTranslations';
 
 const debtStrings = {
   drawer: {
@@ -27,9 +28,21 @@ const debtStrings = {
 } as const;
 
 export const debtResources = {
-  en: { common: { debts: debtStrings } },
-  tr: { common: { debts: debtStrings } },
-  ar: { common: { debts: debtStrings } },
+  en: {
+    common: {
+      debts: { ...debtStrings, validation: debtValidationTranslations.en },
+    },
+  },
+  tr: {
+    common: {
+      debts: { ...debtStrings, validation: debtValidationTranslations.tr },
+    },
+  },
+  ar: {
+    common: {
+      debts: { ...debtStrings, validation: debtValidationTranslations.ar },
+    },
+  },
 } satisfies Record<
   SupportedLocale,
   { common: { debts: Record<string, unknown> } }

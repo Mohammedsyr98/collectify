@@ -5,6 +5,7 @@ import {
   debtListResponseSchema,
   debtResponseSchema,
 } from './debt.js';
+import { debtValidationCode } from './validation-codes.js';
 
 describe('debt contracts', () => {
   it('normalizes a one-payment create request', () => {
@@ -56,6 +57,58 @@ describe('debt contracts', () => {
     });
 
     expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtDueDateInvalid,
+    );
+  });
+
+  it('rejects a blank one-payment due date with a required code', () => {
+    const result = createDebtRequestSchema.safeParse({
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+      paymentPlan: {
+        type: 'onePayment',
+        dueDate: '',
+      },
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtDueDateRequired,
+    );
+  });
+
+  it('rejects a malformed debt amount with an invalid code', () => {
+    const result = createDebtRequestSchema.safeParse({
+      description: 'Website redesign',
+      totalAmount: '125.555',
+      currency: 'USD',
+      paymentPlan: {
+        type: 'onePayment',
+        dueDate: '2026-09-30',
+      },
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtTotalAmountInvalid,
+    );
   });
 
   it('rejects an unsupported debt currency', () => {
@@ -84,6 +137,14 @@ describe('debt contracts', () => {
     });
 
     expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtDescriptionRequired,
+    );
   });
 
   it('rejects a debt description longer than 200 characters', () => {
@@ -98,6 +159,14 @@ describe('debt contracts', () => {
     });
 
     expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtDescriptionTooLong,
+    );
   });
 
   it('accepts a canonical one-payment debt response', () => {
@@ -184,6 +253,9 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.path).toEqual(['totalAmount']);
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtTotalAmountMustBePositive,
+    );
   });
 
   it('rejects a debt total outside NUMERIC(18,2)', () => {
@@ -204,6 +276,9 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.path).toEqual(['totalAmount']);
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtTotalAmountTooLarge,
+    );
   });
 
   it('accepts a first-page debt list with truthful metadata', () => {
