@@ -1,5 +1,9 @@
 import {
   boolean,
+  check,
+  date,
+  integer,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -77,6 +81,13 @@ export const customerConstraints = {
   ownerProfileLowerCodeUnique: 'customers_owner_profile_lower_code_unique',
 } as const;
 
+export const debtConstraints = {
+  totalAmountPositive: 'debts_total_amount_positive',
+  schedulePositionPositive: 'debt_schedule_items_position_positive',
+  scheduleAmountPositive: 'debt_schedule_items_amount_positive',
+  debtPositionUnique: 'debt_schedule_items_debt_id_position_unique',
+} as const;
+
 export const customers = pgTable(
   'customers',
   {
@@ -95,6 +106,50 @@ export const customers = pgTable(
     uniqueIndex(customerConstraints.ownerProfileLowerCodeUnique).on(
       table.ownerProfileId,
       sql`lower(trim(${table.code}))`,
+    ),
+  ],
+);
+
+export const debts = pgTable(
+  'debts',
+  {
+    id: text('id').primaryKey(),
+    customerId: text('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    description: text('description').notNull(),
+    totalAmount: numeric('total_amount', { precision: 18, scale: 2 }).notNull(),
+    currency: currencyEnum('currency').notNull(),
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
+  },
+  (table) => [
+    check(debtConstraints.totalAmountPositive, sql`${table.totalAmount} > 0`),
+  ],
+);
+
+export const debtScheduleItems = pgTable(
+  'debt_schedule_items',
+  {
+    id: text('id').primaryKey(),
+    debtId: text('debt_id')
+      .notNull()
+      .references(() => debts.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    amount: numeric('amount', { precision: 18, scale: 2 }).notNull(),
+    dueDate: date('due_date', { mode: 'string' }).notNull(),
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
+  },
+  (table) => [
+    check(
+      debtConstraints.schedulePositionPositive,
+      sql`${table.position} > 0`,
+    ),
+    check(debtConstraints.scheduleAmountPositive, sql`${table.amount} > 0`),
+    uniqueIndex(debtConstraints.debtPositionUnique).on(
+      table.debtId,
+      table.position,
     ),
   ],
 );

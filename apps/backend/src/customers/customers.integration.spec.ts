@@ -73,6 +73,63 @@ describe('customer routes', () => {
     );
   });
 
+  it('includes debt balances in customer details', async () => {
+    const owner = await signUpOwner('customer-financials-owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    const created = createCustomerResponseSchema.parse(
+      await createResponse.json(),
+    );
+
+    const debtResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Website redesign',
+          totalAmount: '125.50',
+          currency: 'USD',
+          paymentPlan: {
+            type: 'onePayment',
+            dueDate: '2999-01-01',
+          },
+        }),
+      },
+    );
+
+    expect(debtResponse.status).toBe(201);
+
+    const detailsResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(detailsResponse.status).toBe(200);
+    const details = customerDetailsResponseSchema.parse(
+      await detailsResponse.json(),
+    );
+
+    expect(details.financialSummary).toEqual([
+      {
+        currency: 'USD',
+        totalDebtAmount: '125.50',
+        totalPaidAmount: '0.00',
+        remainingAmount: '125.50',
+      },
+    ]);
+  });
+
   it('updates only the submitted customer fields', async () => {
     const owner = await signUpOwner('owner@example.com');
     const createResponse = await createCustomer(owner.cookieHeader, {
@@ -397,6 +454,79 @@ describe('customer routes', () => {
         },
       },
     ]);
+  });
+
+  it('includes debt balances in customer directory items by default currency', async () => {
+    const owner = await signUpOwner('customer-directory-financials-owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-001',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    const created = createCustomerResponseSchema.parse(
+      await createResponse.json(),
+    );
+
+    for (const debt of [
+      {
+        description: 'EUR overdue debt',
+        totalAmount: '40.00',
+        currency: 'EUR',
+        dueDate: '2000-01-01',
+      },
+      {
+        description: 'USD upcoming debt',
+        totalAmount: '25.50',
+        currency: 'USD',
+        dueDate: '2999-01-01',
+      },
+    ]) {
+      const debtResponse = await fetch(
+        `${backend!.baseUrl}/customers/${created.id}/debts`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            cookie: owner.cookieHeader,
+          },
+          body: JSON.stringify({
+            description: debt.description,
+            totalAmount: debt.totalAmount,
+            currency: debt.currency,
+            paymentPlan: {
+              type: 'onePayment',
+              dueDate: debt.dueDate,
+            },
+          }),
+        },
+      );
+
+      expect(debtResponse.status).toBe(201);
+    }
+
+    const response = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const list = customerListResponseSchema.parse(await response.json());
+
+    expect(list.items[0]?.financialSummary).toEqual({
+      balancesByCurrency: [
+        {
+          currency: 'USD',
+          remainingAmount: '25.50',
+          overdueAmount: '0.00',
+        },
+        {
+          currency: 'EUR',
+          remainingAmount: '40.00',
+          overdueAmount: '40.00',
+        },
+      ],
+    });
   });
 
   it('lists only customers that belong to the authenticated owner', async () => {

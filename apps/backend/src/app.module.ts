@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from './database/database.module';
 import { CustomersModule } from './customers/customers.module';
+import { DebtsModule } from './debts/debts.module';
 import { HealthController } from './health.controller';
 import { OwnerSignInModule } from './auth/owner/sign-in/owner-sign-in.module';
 import { OwnerSignOutModule } from './auth/owner/sign-out/owner-sign-out.module';
@@ -12,6 +13,7 @@ import { SessionModule } from './auth/owner/session/session.module';
   imports: [
     DatabaseModule,
     CustomersModule,
+    DebtsModule,
     OwnerSignInModule,
     OwnerSignOutModule,
     OwnerSignUpModule,

@@ -4,7 +4,7 @@ import {
   startIntegrationPostgres,
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
-import { customerConstraints } from './schema';
+import { customerConstraints, debtConstraints } from './schema';
 
 describe('Postgres migrations', () => {
   let postgres: IntegrationPostgres | undefined;
@@ -41,6 +41,8 @@ describe('Postgres migrations', () => {
     expect(tables.map((table) => table.table_name)).toEqual([
       'account',
       'customers',
+      'debt_schedule_items',
+      'debts',
       'owner_profiles',
       'session',
       'user',
@@ -174,4 +176,225 @@ describe('Postgres migrations', () => {
       constraint: customerConstraints.ownerProfileLowerCodeUnique,
     });
   });
+
+  it('rejects a zero debt total at the database boundary', async () => {
+    await insertDebtCustomer('debt_constraint_total');
+
+    await expect(
+      postgres!.query(`
+        INSERT INTO "debts" (
+          "id",
+          "customer_id",
+          "description",
+          "total_amount",
+          "currency",
+          "created_at",
+          "updated_at"
+        )
+        VALUES (
+          'debt_zero_total_schema',
+          'customer_debt_constraint_total',
+          'Invalid debt',
+          '0.00',
+          'USD',
+          now(),
+          now()
+        )
+      `),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: debtConstraints.totalAmountPositive,
+    });
+  });
+
+  it('rejects a non-positive debt schedule position', async () => {
+    await insertDebtCustomer('debt_constraint_position');
+    await insertDebtFixture(
+      'debt_invalid_position_schema',
+      'customer_debt_constraint_position',
+    );
+
+    await expect(
+      insertScheduleFixture({
+        id: 'schedule_invalid_position_schema',
+        debtId: 'debt_invalid_position_schema',
+        position: 0,
+      }),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: debtConstraints.schedulePositionPositive,
+    });
+  });
+
+  it('rejects a non-positive debt schedule amount', async () => {
+    await insertDebtCustomer('debt_constraint_amount');
+    await insertDebtFixture(
+      'debt_invalid_amount_schema',
+      'customer_debt_constraint_amount',
+    );
+
+    await expect(
+      insertScheduleFixture({
+        id: 'schedule_invalid_amount_schema',
+        debtId: 'debt_invalid_amount_schema',
+        position: 2,
+        amount: '0.00',
+      }),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: debtConstraints.scheduleAmountPositive,
+    });
+  });
+
+  it('rejects duplicate debt schedule positions', async () => {
+    await insertDebtCustomer('debt_constraint_unique');
+    await insertDebtFixture(
+      'debt_duplicate_position_schema',
+      'customer_debt_constraint_unique',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_first_position_schema',
+      debtId: 'debt_duplicate_position_schema',
+    });
+
+    await expect(
+      insertScheduleFixture({
+        id: 'schedule_duplicate_position_schema',
+        debtId: 'debt_duplicate_position_schema',
+      }),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: debtConstraints.debtPositionUnique,
+    });
+  });
+
+  it('cascades customer deletion through debts and schedule items', async () => {
+    await insertDebtCustomer('debt_constraint_cascade');
+    await insertDebtFixture(
+      'debt_customer_cascade_schema',
+      'customer_debt_constraint_cascade',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_customer_cascade_schema',
+      debtId: 'debt_customer_cascade_schema',
+    });
+
+    await postgres!.query(
+      'DELETE FROM "customers" WHERE "id" = $1',
+      ['customer_debt_constraint_cascade'],
+    );
+
+    const remainingDebts = await postgres!.query<{ count: number }>(
+      'SELECT count(*)::int AS count FROM "debts" WHERE "id" = $1',
+      ['debt_customer_cascade_schema'],
+    );
+    const remainingScheduleItems = await postgres!.query<{ count: number }>(
+      'SELECT count(*)::int AS count FROM "debt_schedule_items" WHERE "id" = $1',
+      ['schedule_customer_cascade_schema'],
+    );
+
+    expect(remainingDebts).toEqual([{ count: 0 }]);
+    expect(remainingScheduleItems).toEqual([{ count: 0 }]);
+  });
+
+  async function insertDebtCustomer(suffix: string): Promise<void> {
+    await postgres!.query(
+      `
+        INSERT INTO "user" (
+          "id",
+          "name",
+          "email",
+          "email_verified",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, 'Debt Owner', $2, false, now(), now())
+      `,
+      [`user_${suffix}`, `${suffix}@example.test`],
+    );
+    await postgres!.query(
+      `
+        INSERT INTO "owner_profiles" (
+          "id",
+          "user_id",
+          "preferred_language",
+          "default_currency",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, 'en', 'USD', now(), now())
+      `,
+      [`profile_${suffix}`, `user_${suffix}`],
+    );
+    await postgres!.query(
+      `
+        INSERT INTO "customers" (
+          "id",
+          "owner_profile_id",
+          "name",
+          "code",
+          "phone_number",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, 'Debt Customer', $3, '+90 555 123 45 67', now(), now())
+      `,
+      [
+        `customer_${suffix}`,
+        `profile_${suffix}`,
+        `DEBT-${suffix.toUpperCase()}`,
+      ],
+    );
+  }
+
+  function insertDebtFixture(
+    id: string,
+    customerId: string,
+  ): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "debts" (
+          "id",
+          "customer_id",
+          "description",
+          "total_amount",
+          "currency",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, 'Fixture debt', '125.50', 'USD', now(), now())
+      `,
+      [id, customerId],
+    );
+  }
+
+  function insertScheduleFixture({
+    amount = '125.50',
+    debtId,
+    dueDate = '2026-09-30',
+    id,
+    position = 1,
+  }: {
+    amount?: string;
+    debtId: string;
+    dueDate?: string;
+    id: string;
+    position?: number;
+  }): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "debt_schedule_items" (
+          "id",
+          "debt_id",
+          "position",
+          "amount",
+          "due_date",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, $4, $5::date, now(), now())
+      `,
+      [id, debtId, position, amount, dueDate],
+    );
+  }
 });

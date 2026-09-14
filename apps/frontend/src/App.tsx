@@ -38,7 +38,14 @@ function App() {
           <Route element={<Navigate replace to="/panel" />} path="/" />
           <Route element={<PanelPage />} path="/panel" />
           <Route element={<CustomersPage />} path="/customers" />
-          <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
+          <Route
+            element={
+              <CustomerDetailsPage
+                defaultCurrency={appSession.session.ownerProfile.defaultCurrency}
+              />
+            }
+            path="/customers/:customerId"
+          />
           <Route element={<Navigate replace to="/panel" />} path="*" />
         </Routes>
       </div>

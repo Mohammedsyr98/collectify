@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   customerApiErrorCode,
   customerListPageSize,
+  type Currency,
   type CreateCustomerRequest,
   type CustomerDetailsResponse,
   type CustomerListQuery,
@@ -10,15 +11,32 @@ import {
   type UpdateCustomerRequest,
   type UpdateCustomerResponse,
 } from '@collectify/contracts';
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService } from '../database/database.service';
-import { customerConstraints, customers } from '../database/schema';
+import {
+  customerConstraints,
+  customers,
+  debtScheduleItems,
+  debts,
+} from '../database/schema';
+import { getIstanbulBusinessDate } from '../debts/debt-timing';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
+type DebtFinancialAggregate = {
+  customerId: string;
+  currency: Currency;
+  totalDebtAmount: string;
+  overdueAmount: string;
+};
+type DebtOverdueRow = {
+  customerId: string;
+  currency: Currency;
+  overdueAmount: string;
+};
 type SearchableCustomerColumn =
   | typeof customers.name
   | typeof customers.code
@@ -49,7 +67,7 @@ export class CustomersService {
         })
         .returning();
 
-      return toCustomerDetailsResponse(customer);
+      return toCustomerDetailsResponse(customer, []);
     } catch (error) {
       if (isCustomerCodeUniqueViolation(error)) {
         throw customerException(customerApiErrorCode.customerCodeAlreadyExists);
@@ -78,7 +96,12 @@ export class CustomersService {
       throw customerException(customerApiErrorCode.customerNotFound);
     }
 
-    return toCustomerDetailsResponse(customer);
+    const financialSummary = await this.getFinancialSummary(
+      customer.id,
+      currentOwner.ownerProfile.defaultCurrency,
+    );
+
+    return toCustomerDetailsResponse(customer, financialSummary);
   }
 
   async updateCustomer(
@@ -107,7 +130,12 @@ export class CustomersService {
         throw customerException(customerApiErrorCode.customerNotFound);
       }
 
-      return toCustomerDetailsResponse(customer);
+      const financialSummary = await this.getFinancialSummary(
+        customer.id,
+        currentOwner.ownerProfile.defaultCurrency,
+      );
+
+      return toCustomerDetailsResponse(customer, financialSummary);
     } catch (error) {
       if (isCustomerCodeUniqueViolation(error)) {
         throw customerException(customerApiErrorCode.customerCodeAlreadyExists);
@@ -135,14 +163,101 @@ export class CustomersService {
       .orderBy(desc(customers.createdAt), desc(customers.id))
       .limit(customerListPageSize)
       .offset(offset);
+    const operationInstant = new Date();
+    const debtFinancialAggregates = await this.getDebtFinancialAggregates(
+      customerRows.map((customer) => customer.id),
+      getIstanbulBusinessDate(operationInstant),
+    );
+    const aggregatesByCustomerId = groupDebtFinancialAggregatesByCustomerId(
+      debtFinancialAggregates,
+    );
 
     return {
-      items: customerRows.map(toCustomerListItemResponse),
+      items: customerRows.map((customer) =>
+        toCustomerListItemResponse(
+          customer,
+          aggregatesByCustomerId.get(customer.id) ?? [],
+          currentOwner.ownerProfile.defaultCurrency,
+        ),
+      ),
       page: query.page,
       pageSize: customerListPageSize,
       totalItems,
       totalPages: Math.ceil(totalItems / customerListPageSize),
     };
+  }
+
+  private async getFinancialSummary(
+    customerId: string,
+    defaultCurrency: Currency,
+  ) {
+    const aggregates = await this.getDebtFinancialAggregates(
+      [customerId],
+      getIstanbulBusinessDate(new Date()),
+    );
+
+    return sortDebtFinancialAggregates(aggregates, defaultCurrency).map(
+      (aggregate) => ({
+      currency: aggregate.currency,
+      totalDebtAmount: aggregate.totalDebtAmount,
+      totalPaidAmount: '0.00',
+      remainingAmount: aggregate.totalDebtAmount,
+      }),
+    );
+  }
+
+  private async getDebtFinancialAggregates(
+    customerIds: string[],
+    businessDate: string,
+  ): Promise<DebtFinancialAggregate[]> {
+    if (customerIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.databaseService.db
+      .select({
+        customerId: debts.customerId,
+        currency: debts.currency,
+        totalDebtAmount: sql<string>`cast(sum(${debts.totalAmount}) as numeric(18, 2))`,
+      })
+      .from(debts)
+      .where(inArray(debts.customerId, customerIds))
+      .groupBy(debts.customerId, debts.currency);
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const overdueRows = await this.databaseService.db
+      .select({
+        customerId: debts.customerId,
+        currency: debts.currency,
+        overdueAmount: sql<string>`cast(sum(${debtScheduleItems.amount}) as numeric(18, 2))`,
+      })
+      .from(debtScheduleItems)
+      .innerJoin(debts, eq(debts.id, debtScheduleItems.debtId))
+      .where(
+        and(
+          inArray(debts.customerId, customerIds),
+          sql`${debtScheduleItems.dueDate} < ${businessDate}`,
+        ),
+      )
+      .groupBy(debts.customerId, debts.currency);
+    const overdueByKey = new Map(
+      (overdueRows as DebtOverdueRow[]).map((row) => [
+        financialAggregateKey(row.customerId, row.currency),
+        row.overdueAmount,
+      ]),
+    );
+
+    return (rows as Omit<DebtFinancialAggregate, 'overdueAmount'>[]).map(
+      (row) => ({
+        ...row,
+        overdueAmount:
+          overdueByKey.get(financialAggregateKey(row.customerId, row.currency)) ??
+          '0.00',
+      }),
+    );
   }
 }
 
@@ -176,6 +291,7 @@ function escapeLikePattern(value: string): string {
 
 function toCustomerDetailsResponse(
   customer: CustomerRow,
+  financialSummary: CustomerDetailsResponse['financialSummary'],
 ): CustomerDetailsResponse {
   return {
     id: customer.id,
@@ -185,11 +301,15 @@ function toCustomerDetailsResponse(
     address: customer.address,
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),
-    financialSummary: [],
+    financialSummary,
   };
 }
 
-function toCustomerListItemResponse(customer: CustomerRow): CustomerListItem {
+function toCustomerListItemResponse(
+  customer: CustomerRow,
+  aggregates: DebtFinancialAggregate[],
+  defaultCurrency: Currency,
+): CustomerListItem {
   return {
     id: customer.id,
     name: customer.name,
@@ -198,9 +318,52 @@ function toCustomerListItemResponse(customer: CustomerRow): CustomerListItem {
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),
     financialSummary: {
-      balancesByCurrency: [],
+      balancesByCurrency: sortDebtFinancialAggregates(
+        aggregates,
+        defaultCurrency,
+      ).map((aggregate) => ({
+        currency: aggregate.currency,
+        remainingAmount: aggregate.totalDebtAmount,
+        overdueAmount: aggregate.overdueAmount,
+      })),
     },
   };
+}
+
+function groupDebtFinancialAggregatesByCustomerId(
+  aggregates: DebtFinancialAggregate[],
+): Map<string, DebtFinancialAggregate[]> {
+  const aggregatesByCustomerId = new Map<string, DebtFinancialAggregate[]>();
+
+  for (const aggregate of aggregates) {
+    const customerAggregates =
+      aggregatesByCustomerId.get(aggregate.customerId) ?? [];
+    customerAggregates.push(aggregate);
+    aggregatesByCustomerId.set(aggregate.customerId, customerAggregates);
+  }
+
+  return aggregatesByCustomerId;
+}
+
+function sortDebtFinancialAggregates(
+  aggregates: DebtFinancialAggregate[],
+  defaultCurrency: Currency,
+): DebtFinancialAggregate[] {
+  return [...aggregates].sort((left, right) => {
+    if (left.currency === defaultCurrency) {
+      return -1;
+    }
+
+    if (right.currency === defaultCurrency) {
+      return 1;
+    }
+
+    return left.currency.localeCompare(right.currency);
+  });
+}
+
+function financialAggregateKey(customerId: string, currency: Currency): string {
+  return `${customerId}:${currency}`;
 }
 
 function isCustomerCodeUniqueViolation(error: unknown): boolean {

@@ -2,6 +2,7 @@ import type {
   CustomerDetailsResponse,
   CustomerListItem,
   CustomerListResponse,
+  DebtListResponse,
 } from '@collectify/contracts';
 
 export const baseCustomer: CustomerDetailsResponse = {
@@ -60,6 +61,14 @@ export const emptyCustomerList: CustomerListResponse = {
   items: [],
   page: 1,
   pageSize: 25,
+  totalItems: 0,
+  totalPages: 0,
+};
+
+export const emptyDebtList: DebtListResponse = {
+  items: [],
+  page: 1,
+  pageSize: 5,
   totalItems: 0,
   totalPages: 0,
 };

@@ -3,7 +3,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 
-import { customerApiErrorCode, type CustomerCurrencySummary } from '@collectify/contracts';
+import {
+  customerApiErrorCode,
+  type Currency,
+  type CustomerCurrencySummary,
+  type DebtResponse,
+} from '@collectify/contracts';
 
 import { isApiError } from '../../shared/api/http';
 import { useLocalization } from '../../shared/localization';
@@ -15,17 +20,32 @@ import {
 } from '../../shared/ui/segmented-control/SegmentedControl';
 import { CustomerEditModal } from './CustomerEditModal';
 import { useCustomerDetailsQuery, useUpdateCustomerMutation } from './customerQueries';
+import { DebtDrawer } from '../debts/DebtDrawer';
+import {
+  useCreateDebtMutation,
+  useDebtListQuery,
+} from '../debts/debtQueries';
 
 type CurrencySelection = 'all' | CustomerCurrencySummary['currency'];
 
-export function CustomerDetailsPage() {
+export function CustomerDetailsPage({
+  defaultCurrency,
+}: {
+  defaultCurrency?: Currency;
+}) {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
   const customerQuery = useCustomerDetailsQuery(customerId);
+  const debtQuery = useDebtListQuery(customerId);
+  const { createDebt, isCreating } = useCreateDebtMutation({
+    customerId: customerId ?? '',
+    onCreated: () => setIsDebtDrawerOpen(false),
+  });
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
     onUpdated: () => setIsEditModalOpen(false),
   });
@@ -91,7 +111,8 @@ export function CustomerDetailsPage() {
               </button>
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-muted-foreground opacity-65"
-                disabled
+                disabled={!defaultCurrency}
+                onClick={() => setIsDebtDrawerOpen(true)}
                 type="button"
               >
                 <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
@@ -141,11 +162,7 @@ export function CustomerDetailsPage() {
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <EmptyLedgerSection
-              Icon={ReceiptText}
-              emptyText={t('customers.details.debtsEmpty')}
-              title={t('customers.details.debts')}
-            />
+            <DebtLedgerSection debts={debtQuery.data?.items ?? []} t={t} />
             <EmptyLedgerSection
               Icon={CreditCard}
               emptyText={t('customers.details.paymentsEmpty')}
@@ -166,6 +183,14 @@ export function CustomerDetailsPage() {
               request,
             })
           }
+        />
+      ) : null}
+      {isDebtDrawerOpen && defaultCurrency ? (
+        <DebtDrawer
+          defaultCurrency={defaultCurrency}
+          isSubmitting={isCreating}
+          onClose={() => setIsDebtDrawerOpen(false)}
+          onSubmit={createDebt}
         />
       ) : null}
     </>
@@ -362,6 +387,47 @@ function EmptyLedgerSection({
         <Icon aria-hidden="true" size={22} strokeWidth={2.2} />
         <p className="m-0 text-[0.82rem] font-bold">{emptyText}</p>
       </div>
+    </section>
+  );
+}
+
+function DebtLedgerSection({
+  debts,
+  t,
+}: {
+  debts: DebtResponse[];
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <section
+      aria-label={t('customers.details.debts')}
+      className="grid min-h-[190px] gap-4 rounded-md border border-border bg-card p-4"
+    >
+      <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
+        {t('customers.details.debts')}
+      </h2>
+      {debts.length === 0 ? (
+        <div className="grid place-items-center gap-2 self-stretch rounded-[5px] border border-dashed border-border bg-background p-5 text-center text-muted-foreground">
+          <ReceiptText aria-hidden="true" size={22} strokeWidth={2.2} />
+          <p className="m-0 text-[0.82rem] font-bold">
+            {t('customers.details.debtsEmpty')}
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {debts.map((debt) => (
+            <article
+              className="grid gap-2 rounded-[5px] border border-border bg-background p-3"
+              key={debt.id}
+            >
+              <h3 className="m-0 text-[0.88rem] font-black">{debt.description}</h3>
+              <span className="text-[0.8rem] font-bold text-muted-foreground">
+                {debt.totalAmount} {debt.currency}
+              </span>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
