@@ -3,4 +3,5 @@ export * from './customers/index.js';
 export * from './debts/index.js';
 export * from './health/index.js';
 export * from './owner-profile/index.js';
+export * from './pagination.js';
 export * from './session/index.js';

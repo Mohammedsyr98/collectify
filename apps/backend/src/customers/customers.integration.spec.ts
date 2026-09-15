@@ -634,21 +634,8 @@ describe('customer routes', () => {
     });
   });
 
-  it('falls back to the first customer page when the page query is invalid', async () => {
+  it('rejects an invalid customer page query with a validation error', async () => {
     const owner = await signUpOwner('owner@example.com');
-
-    for (let index = 1; index <= customerCountWithSecondPage; index += 1) {
-      const suffix = index.toString().padStart(3, '0');
-
-      await insertCustomer({
-        ownerProfileId: owner.ownerProfileId,
-        id: `customer_invalid_page_${suffix}`,
-        name: `Invalid Page Customer ${suffix}`,
-        code: `INVALID-PAGE-${suffix}`,
-        phoneNumber: `+90 555 305 ${suffix}`,
-        createdAt: `2026-08-29 11:${index.toString().padStart(2, '0')}:00`,
-      });
-    }
 
     const response = await fetch(`${backend!.baseUrl}/customers?page=invalid`, {
       headers: {
@@ -656,21 +643,17 @@ describe('customer routes', () => {
       },
     });
 
-    expect(response.status).toBe(200);
-    const list = customerListResponseSchema.parse(await response.json());
-
-    expect(list.items).toHaveLength(customerListPageSize);
-    expect(list.items[0]).toMatchObject({
-      id: `customer_invalid_page_${customerCountWithSecondPage
-        .toString()
-        .padStart(3, '0')}`,
-    });
-    expect(list).toMatchObject({
-      page: 1,
-      pageSize: customerListPageSize,
-      totalItems: customerCountWithSecondPage,
-      totalPages: expectedCustomerListTotalPages,
-    });
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        code: 'VALIDATION_ERROR',
+        message: 'Check the highlighted fields.',
+      }),
+    );
+    expect(body.fieldErrors?.page).toEqual([
+      expect.any(String),
+    ]);
   });
 
   it('keeps page boundaries stable when customers share the same creation time', async () => {

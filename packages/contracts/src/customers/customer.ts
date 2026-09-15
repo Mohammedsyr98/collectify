@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { customerApiErrorCodes } from './api-error-codes.js';
 import { currencySchema } from '../owner-profile/owner-profile.js';
+import { oneBasedPageSchema } from '../pagination.js';
 import { customerValidationCode } from './validation-codes.js';
 
 export const createCustomerRequestSchema = z.object({
@@ -101,7 +102,7 @@ export const customerListResponseSchema = z.object({
 
 export const customerListQuerySchema = z
   .object({
-    page: z.coerce.number().int().min(1).catch(1),
+    page: oneBasedPageSchema,
     search: z.string().trim().optional(),
   })
   .transform(({ page, search }) =>
@@ -114,6 +115,7 @@ export const customerFieldErrorsSchema = z
     code: z.array(z.string().min(1)).optional(),
     phoneNumber: z.array(z.string().min(1)).optional(),
     address: z.array(z.string().min(1)).optional(),
+    page: z.array(z.string().min(1)).optional(),
   })
   .strict();
 

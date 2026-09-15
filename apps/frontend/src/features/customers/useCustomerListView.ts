@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import {
   customerListQuerySchema,
+  oneBasedPageSchema,
   type CustomerListItem,
   type CustomerListQuery,
 } from '@collectify/contracts';
@@ -23,11 +24,12 @@ type CustomerListViewStatus =
 
 export function useCustomerListView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const pageQuery = searchParams.get('page');
+  const parsedPage = oneBasedPageSchema.safeParse(pageQuery ?? undefined);
   const customerListQueryParams: CustomerListQuery = customerListQuerySchema.parse({
-    page: searchParams.get('page') ?? undefined,
+    page: parsedPage.success ? parsedPage.data : undefined,
     search: searchParams.get('search') ?? undefined,
   });
-  const pageQuery = searchParams.get('page');
   const pendingSearchUrlUpdateRef = useRef<string | null>(null);
   const effectiveSearchValue = customerListQueryParams.search ?? '';
   const [searchValue, setSearchValue] = useState(effectiveSearchValue);
@@ -97,8 +99,15 @@ export function useCustomerListView() {
       return;
     }
 
-    setCustomerPageQuery(customerListQueryParams.page, { replace: true });
-  }, [customerListQueryParams.page, pageQuery, setCustomerPageQuery]);
+    setCustomerPageQuery(parsedPage.success ? customerListQueryParams.page : 1, {
+      replace: true,
+    });
+  }, [
+    customerListQueryParams.page,
+    pageQuery,
+    parsedPage.success,
+    setCustomerPageQuery,
+  ]);
 
   useEffect(() => {
     if (!customerListQuery.isSuccess || customerListQuery.isPlaceholderData || pageQuery === null) {
