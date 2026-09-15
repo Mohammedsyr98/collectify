@@ -26,6 +26,10 @@ export const debtResources = {
           totalAmountLabel: 'Total amount',
           totalAmountPlaceholder: '125.50',
         },
+        section: {
+          empty: 'No debts yet.',
+          title: 'Debts',
+        },
         toast: {
           create: {
             errorTitle: 'Could not create debt',
@@ -61,6 +65,10 @@ export const debtResources = {
           totalAmountLabel: 'Toplam tutar',
           totalAmountPlaceholder: '125.50',
         },
+        section: {
+          empty: 'Henüz borç yok.',
+          title: 'Borçlar',
+        },
         toast: {
           create: {
             errorTitle: 'Borç oluşturulamadı',
@@ -95,6 +103,10 @@ export const debtResources = {
           saving: 'جارٍ الحفظ',
           totalAmountLabel: 'المبلغ الإجمالي',
           totalAmountPlaceholder: '125.50',
+        },
+        section: {
+          empty: 'لا توجد ديون بعد.',
+          title: 'الديون',
         },
         toast: {
           create: {

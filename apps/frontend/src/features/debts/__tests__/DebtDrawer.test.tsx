@@ -5,12 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CreateDebtRequest } from '@collectify/contracts';
 
+import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { DebtDrawer } from '../DebtDrawer';
 
 describe('DebtDrawer', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    document.documentElement.lang = '';
+    document.documentElement.removeAttribute('dir');
     Object.defineProperty(window.navigator, 'languages', {
       configurable: true,
       value: ['en-US'],
@@ -19,6 +22,19 @@ describe('DebtDrawer', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('focuses the description when the drawer opens', () => {
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(screen.getByLabelText('Description')).toHaveFocus();
   });
 
   it('submits a normalized one-payment debt request', async () => {
@@ -109,5 +125,60 @@ describe('DebtDrawer', () => {
 
     await user.tab({ shift: true });
     expect(saveButton).toHaveFocus();
+  });
+
+  it.each([
+    {
+      descriptionLabel: 'الوصف',
+      dueDateLabel: 'تاريخ الاستحقاق',
+      locale: 'ar',
+      saveLabel: 'حفظ الدين',
+      title: 'إضافة دين',
+    },
+    {
+      descriptionLabel: 'Açıklama',
+      dueDateLabel: 'Vade tarihi',
+      locale: 'tr',
+      saveLabel: 'Borcu kaydet',
+      title: 'Borç ekle',
+    },
+  ])(
+    'renders localized $locale controls',
+    ({ descriptionLabel, dueDateLabel, locale, saveLabel, title }) => {
+      window.localStorage.setItem(localeStorageKey, locale);
+
+      renderWithAppProviders(
+        <DebtDrawer
+          defaultCurrency="USD"
+          isSubmitting={false}
+          onClose={vi.fn()}
+          onSubmit={vi.fn(async () => undefined)}
+        />,
+      );
+
+      const drawer = screen.getByRole('dialog', { name: title });
+
+      expect(within(drawer).getByLabelText(descriptionLabel)).toBeInTheDocument();
+      expect(within(drawer).getByLabelText(dueDateLabel)).toBeInTheDocument();
+      expect(
+        within(drawer).getByRole('button', { name: saveLabel }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it('uses logical inline-end positioning', () => {
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+
+    expect(drawer).toHaveClass('end-0');
+    expect(drawer).not.toHaveClass('left-0', 'right-0');
   });
 });
