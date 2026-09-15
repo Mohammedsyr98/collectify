@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -80,5 +80,34 @@ describe('DebtDrawer', () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(description).toHaveValue('Website redesign');
     expect(screen.getByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+  });
+
+  it('keeps keyboard focus inside the drawer', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Add debt' });
+    expect(dialog).toHaveAccessibleDescription(
+      'Create a one-payment debt for this customer.',
+    );
+    const closeButton = within(dialog).getByRole('button', {
+      name: 'Close debt form',
+    });
+    const saveButton = within(dialog).getByRole('button', { name: 'Save debt' });
+
+    saveButton.focus();
+    await user.tab();
+    expect(closeButton).toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(saveButton).toHaveFocus();
   });
 });

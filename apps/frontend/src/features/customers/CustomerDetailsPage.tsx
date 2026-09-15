@@ -1,5 +1,5 @@
 import { CreditCard, Pencil, Plus, ReceiptText, type LucideIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 
@@ -40,6 +40,7 @@ export function CustomerDetailsPage({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
+  const addDebtButtonRef = useRef<HTMLButtonElement>(null);
   const customerQuery = useCustomerDetailsQuery(customerId);
   const debtQuery = useDebtListQuery(customerId);
   const { createDebt, isCreating } = useCreateDebtMutation({
@@ -113,6 +114,7 @@ export function CustomerDetailsPage({
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-muted-foreground opacity-65"
                 disabled={!defaultCurrency}
                 onClick={() => setIsDebtDrawerOpen(true)}
+                ref={addDebtButtonRef}
                 type="button"
               >
                 <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
@@ -162,7 +164,11 @@ export function CustomerDetailsPage({
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <DebtLedgerSection debts={debtQuery.data?.items ?? []} t={t} />
+            <DebtLedgerSection
+              debts={debtQuery.data?.items ?? []}
+              locale={locale}
+              t={t}
+            />
             <EmptyLedgerSection
               Icon={CreditCard}
               emptyText={t('customers.details.paymentsEmpty')}
@@ -191,6 +197,7 @@ export function CustomerDetailsPage({
           isSubmitting={isCreating}
           onClose={() => setIsDebtDrawerOpen(false)}
           onSubmit={createDebt}
+          returnFocusRef={addDebtButtonRef}
         />
       ) : null}
     </>
@@ -393,9 +400,11 @@ function EmptyLedgerSection({
 
 function DebtLedgerSection({
   debts,
+  locale,
   t,
 }: {
   debts: DebtResponse[];
+  locale: string;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
@@ -420,14 +429,45 @@ function DebtLedgerSection({
               className="grid gap-2 rounded-[5px] border border-border bg-background p-3"
               key={debt.id}
             >
-              <h3 className="m-0 text-[0.88rem] font-black">{debt.description}</h3>
-              <span className="text-[0.8rem] font-bold text-muted-foreground">
-                {debt.totalAmount} {debt.currency}
-              </span>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="m-0 text-[0.88rem] font-black">
+                  {debt.description}
+                </h3>
+                {debt.scheduleItems[0]?.timing === 'dueToday' ? (
+                  <span className="inline-flex rounded-[5px] border border-status-due-border bg-status-due-background px-2 py-0.5 text-[0.7rem] font-black text-status-due-foreground">
+                    {t('debts.card.dueToday')}
+                  </span>
+                ) : null}
+                {debt.scheduleItems[0]?.timing === 'overdue' ? (
+                  <span className="inline-flex rounded-[5px] border border-status-overdue-border bg-status-overdue-background px-2 py-0.5 text-[0.7rem] font-black text-status-overdue-foreground">
+                    {t('debts.card.overdue')}
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[0.8rem] font-bold text-muted-foreground">
+                <bdi dir="ltr">
+                  {formatCurrencyAmount(debt.totalAmount, debt.currency, locale)}
+                </bdi>
+                <span>{t('debts.card.onePayment')}</span>
+                <time dateTime={debt.scheduleItems[0]?.dueDate}>
+                  {formatDebtDueDate(debt.scheduleItems[0]?.dueDate, locale)}
+                </time>
+              </div>
             </article>
           ))}
         </div>
       )}
     </section>
   );
+}
+
+function formatDebtDueDate(dueDate: string | undefined, locale: string): string {
+  if (!dueDate) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${dueDate}T00:00:00.000Z`));
 }

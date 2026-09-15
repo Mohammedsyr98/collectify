@@ -1,7 +1,12 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
-import { FormProvider, useForm, type Resolver } from 'react-hook-form';
+import { type RefObject } from 'react';
+import {
+  FormProvider,
+  useForm,
+  type Resolver,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -33,11 +38,13 @@ export function DebtDrawer({
   isSubmitting,
   onClose,
   onSubmit,
+  returnFocusRef,
 }: {
   defaultCurrency: Currency;
   isSubmitting: boolean;
   onClose: () => void;
   onSubmit: (request: CreateDebtRequest) => Promise<void>;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const formatValidationError = useDebtValidationErrorFormatter();
@@ -68,6 +75,20 @@ export function DebtDrawer({
         <Dialog.Content
           aria-describedby="debt-drawer-description"
           className="fixed inset-y-0 end-0 z-10 grid w-full max-w-[460px] content-start gap-4 overflow-y-auto border-s border-border bg-card p-5 shadow-[var(--shadow-md)]"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            (event.currentTarget as HTMLElement)
+              .querySelector<HTMLInputElement>('input[name="description"]')
+              ?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocusRef?.current) {
+              return;
+            }
+
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }}
         >
           <div className="flex items-center justify-between gap-3">
             <Dialog.Title className="m-0 text-[1.15rem] font-black leading-tight tracking-normal">
