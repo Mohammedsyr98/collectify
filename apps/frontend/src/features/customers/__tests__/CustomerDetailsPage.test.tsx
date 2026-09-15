@@ -5,10 +5,13 @@ import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import type { Currency } from '@collectify/contracts';
+
 import { getBackendUrl } from '../../../shared/api/http';
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
+import { emptyDebtList } from '../../debts/__tests__/debtTestData';
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
 import { CustomersPage } from '../CustomersPage';
 import {
@@ -43,11 +46,17 @@ const customerWithFinancialActivity = {
   ],
 };
 
-function renderCustomerRoutes(initialEntries: string[]) {
+function renderCustomerRoutes(
+  initialEntries: string[],
+  { defaultCurrency }: { defaultCurrency?: Currency } = {},
+) {
   return renderWithAppProviders(
     <Routes>
       <Route element={<CustomersPage />} path="/customers" />
-      <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
+      <Route
+        element={<CustomerDetailsPage defaultCurrency={defaultCurrency} />}
+        path="/customers/:customerId"
+      />
     </Routes>,
     { initialEntries },
   );
@@ -59,6 +68,9 @@ describe('CustomerDetailsPage', () => {
     server.use(
       http.get(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(emptyCustomerList),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(emptyDebtList),
       ),
     );
   });
@@ -98,9 +110,7 @@ describe('CustomerDetailsPage', () => {
     expect(
       screen.getByRole('region', { name: 'Financial summary' }),
     ).toHaveTextContent('No financial activity');
-    expect(screen.getByRole('region', { name: 'Debts' })).toHaveTextContent(
-      'No debts yet.',
-    );
+    expect(screen.getByRole('region', { name: 'Debts' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Payments' })).toHaveTextContent(
       'No payments yet.',
     );
@@ -146,6 +156,37 @@ describe('CustomerDetailsPage', () => {
     expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
     expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
     expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+  });
+
+  it('returns focus to the Add debt trigger after closing the drawer', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`], {
+      defaultCurrency: 'USD',
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: baseCustomer.name }),
+    ).toBeInTheDocument();
+
+    const addDebtButton = screen.getByRole('button', { name: 'Add debt' });
+    await user.click(addDebtButton);
+    await screen.findByRole('dialog', { name: 'Add debt' });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Add debt' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(addDebtButton).toHaveFocus();
   });
 
   it('renders populated financial summary values without combining currencies', async () => {

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { DebtListResponse, DebtResponse, SessionResponse } from '@collectify/contracts';
+import type { DebtListResponse, SessionResponse } from '@collectify/contracts';
 
 import App from '../../../App';
 import { getBackendUrl } from '../../../shared/api/http';
@@ -12,10 +12,9 @@ import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import {
   baseCustomer,
-  emptyCustomerList,
-  emptyDebtList,
   resetCustomerTestEnvironment,
 } from '../../customers/__tests__/customerTestData';
+import { createDebtFixture, emptyDebtList } from './debtTestData';
 
 const ownerSession: SessionResponse = {
   authenticated: true,
@@ -30,32 +29,20 @@ const ownerSession: SessionResponse = {
   },
 };
 
-const createdDebt: DebtResponse = {
-  id: 'debt_123',
-  customerId: baseCustomer.id,
-  description: 'Website redesign',
-  totalAmount: '125.50',
-  currency: 'USD',
-  paymentPlanType: 'onePayment',
-  scheduleItems: [
-    {
-      id: 'schedule_123',
-      position: 1,
-      amount: '125.50',
-      dueDate: '2026-09-30',
-      timing: 'upcoming',
-    },
-  ],
-  createdAt: '2026-09-12T10:00:00.000Z',
-  updatedAt: '2026-09-12T10:00:00.000Z',
-};
+const createdDebt = createDebtFixture(baseCustomer.id);
 
 describe('Customer debt workflow', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(emptyCustomerList),
+      http.get(`${getBackendUrl()}/session`, () =>
+        HttpResponse.json(ownerSession),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(emptyDebtList),
       ),
     );
   });
@@ -64,18 +51,11 @@ describe('Customer debt workflow', () => {
     cleanup();
   });
 
-  it('creates a debt from customer details and keeps the debt after a route remount', async () => {
+  it('creates a debt from customer details and keeps it after a route remount', async () => {
     const user = userEvent.setup();
     let debtList: DebtListResponse = emptyDebtList;
-    let customerDetails = baseCustomer;
 
     server.use(
-      http.get(`${getBackendUrl()}/session`, () =>
-        HttpResponse.json(ownerSession),
-      ),
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(customerDetails),
-      ),
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(debtList),
       ),
@@ -87,47 +67,21 @@ describe('Customer debt workflow', () => {
           totalItems: 1,
           totalPages: 1,
         };
-        customerDetails = {
-          ...baseCustomer,
-          financialSummary: [
-            {
-              currency: 'USD',
-              totalDebtAmount: '125.50',
-              totalPaidAmount: '0.00',
-              remainingAmount: '125.50',
-            },
-          ],
-        };
+
         return HttpResponse.json(createdDebt, { status: 201 });
       }),
     );
 
-    const firstRender = renderWithAppProviders(<App />, {
-      initialEntries: [`/customers/${baseCustomer.id}`],
-    });
+    const firstRender = renderDebtWorkflow();
+    const drawer = await openAndFillDebtDrawer(user);
 
-    expect(
-      await screen.findByRole('heading', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
-
-    const addDebtButton = screen.getByRole('button', { name: 'Add debt' });
-    expect(addDebtButton).toBeEnabled();
-    await user.click(addDebtButton);
-
-    const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
-    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
-    await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
-    await user.selectOptions(within(drawer).getByLabelText('Currency'), 'USD');
-    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Debt created' })).toBeInTheDocument();
 
     firstRender.unmount();
-    renderWithAppProviders(<App />, {
-      initialEntries: [`/customers/${baseCustomer.id}`],
-    });
+    renderDebtWorkflow();
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
   }, 10_000);
@@ -136,15 +90,6 @@ describe('Customer debt workflow', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.get(`${getBackendUrl()}/session`, () =>
-        HttpResponse.json(ownerSession),
-      ),
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(baseCustomer),
-      ),
-      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
-        HttpResponse.json(emptyDebtList),
-      ),
       http.post(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(
           {
@@ -159,19 +104,9 @@ describe('Customer debt workflow', () => {
       ),
     );
 
-    renderWithAppProviders(<App />, {
-      initialEntries: [`/customers/${baseCustomer.id}`],
-    });
+    renderDebtWorkflow();
+    const drawer = await openAndFillDebtDrawer(user);
 
-    expect(
-      await screen.findByRole('heading', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add debt' }));
-
-    const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
-    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
-    await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
-    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
 
     expect(
@@ -189,33 +124,14 @@ describe('Customer debt workflow', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.get(`${getBackendUrl()}/session`, () =>
-        HttpResponse.json(ownerSession),
-      ),
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(baseCustomer),
-      ),
-      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
-        HttpResponse.json(emptyDebtList),
-      ),
       http.post(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.text('Internal server error', { status: 500 }),
       ),
     );
 
-    renderWithAppProviders(<App />, {
-      initialEntries: [`/customers/${baseCustomer.id}`],
-    });
+    renderDebtWorkflow();
+    const drawer = await openAndFillDebtDrawer(user);
 
-    expect(
-      await screen.findByRole('heading', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add debt' }));
-
-    const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
-    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
-    await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
-    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
 
     expect(
@@ -227,3 +143,29 @@ describe('Customer debt workflow', () => {
     );
   }, 10_000);
 });
+
+function renderDebtWorkflow() {
+  return renderWithAppProviders(<App />, {
+    initialEntries: [`/customers/${baseCustomer.id}`],
+  });
+}
+
+async function openAndFillDebtDrawer(
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  expect(
+    await screen.findByRole('heading', { name: baseCustomer.name }),
+  ).toBeInTheDocument();
+
+  const addDebtButton = screen.getByRole('button', { name: 'Add debt' });
+  expect(addDebtButton).toBeEnabled();
+  await user.click(addDebtButton);
+
+  const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
+  await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
+  await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
+  await user.selectOptions(within(drawer).getByLabelText('Currency'), 'USD');
+  await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
+
+  return drawer;
+}

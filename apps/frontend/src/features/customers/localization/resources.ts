@@ -24,8 +24,6 @@ export const customerResources = {
           balance: 'Balance',
           code: 'Code',
           currency: 'Currency',
-          debts: 'Debts',
-          debtsEmpty: 'No debts yet.',
           financialSummary: 'Financial summary',
           noFinancialActivity: 'No financial activity',
           noAddress: 'No address',
@@ -128,7 +126,7 @@ export const customerResources = {
     common: {
       customers: {
         actions: {
-          addDebt: 'Borc ekle',
+          addDebt: 'Borç ekle',
           create: 'Musteri olustur',
           edit: 'Musteriyi duzenle',
           recordPayment: 'Odeme kaydet',
@@ -145,8 +143,6 @@ export const customerResources = {
           balance: 'Bakiye',
           code: 'Kod',
           currency: 'Para birimi',
-          debts: 'Borclar',
-          debtsEmpty: 'Henuz borc yok.',
           financialSummary: 'Finansal ozet',
           noFinancialActivity: 'Finansal faaliyet yok.',
           noAddress: 'Adres yok',
@@ -266,8 +262,6 @@ export const customerResources = {
           balance: 'الرصيد',
           code: 'الرمز',
           currency: 'العملة',
-          debts: 'الديون',
-          debtsEmpty: 'لا توجد ديون بعد.',
           financialSummary: 'الملخص المالي',
           noFinancialActivity: 'لا يوجد نشاط مالي',
           noAddress: 'لا يوجد عنوان',
