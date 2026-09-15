@@ -6,9 +6,14 @@ export const debtResources = {
     common: {
       debts: {
         card: {
+          dueDate: 'Due',
           dueToday: 'Due today',
           onePayment: 'One payment',
           overdue: 'Overdue',
+          paid: 'Paid',
+          paymentProgress: 'Payment progress for {{description}}',
+          remaining: 'Remaining',
+          upcoming: 'Upcoming',
         },
         drawer: {
           close: 'Close debt form',
@@ -45,9 +50,14 @@ export const debtResources = {
     common: {
       debts: {
         card: {
+          dueDate: 'Vade',
           dueToday: 'Vadesi bugün',
           onePayment: 'Tek ödeme',
           overdue: 'Vadesi geçmiş',
+          paid: 'Ödenen',
+          paymentProgress: '{{description}} ödeme ilerlemesi',
+          remaining: 'Kalan',
+          upcoming: 'Bekliyor',
         },
         drawer: {
           close: 'Borç formunu kapat',
@@ -84,9 +94,14 @@ export const debtResources = {
     common: {
       debts: {
         card: {
+          dueDate: 'الاستحقاق',
           dueToday: 'مستحق اليوم',
           onePayment: 'دفعة واحدة',
           overdue: 'متأخر',
+          paid: 'المدفوع',
+          paymentProgress: 'تقدم الدفع لـ {{description}}',
+          remaining: 'المتبقي',
+          upcoming: 'قادم',
         },
         drawer: {
           close: 'إغلاق نموذج الدين',

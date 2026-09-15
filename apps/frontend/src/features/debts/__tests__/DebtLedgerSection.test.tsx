@@ -39,9 +39,19 @@ describe('DebtLedgerSection', () => {
 
     const debtCard = getDebtCard('Website redesign');
 
-    expect(within(debtCard).getByText('$125.50')).toBeInTheDocument();
+    expect(within(debtCard).getAllByText('$125.50')).toHaveLength(2);
     expect(within(debtCard).getByText('One payment')).toBeInTheDocument();
+    expect(within(debtCard).getByText('Upcoming')).toBeInTheDocument();
+    expect(within(debtCard).getByText('Paid')).toBeInTheDocument();
+    expect(within(debtCard).getByText('$0.00')).toBeInTheDocument();
+    expect(within(debtCard).getByText('Remaining')).toBeInTheDocument();
+    expect(within(debtCard).getByText('Due')).toBeInTheDocument();
     expect(within(debtCard).getByText('September 30, 2026')).toBeInTheDocument();
+    expect(
+      within(debtCard).getByRole('progressbar', {
+        name: 'Payment progress for Website redesign',
+      }),
+    ).toHaveAttribute('aria-valuenow', '0');
     expect(within(debtCard).queryByText('Due today')).not.toBeInTheDocument();
     expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
   });
@@ -81,8 +91,10 @@ describe('DebtLedgerSection', () => {
 
     expect(within(dueTodayCard).getByText('Due today')).toBeInTheDocument();
     expect(within(dueTodayCard).queryByText('Overdue')).not.toBeInTheDocument();
+    expect(within(dueTodayCard).queryByText('Upcoming')).not.toBeInTheDocument();
     expect(within(overdueCard).getByText('Overdue')).toBeInTheDocument();
     expect(within(overdueCard).queryByText('Due today')).not.toBeInTheDocument();
+    expect(within(overdueCard).queryByText('Upcoming')).not.toBeInTheDocument();
   });
 
   it('localizes Arabic debt details and isolates the money amount', () => {
@@ -116,6 +128,9 @@ describe('DebtLedgerSection', () => {
     expect(within(debtCard).getByText('دفعة واحدة')).toBeInTheDocument();
     expect(within(debtCard).getByText(localizedDueDate)).toBeInTheDocument();
     expect(within(debtCard).getByText('متأخر')).toBeInTheDocument();
+
+    expect(within(debtCard).getByText('المدفوع')).toBeInTheDocument();
+    expect(within(debtCard).getByText('المتبقي')).toBeInTheDocument();
 
     const isolatedAmount = debtCard.querySelector('bdi[dir="ltr"]');
 
