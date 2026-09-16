@@ -14,6 +14,7 @@ import {
   baseCustomer,
   resetCustomerTestEnvironment,
 } from '../../customers/__tests__/customerTestData';
+import { RouterLocationProbe } from '../../customers/__tests__/RouterLocationProbe';
 import { createDebtFixture, emptyDebtList } from './debtTestData';
 
 const ownerSession: SessionResponse = {
@@ -85,6 +86,83 @@ describe('Customer debt workflow', () => {
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
   }, 10_000);
+
+  it('loads the debt page named by debtPage', async () => {
+    const requestedPages: string[] = [];
+    const secondPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page two debt',
+      id: 'debt_page_two',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+        requestedPages.push(new URL(request.url).searchParams.get('page') ?? '');
+
+        return HttpResponse.json({
+          items: [secondPageDebt],
+          page: 2,
+          pageSize: 5,
+          totalItems: 6,
+          totalPages: 2,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(<App />, {
+      initialEntries: [`/customers/${baseCustomer.id}?debtPage=2`],
+    });
+
+    expect(await screen.findByText('Page two debt')).toBeInTheDocument();
+    expect(requestedPages).toEqual(['2']);
+  });
+
+  it('moves to the next debt page and updates debtPage', async () => {
+    const user = userEvent.setup();
+    const requestedPages: string[] = [];
+    const firstPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page one debt',
+      id: 'debt_page_one',
+    });
+    const secondPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page two debt',
+      id: 'debt_page_two',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '';
+        requestedPages.push(page);
+
+        return HttpResponse.json({
+          items: [page === '2' ? secondPageDebt : firstPageDebt],
+          page: page === '2' ? 2 : 1,
+          pageSize: 5,
+          totalItems: 6,
+          totalPages: 2,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1`],
+      },
+    );
+
+    expect(await screen.findByText('Page one debt')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+
+    expect(await screen.findByText('Page two debt')).toBeInTheDocument();
+    expect(requestedPages).toEqual(['1', '2']);
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      `/customers/${baseCustomer.id}?debtPage=2`,
+    );
+  });
 
   it('shows backend validation failure in a toast and preserves the draft', async () => {
     const user = userEvent.setup();

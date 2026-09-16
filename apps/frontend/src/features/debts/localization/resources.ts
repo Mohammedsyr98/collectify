@@ -35,6 +35,13 @@ export const debtResources = {
           empty: 'No debts yet.',
           title: 'Debts',
         },
+        list: {
+          pagination: {
+            label: 'Debt pages',
+            nextPage: 'Next page',
+            previousPage: 'Previous page',
+          },
+        },
         toast: {
           create: {
             errorTitle: 'Could not create debt',
@@ -79,6 +86,13 @@ export const debtResources = {
           empty: 'Henüz borç yok.',
           title: 'Borçlar',
         },
+        list: {
+          pagination: {
+            label: 'Borç sayfaları',
+            nextPage: 'Sonraki sayfa',
+            previousPage: 'Önceki sayfa',
+          },
+        },
         toast: {
           create: {
             errorTitle: 'Borç oluşturulamadı',
@@ -122,6 +136,13 @@ export const debtResources = {
         section: {
           empty: 'لا توجد ديون بعد.',
           title: 'الديون',
+        },
+        list: {
+          pagination: {
+            label: 'صفحات الديون',
+            nextPage: 'الصفحة التالية',
+            previousPage: 'الصفحة السابقة',
+          },
         },
         toast: {
           create: {

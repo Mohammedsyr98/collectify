@@ -3,9 +3,24 @@ import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
 
+import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
 import { DebtCard } from './DebtCard';
 
-export function DebtLedgerSection({ debts }: { debts: DebtResponse[] }) {
+type DebtLedgerPagination = {
+  canMoveToNextPage: boolean;
+  canMoveToPreviousPage: boolean;
+  moveToNextPage: () => void;
+  moveToPreviousPage: () => void;
+  showsControls: boolean;
+};
+
+export function DebtLedgerSection({
+  debts,
+  pagination,
+}: {
+  debts: DebtResponse[];
+  pagination?: DebtLedgerPagination;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -30,6 +45,17 @@ export function DebtLedgerSection({ debts }: { debts: DebtResponse[] }) {
           ))}
         </div>
       )}
+      {pagination?.showsControls ? (
+        <PaginationControls
+          ariaLabel={t('debts.list.pagination.label')}
+          canMoveToNextPage={pagination.canMoveToNextPage}
+          canMoveToPreviousPage={pagination.canMoveToPreviousPage}
+          nextPageLabel={t('debts.list.pagination.nextPage')}
+          onNextPage={pagination.moveToNextPage}
+          onPreviousPage={pagination.moveToPreviousPage}
+          previousPageLabel={t('debts.list.pagination.previousPage')}
+        />
+      ) : null}
     </section>
   );
 }

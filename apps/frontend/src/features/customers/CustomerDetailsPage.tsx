@@ -26,8 +26,8 @@ import { DebtDrawer } from '../debts/DebtDrawer';
 import { DebtLedgerSection } from '../debts/DebtLedgerSection';
 import {
   useCreateDebtMutation,
-  useDebtListQuery,
 } from '../debts/debtQueries';
+import { useDebtListView } from '../debts/useDebtListView';
 
 type CurrencySelection = 'all' | CustomerCurrencySummary['currency'];
 
@@ -45,7 +45,7 @@ export function CustomerDetailsPage({
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
   const customerQuery = useCustomerDetailsQuery(customerId);
-  const debtQuery = useDebtListQuery(customerId);
+  const debtQuery = useDebtListView(customerId);
   const { createDebt, isCreating } = useCreateDebtMutation({
     customerId: customerId ?? '',
     onCreated: () => setIsDebtDrawerOpen(false),
@@ -169,6 +169,7 @@ export function CustomerDetailsPage({
           <section className="grid gap-4 lg:grid-cols-2">
             <DebtLedgerSection
               debts={debtQuery.data?.items ?? []}
+              pagination={debtQuery.pagination}
             />
             <EmptyLedgerSection
               Icon={CreditCard}
