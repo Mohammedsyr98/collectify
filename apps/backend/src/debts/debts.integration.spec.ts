@@ -297,6 +297,31 @@ describe('debt routes', () => {
     });
   });
 
+  it('rejects a malformed debt page query with a validation error', async () => {
+    const owner = await signUpOwner('debt-invalid-page-owner@example.com');
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts?page=invalid`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        code: 'VALIDATION_ERROR',
+        message: 'Check the highlighted fields.',
+      }),
+    );
+    expect(body.fieldErrors?.page).toEqual([
+      expect.any(String),
+    ]);
+  });
+
   it('returns the same not-found response for missing and non-owned customers', async () => {
     const firstOwner = await signUpOwner('debt-first-owner@example.com');
     const secondOwner = await signUpOwner('debt-second-owner@example.com');
