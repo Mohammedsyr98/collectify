@@ -102,6 +102,9 @@ describe('database schema', () => {
       'updated_at',
     ]);
     expect(debtConfig.foreignKeys).toHaveLength(1);
+    expect(debtConfig.indexes.map((index) => index.config.name)).toContain(
+      debtConstraints.customerIdIndex,
+    );
 
     expect(scheduleConfig.name).toBe('debt_schedule_items');
     expect(columnNames(debtScheduleItems)).toEqual([

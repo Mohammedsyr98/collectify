@@ -149,6 +149,21 @@ describe('Postgres migrations', () => {
     expect(indexes[0]!.definition).toContain('lower(TRIM(BOTH FROM code))');
   });
 
+  it('creates the debt customer lookup index', async () => {
+    const indexes = await postgres!.query<{ definition: string }>(`
+      SELECT pg_get_indexdef(index_class.oid) AS definition
+      FROM pg_class index_class
+      JOIN pg_index ON pg_index.indexrelid = index_class.oid
+      JOIN pg_class table_class ON table_class.oid = pg_index.indrelid
+      WHERE table_class.relname = 'debts'
+        AND index_class.relname = '${debtConstraints.customerIdIndex}'
+    `);
+
+    expect(indexes).toHaveLength(1);
+    expect(indexes[0]!.definition).toContain('CREATE INDEX');
+    expect(indexes[0]!.definition).toContain('customer_id');
+  });
+
   it('enforces trimmed customer code uniqueness without collapsing separators in Postgres', async () => {
     await postgres!.query(`
       INSERT INTO "user" ("id", "name", "email", "email_verified", "created_at", "updated_at")

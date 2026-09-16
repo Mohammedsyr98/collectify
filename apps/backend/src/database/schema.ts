@@ -3,6 +3,7 @@ import {
   check,
   date,
   integer,
+  index,
   numeric,
   pgEnum,
   pgTable,
@@ -82,6 +83,7 @@ export const customerConstraints = {
 } as const;
 
 export const debtConstraints = {
+  customerIdIndex: 'debts_customer_id_idx',
   totalAmountPositive: 'debts_total_amount_positive',
   schedulePositionPositive: 'debt_schedule_items_position_positive',
   scheduleAmountPositive: 'debt_schedule_items_amount_positive',
@@ -124,6 +126,7 @@ export const debts = pgTable(
     updatedAt: timestamp('updated_at').notNull(),
   },
   (table) => [
+    index(debtConstraints.customerIdIndex).on(table.customerId),
     check(debtConstraints.totalAmountPositive, sql`${table.totalAmount} > 0`),
   ],
 );

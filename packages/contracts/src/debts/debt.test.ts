@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createDebtRequestSchema,
+  debtListQuerySchema,
   debtListResponseSchema,
   debtResponseSchema,
 } from './debt.js';
@@ -337,5 +338,10 @@ describe('debt contracts', () => {
       totalItems: 1,
       totalPages: 1,
     });
+  });
+
+  it('normalizes a debt list query page and defaults omitted pages', () => {
+    expect(debtListQuerySchema.parse({ page: '2' })).toEqual({ page: 2 });
+    expect(debtListQuerySchema.parse({})).toEqual({ page: 1 });
   });
 });

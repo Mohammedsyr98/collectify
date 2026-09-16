@@ -3,6 +3,7 @@ import {
   customerApiErrorCode,
   debtListPageSize,
   type CreateDebtRequest,
+  type DebtListQuery,
   type DebtListResponse,
   type DebtResponse,
 } from '@collectify/contracts';
@@ -13,6 +14,7 @@ import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
+import { calculatePagination } from '../shared/pagination';
 import { getScheduleItemTiming } from './debt-timing';
 
 type DebtRow = typeof debts.$inferSelect;
@@ -73,6 +75,7 @@ export class DebtsService {
   async listDebts(
     currentOwner: AuthenticatedOwner,
     customerId: string,
+    query: DebtListQuery,
   ): Promise<DebtListResponse> {
     await this.requireOwnedCustomer(currentOwner, customerId);
     const operationInstant = new Date();
@@ -82,12 +85,18 @@ export class DebtsService {
       .select({ totalItems: count() })
       .from(debts)
       .where(listFilter);
+    const { offset, ...paginationMetadata } = calculatePagination({
+      page: query.page,
+      pageSize: debtListPageSize,
+      totalItems,
+    });
     const debtRows = await this.databaseService.db
       .select()
       .from(debts)
       .where(listFilter)
       .orderBy(desc(debts.createdAt), desc(debts.id))
-      .limit(debtListPageSize);
+      .limit(paginationMetadata.pageSize)
+      .offset(offset);
     const scheduleRows = debtRows.length
       ? await this.databaseService.db
           .select()
@@ -110,10 +119,7 @@ export class DebtsService {
           operationInstant,
         ),
       ),
-      page: 1,
-      pageSize: debtListPageSize,
-      totalItems,
-      totalPages: Math.ceil(totalItems / debtListPageSize),
+      ...paginationMetadata,
     };
   }
 

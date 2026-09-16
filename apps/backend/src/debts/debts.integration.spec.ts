@@ -1,4 +1,5 @@
 import {
+  debtListPageSize,
   debtListResponseSchema,
   debtResponseSchema,
 } from '@collectify/contracts';
@@ -253,6 +254,44 @@ describe('debt routes', () => {
     expect(list).toMatchObject({
       page: 1,
       pageSize: 5,
+      totalItems: 6,
+      totalPages: 2,
+    });
+  });
+
+  it('returns the requested debt page with truthful pagination metadata', async () => {
+    const owner = await signUpOwner('debt-requested-page-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+
+    for (const debt of [
+      { id: 'debt_requested_page_001', createdAt: '2026-09-01 10:00:00' },
+      { id: 'debt_requested_page_002', createdAt: '2026-09-02 10:00:00' },
+      { id: 'debt_requested_page_003', createdAt: '2026-09-03 10:00:00' },
+      { id: 'debt_requested_page_004', createdAt: '2026-09-04 10:00:00' },
+      { id: 'debt_requested_page_005', createdAt: '2026-09-05 10:00:00' },
+      { id: 'debt_requested_page_006', createdAt: '2026-09-05 10:00:00' },
+    ]) {
+      await insertDebt(debt);
+    }
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts?page=2`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((debt) => debt.id)).toEqual([
+      'debt_requested_page_001',
+    ]);
+    expect(list).toMatchObject({
+      page: 2,
+      pageSize: debtListPageSize,
       totalItems: 6,
       totalPages: 2,
     });
