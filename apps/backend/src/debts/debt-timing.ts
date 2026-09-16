@@ -20,10 +20,8 @@ export function getIstanbulBusinessDate(at: Date): string {
 
 export function getScheduleItemTiming(
   dueDate: string,
-  at: Date,
+  businessDate: string,
 ): ScheduleItemTiming {
-  const businessDate = getIstanbulBusinessDate(at);
-
   if (dueDate > businessDate) {
     return 'upcoming';
   }
