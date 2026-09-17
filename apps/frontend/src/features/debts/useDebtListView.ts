@@ -20,6 +20,7 @@ export function useDebtListView(customerId: string | undefined) {
   const debtListQuery = useDebtListQuery(customerId, query);
   const currentPage = query.page;
   const totalPages = debtListQuery.data?.totalPages ?? 0;
+  const lastAvailablePage = totalPages > 0 ? totalPages : 1;
   const setDebtPageQuery = useCallback(
     (page: number, options?: Parameters<typeof setSearchParams>[1]) => {
       const nextSearchParams = new URLSearchParams(searchParams);
@@ -38,6 +39,24 @@ export function useDebtListView(customerId: string | undefined) {
 
     setDebtPageQuery(currentPage, { replace: true });
   }, [currentPage, pageQuery, setDebtPageQuery]);
+
+  useEffect(() => {
+    if (
+      !debtListQuery.isSuccess ||
+      pageQuery === null ||
+      currentPage <= lastAvailablePage
+    ) {
+      return;
+    }
+
+    setDebtPageQuery(lastAvailablePage, { replace: true });
+  }, [
+    currentPage,
+    debtListQuery.isSuccess,
+    lastAvailablePage,
+    pageQuery,
+    setDebtPageQuery,
+  ]);
 
   return {
     ...debtListQuery,

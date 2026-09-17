@@ -249,6 +249,55 @@ describe('Customer debt workflow', () => {
     );
   });
 
+  it('corrects a valid out-of-range debtPage to the last available page', async () => {
+    const requestedPages: string[] = [];
+    const lastPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Last page debt',
+      id: 'debt_last_page',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '';
+        requestedPages.push(page);
+
+        if (page === '99') {
+          return HttpResponse.json({
+            items: [],
+            page: 99,
+            pageSize: 5,
+            totalItems: 6,
+            totalPages: 2,
+          } satisfies DebtListResponse);
+        }
+
+        return HttpResponse.json({
+          items: [lastPageDebt],
+          page: 2,
+          pageSize: 5,
+          totalItems: 6,
+          totalPages: 2,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [`/customers/${baseCustomer.id}?debtPage=99`],
+      },
+    );
+
+    await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
+    expect(await screen.findByText('Last page debt')).toBeInTheDocument();
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      `/customers/${baseCustomer.id}?debtPage=2`,
+    );
+  });
+
   it('shows backend validation failure in a toast and preserves the draft', async () => {
     const user = userEvent.setup();
 
