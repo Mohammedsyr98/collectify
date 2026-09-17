@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -206,6 +206,46 @@ describe('Customer debt workflow', () => {
     expect(await screen.findByText('Page two debt')).toBeInTheDocument();
     expect(screen.getByTestId('router-location')).toHaveTextContent(
       `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
+    );
+  });
+
+  it('canonicalizes an invalid debtPage URL to page one', async () => {
+    const firstPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page one debt',
+      id: 'debt_page_one',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+        expect(new URL(request.url).searchParams.get('page')).toBe('1');
+
+        return HttpResponse.json({
+          items: [firstPageDebt],
+          page: 1,
+          pageSize: 5,
+          totalItems: 1,
+          totalPages: 1,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [
+          `/customers/${baseCustomer.id}?debtPage=invalid`,
+        ],
+      },
+    );
+
+    expect(await screen.findByText('Page one debt')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('router-location')).toHaveTextContent(
+        `/customers/${baseCustomer.id}?debtPage=1`,
+      ),
     );
   });
 

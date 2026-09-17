@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -21,13 +21,23 @@ export function useDebtListView(customerId: string | undefined) {
   const currentPage = query.page;
   const totalPages = debtListQuery.data?.totalPages ?? 0;
   const setDebtPageQuery = useCallback(
-    (page: number) => {
+    (page: number, options?: Parameters<typeof setSearchParams>[1]) => {
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('debtPage', String(page));
-      setSearchParams(nextSearchParams);
+      setSearchParams(nextSearchParams, options);
     },
     [searchParams, setSearchParams],
   );
+
+  useEffect(() => {
+    const normalizedPage = String(currentPage);
+
+    if (pageQuery === null || pageQuery === normalizedPage) {
+      return;
+    }
+
+    setDebtPageQuery(currentPage, { replace: true });
+  }, [currentPage, pageQuery, setDebtPageQuery]);
 
   return {
     ...debtListQuery,
