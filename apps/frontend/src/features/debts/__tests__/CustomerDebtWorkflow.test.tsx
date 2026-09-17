@@ -124,6 +124,93 @@ describe('Customer debt workflow', () => {
     }
   });
 
+  it('shows debt skeletons and disables pagination while the next page loads', async () => {
+    const user = userEvent.setup();
+    const firstPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page one debt',
+      id: 'debt_page_one',
+    });
+    const secondPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page two debt',
+      id: 'debt_page_two',
+    });
+    const requestedPages: string[] = [];
+    let resolveNextPageRequest!: () => void;
+    const pendingNextPageRequest = new Promise<void>((resolve) => {
+      resolveNextPageRequest = resolve;
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, async ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '';
+        requestedPages.push(page);
+
+        if (page === '2') {
+          await pendingNextPageRequest;
+
+          return HttpResponse.json({
+            items: [secondPageDebt],
+            page: 2,
+            pageSize: 5,
+            totalItems: 6,
+            totalPages: 2,
+          } satisfies DebtListResponse);
+        }
+
+        return HttpResponse.json({
+          items: [firstPageDebt],
+          page: 1,
+          pageSize: 5,
+          totalItems: 6,
+          totalPages: 2,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1`],
+      },
+    );
+
+    expect(await screen.findByText('Page one debt')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
+
+    try {
+      const debtRegion = screen.getByRole('region', { name: 'Debts' });
+
+      expect(within(debtRegion).queryByText('Page one debt')).not.toBeInTheDocument();
+      expect(
+        within(debtRegion).getAllByTestId('debt-card-skeleton'),
+      ).toHaveLength(5);
+
+      const pagination = within(debtRegion).getByRole('navigation', {
+        name: 'Debt pages',
+      });
+
+      expect(
+        within(pagination).getByRole('button', { name: 'Previous page' }),
+      ).toBeDisabled();
+      expect(
+        within(pagination).getByRole('button', { name: 'Next page' }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('heading', { name: baseCustomer.name }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Payments' })).toBeInTheDocument();
+    } finally {
+      resolveNextPageRequest();
+    }
+
+    expect(await screen.findByText('Page two debt')).toBeInTheDocument();
+  });
+
   it('loads the debt page named by debtPage', async () => {
     const requestedPages: string[] = [];
     const secondPageDebt = createDebtFixture(baseCustomer.id, {

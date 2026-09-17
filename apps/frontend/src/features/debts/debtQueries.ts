@@ -32,6 +32,8 @@ export function useDebtListQuery(
     queryKey: debtListPageQueryKey(customerId ?? '', query),
     queryFn: () => listDebts(customerId!, query),
     enabled: Boolean(customerId),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === customerId ? previousData : undefined,
   });
 }
 

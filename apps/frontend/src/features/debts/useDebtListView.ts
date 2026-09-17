@@ -18,8 +18,15 @@ export function useDebtListView(customerId: string | undefined) {
   });
 
   const debtListQuery = useDebtListQuery(customerId, query);
+  const debtList = debtListQuery.data;
+  const debts = debtList?.items ?? [];
   const currentPage = query.page;
-  const totalPages = debtListQuery.data?.totalPages ?? 0;
+  const totalPages = debtList?.totalPages ?? 0;
+  const totalItems = debtList?.totalItems ?? 0;
+  const isLoadingRows =
+    debtListQuery.isLoading ||
+    debtListQuery.isPlaceholderData ||
+    (debtListQuery.isSuccess && totalItems > 0 && debts.length === 0);
   const lastAvailablePage = totalPages > 0 ? totalPages : 1;
   const setDebtPageQuery = useCallback(
     (page: number, options?: Parameters<typeof setSearchParams>[1]) => {
@@ -60,9 +67,10 @@ export function useDebtListView(customerId: string | undefined) {
 
   return {
     ...debtListQuery,
+    isLoading: isLoadingRows,
     pagination: {
-      canMoveToNextPage: !debtListQuery.isFetching && currentPage < totalPages,
-      canMoveToPreviousPage: !debtListQuery.isFetching && currentPage > 1,
+      canMoveToNextPage: !isLoadingRows && currentPage < totalPages,
+      canMoveToPreviousPage: !isLoadingRows && currentPage > 1,
       moveToNextPage: () => setDebtPageQuery(currentPage + 1),
       moveToPreviousPage: () => setDebtPageQuery(currentPage - 1),
       showsControls: debtListQuery.isSuccess && totalPages > 1,
