@@ -298,6 +298,55 @@ describe('Customer debt workflow', () => {
     );
   });
 
+  it('restores the previous debt page through browser back navigation', async () => {
+    const user = userEvent.setup();
+    const firstPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page one debt',
+      id: 'debt_page_one',
+    });
+    const secondPageDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Page two debt',
+      id: 'debt_page_two',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page');
+
+        return HttpResponse.json({
+          items: [page === '2' ? secondPageDebt : firstPageDebt],
+          page: page === '2' ? 2 : 1,
+          pageSize: 5,
+          totalItems: 6,
+          totalPages: 2,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1`],
+      },
+    );
+
+    expect(await screen.findByText('Page one debt')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(await screen.findByText('Page two debt')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+
+    expect(await screen.findByText('Page one debt')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('router-location')).toHaveTextContent(
+        `/customers/${baseCustomer.id}?debtPage=1`,
+      ),
+    );
+  });
+
   it('shows backend validation failure in a toast and preserves the draft', async () => {
     const user = userEvent.setup();
 
