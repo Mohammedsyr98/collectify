@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { DebtListResponse, SessionResponse } from '@collectify/contracts';
@@ -209,6 +210,88 @@ describe('Customer debt workflow', () => {
     }
 
     expect(await screen.findByText('Page two debt')).toBeInTheDocument();
+  });
+
+  it('does not reuse another customer\'s debt placeholder while switching customers', async () => {
+    const user = userEvent.setup();
+    const secondCustomer = {
+      ...baseCustomer,
+      code: 'SECOND-002',
+      id: 'customer_456',
+      name: 'Second Customer',
+    };
+    const firstCustomerDebt = createDebtFixture(baseCustomer.id, {
+      description: 'First customer debt',
+      id: 'debt_first_customer',
+    });
+    const secondCustomerDebt = createDebtFixture(secondCustomer.id, {
+      description: 'Second customer debt',
+      id: 'debt_second_customer',
+    });
+    let resolveSecondCustomerDebtRequest!: () => void;
+    const pendingSecondCustomerDebtRequest = new Promise<void>((resolve) => {
+      resolveSecondCustomerDebtRequest = resolve;
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) =>
+        HttpResponse.json(
+          params.customerId === secondCustomer.id ? secondCustomer : baseCustomer,
+        ),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, async ({ params }) => {
+        if (params.customerId === secondCustomer.id) {
+          await pendingSecondCustomerDebtRequest;
+
+          return HttpResponse.json({
+            items: [secondCustomerDebt],
+            page: 1,
+            pageSize: 5,
+            totalItems: 1,
+            totalPages: 1,
+          } satisfies DebtListResponse);
+        }
+
+        return HttpResponse.json({
+          items: [firstCustomerDebt],
+          page: 1,
+          pageSize: 5,
+          totalItems: 1,
+          totalPages: 1,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <CustomerRouteSwitcher customerId={secondCustomer.id} />
+      </>,
+      {
+        initialEntries: [`/customers/${baseCustomer.id}`],
+      },
+    );
+
+    expect(await screen.findByText('First customer debt')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Switch customer' }));
+
+    try {
+      expect(
+        await screen.findByRole('heading', { name: secondCustomer.name }),
+      ).toBeInTheDocument();
+      const debtRegion = screen.getByRole('region', { name: 'Debts' });
+
+      expect(within(debtRegion).queryByText('First customer debt')).not.toBeInTheDocument();
+      expect(
+        within(debtRegion).getAllByTestId('debt-card-skeleton'),
+      ).toHaveLength(5);
+    } finally {
+      resolveSecondCustomerDebtRequest();
+    }
+
+    expect(await screen.findByText('Second customer debt')).toBeInTheDocument();
+    expect(screen.queryByText('First customer debt')).not.toBeInTheDocument();
   });
 
   it('loads the debt page named by debtPage', async () => {
@@ -533,6 +616,18 @@ function renderDebtWorkflow() {
   return renderWithAppProviders(<App />, {
     initialEntries: [`/customers/${baseCustomer.id}`],
   });
+}
+
+function CustomerRouteSwitcher({ customerId }: { customerId: string }) {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      aria-label="Switch customer"
+      onClick={() => navigate(`/customers/${customerId}`)}
+      type="button"
+    />
+  );
 }
 
 async function openAndFillDebtDrawer(
