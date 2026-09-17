@@ -87,6 +87,43 @@ describe('Customer debt workflow', () => {
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
   }, 10_000);
 
+  it('shows debt loading state without replacing customer details while the initial list loads', async () => {
+    let resolveDebtRequest!: () => void;
+    const pendingDebtRequest = new Promise<void>((resolve) => {
+      resolveDebtRequest = resolve;
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, async () => {
+        await pendingDebtRequest;
+
+        return HttpResponse.json(emptyDebtList);
+      }),
+    );
+
+    renderDebtWorkflow();
+
+    try {
+      expect(
+        await screen.findByRole('heading', { name: baseCustomer.name }),
+      ).toBeInTheDocument();
+
+      const debtRegion = screen.getByRole('region', { name: 'Debts' });
+
+      expect(debtRegion).toHaveAttribute('aria-busy', 'true');
+      expect(
+        within(debtRegion).getAllByTestId('debt-card-skeleton'),
+      ).toHaveLength(5);
+      expect(screen.getByRole('status')).toHaveTextContent('Loading debts');
+      expect(
+        screen.getByRole('region', { name: 'Payments' }),
+      ).toBeInTheDocument();
+      expect(within(debtRegion).queryByText('No debts yet.')).not.toBeInTheDocument();
+    } finally {
+      resolveDebtRequest();
+    }
+  });
+
   it('loads the debt page named by debtPage', async () => {
     const requestedPages: string[] = [];
     const secondPageDebt = createDebtFixture(baseCustomer.id, {

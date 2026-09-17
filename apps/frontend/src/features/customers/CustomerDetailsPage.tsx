@@ -169,6 +169,7 @@ export function CustomerDetailsPage({
           <section className="grid gap-4 lg:grid-cols-2">
             <DebtLedgerSection
               debts={debtQuery.data?.items ?? []}
+              isLoading={debtQuery.isLoading}
               pagination={debtQuery.pagination}
             />
             <EmptyLedgerSection

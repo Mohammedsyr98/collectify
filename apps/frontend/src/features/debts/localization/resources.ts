@@ -36,6 +36,7 @@ export const debtResources = {
           title: 'Debts',
         },
         list: {
+          loading: 'Loading debts',
           pagination: {
             label: 'Debt pages',
             nextPage: 'Next page',
@@ -87,6 +88,7 @@ export const debtResources = {
           title: 'Borçlar',
         },
         list: {
+          loading: 'Borclar yukleniyor',
           pagination: {
             label: 'Borç sayfaları',
             nextPage: 'Sonraki sayfa',
@@ -138,6 +140,7 @@ export const debtResources = {
           title: 'الديون',
         },
         list: {
+          loading: 'جارٍ تحميل الديون',
           pagination: {
             label: 'صفحات الديون',
             nextPage: 'الصفحة التالية',
