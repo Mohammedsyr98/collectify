@@ -462,9 +462,13 @@ describe('Customer debt workflow', () => {
       description: 'Last page debt',
       id: 'debt_last_page',
     });
+    let resolveLastPageRequest!: () => void;
+    const pendingLastPageRequest = new Promise<void>((resolve) => {
+      resolveLastPageRequest = resolve;
+    });
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, async ({ request }) => {
         const page = new URL(request.url).searchParams.get('page') ?? '';
         requestedPages.push(page);
 
@@ -477,6 +481,8 @@ describe('Customer debt workflow', () => {
             totalPages: 2,
           } satisfies DebtListResponse);
         }
+
+        await pendingLastPageRequest;
 
         return HttpResponse.json({
           items: [lastPageDebt],
@@ -499,6 +505,19 @@ describe('Customer debt workflow', () => {
     );
 
     await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
+
+    try {
+      const debtRegion = screen.getByRole('region', { name: 'Debts' });
+
+      expect(debtRegion).toHaveAttribute('aria-busy', 'true');
+      expect(
+        within(debtRegion).getAllByTestId('debt-card-skeleton'),
+      ).toHaveLength(5);
+      expect(within(debtRegion).queryByText('No debts yet.')).not.toBeInTheDocument();
+    } finally {
+      resolveLastPageRequest();
+    }
+
     expect(await screen.findByText('Last page debt')).toBeInTheDocument();
     expect(screen.getByTestId('router-location')).toHaveTextContent(
       `/customers/${baseCustomer.id}?debtPage=2`,
