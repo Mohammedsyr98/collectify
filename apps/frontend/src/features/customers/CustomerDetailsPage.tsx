@@ -171,6 +171,7 @@ export function CustomerDetailsPage({
               debts={debtQuery.data?.items ?? []}
               isLoading={debtQuery.isLoading}
               pagination={debtQuery.pagination}
+              status={debtQuery.status}
             />
             <EmptyLedgerSection
               Icon={CreditCard}

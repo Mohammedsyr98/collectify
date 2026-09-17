@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -9,6 +9,15 @@ import {
 
 import { useDebtListQuery } from './debtQueries';
 
+type DebtListViewStatus =
+  | { status: 'loading' }
+  | {
+      isRetrying: boolean;
+      retry: ReturnType<typeof useDebtListQuery>['refetch'];
+      status: 'error';
+    }
+  | { status: 'ready' };
+
 export function useDebtListView(customerId: string | undefined) {
   const [searchParams, setSearchParams] = useSearchParams();
   const pageQuery = searchParams.get('debtPage');
@@ -18,6 +27,16 @@ export function useDebtListView(customerId: string | undefined) {
   });
 
   const debtListQuery = useDebtListQuery(customerId, query);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retry = useCallback(async () => {
+    setIsRetrying(true);
+
+    try {
+      return await debtListQuery.refetch();
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [debtListQuery.refetch]);
   const debtList = debtListQuery.data;
   const debts = debtList?.items ?? [];
   const currentPage = query.page;
@@ -65,9 +84,26 @@ export function useDebtListView(customerId: string | undefined) {
     setDebtPageQuery,
   ]);
 
+  const status: DebtListViewStatus = (() => {
+    if (debtListQuery.isError || isRetrying) {
+      return {
+        isRetrying,
+        retry,
+        status: 'error',
+      };
+    }
+
+    if (isLoadingRows) {
+      return { status: 'loading' };
+    }
+
+    return { status: 'ready' };
+  })();
+
   return {
     ...debtListQuery,
     isLoading: isLoadingRows,
+    status,
     pagination: {
       canMoveToNextPage: !isLoadingRows && currentPage < totalPages,
       canMoveToPreviousPage: !isLoadingRows && currentPage > 1,

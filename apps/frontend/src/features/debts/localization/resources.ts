@@ -36,6 +36,9 @@ export const debtResources = {
           title: 'Debts',
         },
         list: {
+          error: {
+            title: 'Could not load debts',
+          },
           loading: 'Loading debts',
           pagination: {
             label: 'Debt pages',
@@ -88,6 +91,9 @@ export const debtResources = {
           title: 'Borçlar',
         },
         list: {
+          error: {
+            title: 'Borçlar yüklenemedi',
+          },
           loading: 'Borclar yukleniyor',
           pagination: {
             label: 'Borç sayfaları',
@@ -140,6 +146,9 @@ export const debtResources = {
           title: 'الديون',
         },
         list: {
+          error: {
+            title: 'تعذر تحميل الديون',
+          },
           loading: 'جارٍ تحميل الديون',
           pagination: {
             label: 'صفحات الديون',

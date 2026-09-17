@@ -125,6 +125,89 @@ describe('Customer debt workflow', () => {
     }
   });
 
+  it('recovers a failed debt page through a section-local retry', async () => {
+    const user = userEvent.setup();
+    const recoveredDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Recovered debt',
+      id: 'debt_recovered',
+    });
+    let debtListRequestCount = 0;
+    let resolveRetryRequest!: () => void;
+    const pendingRetryRequest = new Promise<void>((resolve) => {
+      resolveRetryRequest = resolve;
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, async () => {
+        debtListRequestCount += 1;
+
+        if (debtListRequestCount === 1) {
+          return HttpResponse.text('Internal server error', { status: 500 });
+        }
+
+        await pendingRetryRequest;
+
+        return HttpResponse.json({
+          items: [recoveredDebt],
+          page: 2,
+          pageSize: 5,
+          totalItems: 6,
+          totalPages: 2,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [
+          `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
+        ],
+      },
+    );
+
+    try {
+      const errorState = await screen.findByRole('alert', {
+        name: 'Could not load debts',
+      });
+
+      expect(errorState).toHaveTextContent('Something went wrong. Try again.');
+      expect(screen.getByRole('heading', { name: baseCustomer.name })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Payments' })).toBeInTheDocument();
+      expect(screen.getByTestId('router-location')).toHaveTextContent(
+        `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
+      );
+
+      await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => {
+        expect(debtListRequestCount).toBe(2);
+        const currentErrorState = screen.getByRole('alert', {
+          name: 'Could not load debts',
+        });
+
+        expect(
+          within(currentErrorState).getByRole('button', { name: 'Try again' }),
+        ).toBeDisabled();
+        expect(screen.getByRole('region', { name: 'Debts' })).toHaveAttribute(
+          'aria-busy',
+          'true',
+        );
+      });
+    } finally {
+      resolveRetryRequest();
+    }
+
+    expect(await screen.findByText('Recovered debt')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('alert', { name: 'Could not load debts' }),
+    ).not.toBeInTheDocument();
+    expect(debtListRequestCount).toBe(2);
+  });
+
   it('shows debt skeletons and disables pagination while the next page loads', async () => {
     const user = userEvent.setup();
     const firstPageDebt = createDebtFixture(baseCustomer.id, {

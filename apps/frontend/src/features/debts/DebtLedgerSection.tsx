@@ -14,29 +14,67 @@ type DebtLedgerPagination = {
   showsControls: boolean;
 };
 
+type DebtLedgerStatus =
+  | { status: 'loading' }
+  | {
+      isRetrying: boolean;
+      retry: () => unknown;
+      status: 'error';
+    }
+  | { status: 'ready' };
+
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 
 export function DebtLedgerSection({
   debts,
   isLoading = false,
   pagination,
+  status,
 }: {
   debts: DebtResponse[];
   isLoading?: boolean;
   pagination?: DebtLedgerPagination;
+  status?: DebtLedgerStatus;
 }) {
   const { t } = useTranslation();
+  const isRetrying = status?.status === 'error' && status.isRetrying;
+  const isSectionBusy = isLoading || isRetrying;
 
   return (
     <section
       aria-label={t('debts.section.title')}
-      aria-busy={isLoading || undefined}
+      aria-busy={isSectionBusy || undefined}
       className="grid min-h-[190px] gap-4 rounded-md border border-border bg-card p-4"
     >
       <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
         {t('debts.section.title')}
       </h2>
-      {isLoading ? (
+      {status?.status === 'error' ? (
+        <section
+          aria-label={t('debts.list.error.title')}
+          className="grid gap-3 self-start rounded-[5px] border border-border bg-background p-4"
+          role="alert"
+        >
+          <div className="grid gap-1">
+            <h3 className="m-0 text-[0.95rem] font-black tracking-normal">
+              {t('debts.list.error.title')}
+            </h3>
+            <p className="m-0 text-[0.86rem] text-muted-foreground">
+              {t('errors.genericDescription')}
+            </p>
+          </div>
+          <button
+            className="w-fit rounded-[5px] border border-border bg-card px-3 py-2 text-[0.78rem] font-extrabold text-foreground"
+            disabled={status.isRetrying}
+            onClick={() => {
+              void status.retry();
+            }}
+            type="button"
+          >
+            {t('app.error.retry')}
+          </button>
+        </section>
+      ) : isLoading ? (
         <>
           <p className="sr-only" role="status">
             {t('debts.list.loading')}
