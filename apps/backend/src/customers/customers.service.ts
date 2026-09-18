@@ -24,6 +24,7 @@ import {
 } from '../database/schema';
 import { getIstanbulBusinessDate } from '../debts/debt-timing';
 import { calculatePagination } from '../shared/pagination';
+import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
@@ -38,11 +39,6 @@ type DebtOverdueRow = {
   currency: Currency;
   overdueAmount: string;
 };
-type SearchableCustomerColumn =
-  | typeof customers.name
-  | typeof customers.code
-  | typeof customers.phoneNumber;
-
 @Injectable()
 export class CustomersService {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -278,17 +274,6 @@ function customerListFilter(ownerProfileId: string, search: string | undefined) 
       caseInsensitiveLiteralSubstring(customers.phoneNumber, search),
     ),
   );
-}
-
-function caseInsensitiveLiteralSubstring(
-  column: SearchableCustomerColumn,
-  search: string,
-) {
-  return sql`lower(${column}) like ${`%${escapeLikePattern(search.toLowerCase())}%`} escape '\\'`;
-}
-
-function escapeLikePattern(value: string): string {
-  return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 }
 
 function toCustomerDetailsResponse(

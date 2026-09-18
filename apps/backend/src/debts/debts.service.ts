@@ -14,6 +14,7 @@ import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
+import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import {
   getIstanbulBusinessDate,
@@ -85,7 +86,13 @@ export class DebtsService {
     const businessDate = getIstanbulBusinessDate(operationInstant);
     await this.requireOwnedCustomer(currentOwner, customerId);
 
-    const listFilter = eq(debts.customerId, customerId);
+    const customerFilter = eq(debts.customerId, customerId);
+    const listFilter = query.search
+      ? and(
+          customerFilter,
+          caseInsensitiveLiteralSubstring(debts.description, query.search),
+        )
+      : customerFilter;
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
       .select({ totalItems: count() })
       .from(debts)

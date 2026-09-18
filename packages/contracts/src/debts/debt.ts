@@ -86,9 +86,14 @@ export const debtResponseSchema = z.object({
 
 export const debtListPageSize = 5;
 
-export const debtListQuerySchema = z.object({
-  page: oneBasedPageSchema,
-});
+export const debtListQuerySchema = z
+  .object({
+    page: oneBasedPageSchema,
+    search: z.string().trim().optional(),
+  })
+  .transform(({ page, search }) =>
+    search ? { page, search } : { page },
+  );
 
 export const debtListResponseSchema = z.object({
   items: z.array(debtResponseSchema),
