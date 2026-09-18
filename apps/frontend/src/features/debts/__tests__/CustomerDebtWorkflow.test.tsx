@@ -208,6 +208,78 @@ describe('Customer debt workflow', () => {
     expect(location).toHaveTextContent('view=summary');
   });
 
+  it('clears debt search, requests the first unfiltered page, and preserves unrelated URL parameters', async () => {
+    const requestedQueries: Array<{
+      page: string | null;
+      search: string | null;
+    }> = [];
+    const filteredDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Website redesign',
+      id: 'debt_filtered',
+    });
+    const unfilteredDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Unfiltered debt',
+      id: 'debt_unfiltered',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, ({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+        const query = {
+          page: searchParams.get('page'),
+          search: searchParams.get('search'),
+        };
+        requestedQueries.push(query);
+
+        return HttpResponse.json({
+          items: query.search ? [filteredDebt] : [unfilteredDebt],
+          page: Number(query.page ?? 1),
+          pageSize: 5,
+          totalItems: query.search ? 6 : 1,
+          totalPages: query.search ? 2 : 1,
+        } satisfies DebtListResponse);
+      }),
+    );
+
+    renderWithAppProviders(
+      <>
+        <App />
+        <RouterLocationProbe />
+      </>,
+      {
+        initialEntries: [
+          `/customers/${baseCustomer.id}?debtPage=2&debtSearch=redesign&view=summary`,
+        ],
+      },
+    );
+
+    expect(await screen.findByText('Website redesign')).toBeInTheDocument();
+    expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);
+
+    vi.useFakeTimers();
+    const searchInput = screen.getByRole('searchbox', { name: 'Search debts' });
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    expect(searchInput).toHaveValue('');
+    expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    vi.useRealTimers();
+
+    await waitFor(() =>
+      expect(requestedQueries).toEqual([
+        { page: '2', search: 'redesign' },
+        { page: '1', search: null },
+      ]),
+    );
+    const location = screen.getByTestId('router-location');
+    expect(location).toHaveTextContent('debtPage=1');
+    expect(location).toHaveTextContent('view=summary');
+    expect(location).not.toHaveTextContent('debtSearch=');
+  });
+
   it('recovers a failed debt page through a section-local retry', async () => {
     const user = userEvent.setup();
     const recoveredDebt = createDebtFixture(baseCustomer.id, {
