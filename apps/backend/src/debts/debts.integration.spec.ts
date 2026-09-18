@@ -362,6 +362,204 @@ describe('debt routes', () => {
     });
   });
 
+  it('filters an authenticated debt list by description with scoped ordering and pagination', async () => {
+    const owner = await signUpOwner('debt-search-owner@example.com');
+    await insertCustomer(owner.ownerProfileId, {
+      code: 'DEBT-SEARCH-001',
+      id: 'customer_debt_search',
+    });
+
+    const businessDate = getIstanbulBusinessDate(new Date());
+    const matchingDebts = [
+      {
+        createdAt: '2026-09-01 10:00:00',
+        description: 'Storefront REPAIR',
+        dueDate: '1900-01-01',
+        id: 'debt_search_overdue_earliest',
+      },
+      {
+        createdAt: '2026-09-02 10:00:00',
+        description: 'Repair appointment',
+        dueDate: '1900-01-02',
+        id: 'debt_search_overdue_next',
+      },
+      {
+        createdAt: '2026-09-03 10:00:00',
+        description: 'Emergency repair',
+        dueDate: businessDate,
+        id: 'debt_search_due_today',
+      },
+      {
+        createdAt: '2026-09-04 10:00:00',
+        description: 'Repair materials',
+        dueDate: '2999-01-01',
+        id: 'debt_search_upcoming_near',
+      },
+      {
+        createdAt: '2026-09-05 10:00:00',
+        description: 'Final repair visit',
+        dueDate: '2999-01-02',
+        id: 'debt_search_upcoming_far_a',
+      },
+      {
+        createdAt: '2026-09-06 10:00:00',
+        description: 'Post-repair inspection',
+        dueDate: '2999-01-03',
+        id: 'debt_search_upcoming_far_b',
+      },
+    ];
+
+    for (const debt of matchingDebts) {
+      await insertDebt({
+        ...debt,
+        customerId: 'customer_debt_search',
+      });
+    }
+    await insertDebt({
+      createdAt: '2026-09-07 10:00:00',
+      customerId: 'customer_debt_search',
+      currency: 'EUR',
+      description: 'Office supplies',
+      id: 'debt_search_nonmatching',
+      totalAmount: '999.99',
+    });
+
+    const requestPage = async (page: number) => {
+      const response = await fetch(
+        `${backend!.baseUrl}/customers/customer_debt_search/debts?search=REPAIR&page=${page}`,
+        {
+          headers: {
+            cookie: owner.cookieHeader,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      return debtListResponseSchema.parse(await response.json());
+    };
+
+    const firstPage = await requestPage(1);
+    const secondPage = await requestPage(2);
+
+    expect(firstPage.items.map((debt) => debt.id)).toEqual([
+      'debt_search_overdue_earliest',
+      'debt_search_overdue_next',
+      'debt_search_due_today',
+      'debt_search_upcoming_near',
+      'debt_search_upcoming_far_a',
+    ]);
+    expect(secondPage.items.map((debt) => debt.id)).toEqual([
+      'debt_search_upcoming_far_b',
+    ]);
+    expect(firstPage).toMatchObject({
+      page: 1,
+      pageSize: debtListPageSize,
+      totalItems: 6,
+      totalPages: 2,
+    });
+    expect(secondPage).toMatchObject({
+      page: 2,
+      pageSize: debtListPageSize,
+      totalItems: 6,
+      totalPages: 2,
+    });
+  });
+
+  it('treats debt search metacharacters literally', async () => {
+    const { requestPage } = await setupLiteralSearchScenario();
+
+    const percentSearch = await requestPage('100%');
+    const underscoreSearch = await requestPage('A_B');
+    const backslashSearch = await requestPage('C:\\Temp');
+
+    expect(percentSearch.items.map((debt) => debt.id)).toEqual([
+      'debt_search_literal_percent',
+    ]);
+    expect(underscoreSearch.items.map((debt) => debt.id)).toEqual([
+      'debt_search_literal_underscore',
+    ]);
+    expect(backslashSearch.items.map((debt) => debt.id)).toEqual([
+      'debt_search_literal_backslash',
+    ]);
+  });
+
+  it('treats whitespace-only debt search as unfiltered', async () => {
+    const { requestPage } = await setupLiteralSearchScenario();
+
+    const unfiltered = await requestPage();
+    const whitespaceSearch = await requestPage('   ');
+
+    expect(whitespaceSearch).toEqual(unfiltered);
+  });
+
+  async function setupLiteralSearchScenario() {
+    const owner = await signUpOwner('debt-search-literal-owner@example.com');
+    await insertCustomer(owner.ownerProfileId, {
+      code: 'DEBT-SEARCH-LITERAL',
+      id: 'customer_debt_search_literal',
+    });
+
+    for (const debt of [
+      {
+        createdAt: '2026-09-01 10:00:00',
+        description: 'Discount 100%',
+        id: 'debt_search_literal_percent',
+      },
+      {
+        createdAt: '2026-09-02 10:00:00',
+        description: 'Discount 1000',
+        id: 'debt_search_percent_decoy',
+      },
+      {
+        createdAt: '2026-09-03 10:00:00',
+        description: 'Room A_B',
+        id: 'debt_search_literal_underscore',
+      },
+      {
+        createdAt: '2026-09-04 10:00:00',
+        description: 'Room A1B',
+        id: 'debt_search_underscore_decoy',
+      },
+      {
+        createdAt: '2026-09-05 10:00:00',
+        description: 'Path C:\\Temp',
+        id: 'debt_search_literal_backslash',
+      },
+      {
+        createdAt: '2026-09-06 10:00:00',
+        description: 'Path C:Temp',
+        id: 'debt_search_backslash_decoy',
+      },
+    ]) {
+      await insertDebt({
+        ...debt,
+        customerId: 'customer_debt_search_literal',
+      });
+    }
+
+    const requestPage = async (search?: string) => {
+      const searchParams = new URLSearchParams({ page: '1' });
+
+      if (search !== undefined) {
+        searchParams.set('search', search);
+      }
+
+      const response = await fetch(
+        `${backend!.baseUrl}/customers/customer_debt_search_literal/debts?${searchParams.toString()}`,
+        {
+          headers: {
+            cookie: owner.cookieHeader,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      return debtListResponseSchema.parse(await response.json());
+    };
+
+    return { requestPage };
+  }
+
   it('rejects a malformed debt page query with a validation error', async () => {
     const owner = await signUpOwner('debt-invalid-page-owner@example.com');
 
@@ -601,13 +799,19 @@ describe('debt routes', () => {
   async function insertDebt({
     customerId = 'customer_debt',
     createdAt,
+    currency = 'USD',
     dueDate = '2026-09-30',
     id,
+    description = 'Page debt',
+    totalAmount = '125.50',
   }: {
     customerId?: string;
     createdAt: string;
+    currency?: string;
     dueDate?: string;
+    description?: string;
     id: string;
+    totalAmount?: string;
   }): Promise<void> {
     await postgres!.query(
       `
@@ -620,9 +824,9 @@ describe('debt routes', () => {
           "created_at",
           "updated_at"
         )
-        VALUES ($1, $2, 'Page debt', '125.50', 'USD', $3::timestamp, $3::timestamp)
+        VALUES ($1, $2, $3, $4, $5, $6::timestamp, $6::timestamp)
       `,
-      [id, customerId, createdAt],
+      [id, customerId, description, totalAmount, currency, createdAt],
     );
 
     await postgres!.query(
@@ -636,9 +840,9 @@ describe('debt routes', () => {
           "created_at",
           "updated_at"
         )
-        VALUES ($1, $2, 1, '125.50', $3::date, $4::timestamp, $4::timestamp)
+        VALUES ($1, $2, 1, $3, $4::date, $5::timestamp, $5::timestamp)
       `,
-      [`${id}_schedule`, id, dueDate, createdAt],
+      [`${id}_schedule`, id, totalAmount, dueDate, createdAt],
     );
   }
 });

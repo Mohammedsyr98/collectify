@@ -6,6 +6,7 @@ import {
 } from '@collectify/contracts';
 
 import { usePageQueryParam } from '../../shared/usePageQueryParam';
+import { useDebouncedSearchQuery } from '../../shared/useDebouncedSearchQuery';
 import { useDebtListQuery } from './debtQueries';
 
 type DebtListViewStatus =
@@ -20,8 +21,13 @@ type DebtListViewStatus =
 export function useDebtListView(customerId: string | undefined) {
   const { page: currentPage, setPage: setDebtPageQuery } =
     usePageQueryParam('debtPage');
+  const search = useDebouncedSearchQuery({
+    pageParamName: 'debtPage',
+    searchParamName: 'debtSearch',
+  });
   const query: DebtListQuery = debtListQuerySchema.parse({
     page: currentPage,
+    search: search.effectiveValue || undefined,
   });
 
   const debtListQuery = useDebtListQuery(customerId, query);
@@ -44,6 +50,7 @@ export function useDebtListView(customerId: string | undefined) {
     debtListQuery.isPlaceholderData ||
     (debtListQuery.isSuccess && totalItems > 0 && debts.length === 0);
   const lastAvailablePage = totalPages > 0 ? totalPages : 1;
+
   useEffect(() => {
     if (
       !debtListQuery.isSuccess ||
@@ -81,6 +88,10 @@ export function useDebtListView(customerId: string | undefined) {
   return {
     ...debtListQuery,
     isLoading: isLoadingRows,
+    search: {
+      onChange: search.onChange,
+      value: search.value,
+    },
     status,
     pagination: {
       canMoveToNextPage: !isLoadingRows && currentPage < totalPages,

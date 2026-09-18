@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { DebtResponse } from '@collectify/contracts';
 
 import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
+import { SearchField } from '../../shared/ui/search/SearchField';
 import { DebtCard } from './DebtCard';
 
 type DebtLedgerPagination = {
@@ -25,15 +26,22 @@ type DebtLedgerStatus =
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 
+type DebtLedgerSearch = {
+  onChange: (value: string) => void;
+  value: string;
+};
+
 export function DebtLedgerSection({
   debts,
   isLoading = false,
   pagination,
+  search,
   status,
 }: {
   debts: DebtResponse[];
   isLoading?: boolean;
   pagination?: DebtLedgerPagination;
+  search?: DebtLedgerSearch;
   status?: DebtLedgerStatus;
 }) {
   const { t } = useTranslation();
@@ -49,6 +57,14 @@ export function DebtLedgerSection({
       <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
         {t('debts.section.title')}
       </h2>
+      {search ? (
+        <SearchField
+          ariaLabel={t('debts.search.label')}
+          onChange={search.onChange}
+          placeholder={t('debts.search.placeholder')}
+          value={search.value}
+        />
+      ) : null}
       {status?.status === 'error' ? (
         <section
           aria-label={t('debts.list.error.title')}
