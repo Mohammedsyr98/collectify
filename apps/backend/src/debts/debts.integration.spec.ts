@@ -465,6 +465,101 @@ describe('debt routes', () => {
     });
   });
 
+  it('treats debt search metacharacters literally', async () => {
+    const { requestPage } = await setupLiteralSearchScenario();
+
+    const percentSearch = await requestPage('100%');
+    const underscoreSearch = await requestPage('A_B');
+    const backslashSearch = await requestPage('C:\\Temp');
+
+    expect(percentSearch.items.map((debt) => debt.id)).toEqual([
+      'debt_search_literal_percent',
+    ]);
+    expect(underscoreSearch.items.map((debt) => debt.id)).toEqual([
+      'debt_search_literal_underscore',
+    ]);
+    expect(backslashSearch.items.map((debt) => debt.id)).toEqual([
+      'debt_search_literal_backslash',
+    ]);
+  });
+
+  it('treats whitespace-only debt search as unfiltered', async () => {
+    const { requestPage } = await setupLiteralSearchScenario();
+
+    const unfiltered = await requestPage();
+    const whitespaceSearch = await requestPage('   ');
+
+    expect(whitespaceSearch).toEqual(unfiltered);
+  });
+
+  async function setupLiteralSearchScenario() {
+    const owner = await signUpOwner('debt-search-literal-owner@example.com');
+    await insertCustomer(owner.ownerProfileId, {
+      code: 'DEBT-SEARCH-LITERAL',
+      id: 'customer_debt_search_literal',
+    });
+
+    for (const debt of [
+      {
+        createdAt: '2026-09-01 10:00:00',
+        description: 'Discount 100%',
+        id: 'debt_search_literal_percent',
+      },
+      {
+        createdAt: '2026-09-02 10:00:00',
+        description: 'Discount 1000',
+        id: 'debt_search_percent_decoy',
+      },
+      {
+        createdAt: '2026-09-03 10:00:00',
+        description: 'Room A_B',
+        id: 'debt_search_literal_underscore',
+      },
+      {
+        createdAt: '2026-09-04 10:00:00',
+        description: 'Room A1B',
+        id: 'debt_search_underscore_decoy',
+      },
+      {
+        createdAt: '2026-09-05 10:00:00',
+        description: 'Path C:\\Temp',
+        id: 'debt_search_literal_backslash',
+      },
+      {
+        createdAt: '2026-09-06 10:00:00',
+        description: 'Path C:Temp',
+        id: 'debt_search_backslash_decoy',
+      },
+    ]) {
+      await insertDebt({
+        ...debt,
+        customerId: 'customer_debt_search_literal',
+      });
+    }
+
+    const requestPage = async (search?: string) => {
+      const searchParams = new URLSearchParams({ page: '1' });
+
+      if (search !== undefined) {
+        searchParams.set('search', search);
+      }
+
+      const response = await fetch(
+        `${backend!.baseUrl}/customers/customer_debt_search_literal/debts?${searchParams.toString()}`,
+        {
+          headers: {
+            cookie: owner.cookieHeader,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      return debtListResponseSchema.parse(await response.json());
+    };
+
+    return { requestPage };
+  }
+
   it('rejects a malformed debt page query with a validation error', async () => {
     const owner = await signUpOwner('debt-invalid-page-owner@example.com');
 
