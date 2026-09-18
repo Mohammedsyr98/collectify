@@ -14,6 +14,10 @@ export async function listDebts(
     page: String(query.page),
   });
 
+  if (query.search) {
+    searchParams.set('search', query.search);
+  }
+
   return fetchBackend({
     path: `/customers/${encodeURIComponent(customerId)}/debts?${searchParams.toString()}`,
     method: 'GET',

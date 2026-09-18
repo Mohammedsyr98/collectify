@@ -35,6 +35,10 @@ export const debtResources = {
           empty: 'No debts yet.',
           title: 'Debts',
         },
+        search: {
+          label: 'Search debts',
+          placeholder: 'Search descriptions',
+        },
         list: {
           error: {
             title: 'Could not load debts',
@@ -89,6 +93,10 @@ export const debtResources = {
         section: {
           empty: 'Henüz borç yok.',
           title: 'Borçlar',
+        },
+        search: {
+          label: 'Borç ara',
+          placeholder: 'Açiklamalarda ara',
         },
         list: {
           error: {
@@ -145,6 +153,10 @@ export const debtResources = {
           empty: 'لا توجد ديون بعد.',
           title: 'الديون',
         },
+        search: {
+          label: 'ابحث عن الديون',
+          placeholder: 'ابحث في الأوصاف',
+        },
         list: {
           error: {
             title: 'تعذر تحميل الديون',
@@ -167,7 +179,4 @@ export const debtResources = {
       },
     },
   },
-} satisfies Record<
-  SupportedLocale,
-  { common: { debts: Record<string, unknown> } }
->;
+} satisfies Record<SupportedLocale, { common: { debts: Record<string, unknown> } }>;
