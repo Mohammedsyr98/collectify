@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +18,7 @@ import { CustomerTable } from './list/CustomerTable';
 import { useCustomerListView } from './useCustomerListView';
 import { resolveApiErrorDescription } from '../../shared/api/http';
 import { useToast } from '../../shared/ui/toast/toastContext';
+import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
 
 export function CustomersPage() {
   const { t } = useTranslation();
@@ -164,29 +165,15 @@ export function CustomersPage() {
         ) : null}
 
         {pagination.showsControls ? (
-          <nav
-            aria-label={t('customers.list.pagination.label')}
-            className="flex items-center justify-end gap-2"
-          >
-            <button
-              aria-label={t('customers.list.pagination.previousPage')}
-              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!pagination.canMoveToPreviousPage}
-              onClick={pagination.moveToPreviousPage}
-              type="button"
-            >
-              <ChevronLeft aria-hidden="true" size={17} strokeWidth={2.5} />
-            </button>
-            <button
-              aria-label={t('customers.list.pagination.nextPage')}
-              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!pagination.canMoveToNextPage}
-              onClick={pagination.moveToNextPage}
-              type="button"
-            >
-              <ChevronRight aria-hidden="true" size={17} strokeWidth={2.5} />
-            </button>
-          </nav>
+          <PaginationControls
+            ariaLabel={t('customers.list.pagination.label')}
+            canMoveToNextPage={pagination.canMoveToNextPage}
+            canMoveToPreviousPage={pagination.canMoveToPreviousPage}
+            nextPageLabel={t('customers.list.pagination.nextPage')}
+            onNextPage={pagination.moveToNextPage}
+            onPreviousPage={pagination.moveToPreviousPage}
+            previousPageLabel={t('customers.list.pagination.previousPage')}
+          />
         ) : null}
       </div>
 

@@ -1,4 +1,5 @@
 import {
+  debtListPageSize,
   debtListResponseSchema,
   debtResponseSchema,
 } from '@collectify/contracts';
@@ -211,12 +212,77 @@ describe('debt routes', () => {
         debt.scheduleItems[0].timing,
       ]),
     ).toEqual([
-      ['debt_timing_today', 'dueToday'],
       ['debt_timing_overdue', 'overdue'],
+      ['debt_timing_today', 'dueToday'],
     ]);
   });
 
-  it('lists only the newest five debts with truthful pagination metadata', async () => {
+  it('orders debt pages by collection priority with deterministic tie-breakers', async () => {
+    const owner = await signUpOwner('debt-priority-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    const businessDate = getIstanbulBusinessDate(new Date());
+
+    await insertDebt({
+      id: 'debt_priority_overdue_earliest',
+      createdAt: '2026-09-01 10:00:00',
+      dueDate: '1900-01-01',
+    });
+    await insertDebt({
+      id: 'debt_priority_overdue_tie_a',
+      createdAt: '2026-09-02 10:00:00',
+      dueDate: '1900-01-02',
+    });
+    await insertDebt({
+      id: 'debt_priority_overdue_tie_b',
+      createdAt: '2026-09-02 10:00:00',
+      dueDate: '1900-01-02',
+    });
+    await insertDebt({
+      id: 'debt_priority_due_today',
+      createdAt: '2026-09-03 10:00:00',
+      dueDate: businessDate,
+    });
+    await insertDebt({
+      id: 'debt_priority_upcoming_near',
+      createdAt: '2026-09-04 10:00:00',
+      dueDate: '2999-01-01',
+    });
+    await insertDebt({
+      id: 'debt_priority_upcoming_far',
+      createdAt: '2026-09-05 10:00:00',
+      dueDate: '2999-01-02',
+    });
+
+    const requestPage = async (page: number) => {
+      const response = await fetch(
+        `${backend!.baseUrl}/customers/customer_debt/debts?page=${page}`,
+        {
+          headers: {
+            cookie: owner.cookieHeader,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      return debtListResponseSchema.parse(await response.json());
+    };
+
+    const firstPage = await requestPage(1);
+    const secondPage = await requestPage(2);
+
+    expect(firstPage.items.map((debt) => debt.id)).toEqual([
+      'debt_priority_overdue_earliest',
+      'debt_priority_overdue_tie_a',
+      'debt_priority_overdue_tie_b',
+      'debt_priority_due_today',
+      'debt_priority_upcoming_near',
+    ]);
+    expect(secondPage.items.map((debt) => debt.id)).toEqual([
+      'debt_priority_upcoming_far',
+    ]);
+  });
+
+  it('lists the first five debts by collection priority with truthful pagination metadata', async () => {
     const owner = await signUpOwner('debt-page-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
 
@@ -244,11 +310,11 @@ describe('debt routes', () => {
     const list = debtListResponseSchema.parse(await response.json());
 
     expect(list.items.map((debt) => debt.id)).toEqual([
-      'debt_page_006',
-      'debt_page_005',
-      'debt_page_004',
-      'debt_page_003',
+      'debt_page_001',
       'debt_page_002',
+      'debt_page_003',
+      'debt_page_004',
+      'debt_page_005',
     ]);
     expect(list).toMatchObject({
       page: 1,
@@ -256,6 +322,69 @@ describe('debt routes', () => {
       totalItems: 6,
       totalPages: 2,
     });
+  });
+
+  it('returns the requested debt page with truthful pagination metadata', async () => {
+    const owner = await signUpOwner('debt-requested-page-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+
+    for (const debt of [
+      { id: 'debt_requested_page_001', createdAt: '2026-09-01 10:00:00' },
+      { id: 'debt_requested_page_002', createdAt: '2026-09-02 10:00:00' },
+      { id: 'debt_requested_page_003', createdAt: '2026-09-03 10:00:00' },
+      { id: 'debt_requested_page_004', createdAt: '2026-09-04 10:00:00' },
+      { id: 'debt_requested_page_005', createdAt: '2026-09-05 10:00:00' },
+      { id: 'debt_requested_page_006', createdAt: '2026-09-05 10:00:00' },
+    ]) {
+      await insertDebt(debt);
+    }
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts?page=2`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+
+    expect(list.items.map((debt) => debt.id)).toEqual([
+      'debt_requested_page_006',
+    ]);
+    expect(list).toMatchObject({
+      page: 2,
+      pageSize: debtListPageSize,
+      totalItems: 6,
+      totalPages: 2,
+    });
+  });
+
+  it('rejects a malformed debt page query with a validation error', async () => {
+    const owner = await signUpOwner('debt-invalid-page-owner@example.com');
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts?page=invalid`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        code: 'VALIDATION_ERROR',
+        message: 'Check the highlighted fields.',
+      }),
+    );
+    expect(body.fieldErrors?.page).toEqual([
+      expect.any(String),
+    ]);
   });
 
   it('returns the same not-found response for missing and non-owned customers', async () => {

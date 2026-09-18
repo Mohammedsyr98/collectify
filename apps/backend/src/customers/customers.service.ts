@@ -23,6 +23,7 @@ import {
   debts,
 } from '../database/schema';
 import { getIstanbulBusinessDate } from '../debts/debt-timing';
+import { calculatePagination } from '../shared/pagination';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
@@ -150,18 +151,22 @@ export class CustomersService {
     query: CustomerListQuery,
   ): Promise<CustomerListResponse> {
     const ownerProfileId = currentOwner.ownerProfile.id;
-    const offset = (query.page - 1) * customerListPageSize;
     const listFilter = customerListFilter(ownerProfileId, query.search);
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
       .select({ totalItems: sql<number>`count(*)::int` })
       .from(customers)
       .where(listFilter);
+    const { offset, ...paginationMetadata } = calculatePagination({
+      page: query.page,
+      pageSize: customerListPageSize,
+      totalItems,
+    });
     const customerRows = await this.databaseService.db
       .select()
       .from(customers)
       .where(listFilter)
       .orderBy(desc(customers.createdAt), desc(customers.id))
-      .limit(customerListPageSize)
+      .limit(paginationMetadata.pageSize)
       .offset(offset);
     const operationInstant = new Date();
     const debtFinancialAggregates = await this.getDebtFinancialAggregates(
@@ -180,10 +185,7 @@ export class CustomersService {
           currentOwner.ownerProfile.defaultCurrency,
         ),
       ),
-      page: query.page,
-      pageSize: customerListPageSize,
-      totalItems,
-      totalPages: Math.ceil(totalItems / customerListPageSize),
+      ...paginationMetadata,
     };
   }
 

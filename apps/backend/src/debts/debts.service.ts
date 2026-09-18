@@ -3,17 +3,22 @@ import {
   customerApiErrorCode,
   debtListPageSize,
   type CreateDebtRequest,
+  type DebtListQuery,
   type DebtListResponse,
   type DebtResponse,
 } from '@collectify/contracts';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
-import { getScheduleItemTiming } from './debt-timing';
+import { calculatePagination } from '../shared/pagination';
+import {
+  getIstanbulBusinessDate,
+  getScheduleItemTiming,
+} from './debt-timing';
 
 type DebtRow = typeof debts.$inferSelect;
 type DebtScheduleItemRow = typeof debtScheduleItems.$inferSelect;
@@ -30,6 +35,7 @@ export class DebtsService {
     await this.requireOwnedCustomer(currentOwner, customerId);
 
     const operationInstant = new Date();
+    const businessDate = getIstanbulBusinessDate(operationInstant);
     const debtId = randomUUID();
     const scheduleItemId = randomUUID();
 
@@ -66,28 +72,56 @@ export class DebtsService {
     return toDebtResponse(
       created.debt,
       [created.scheduleItem],
-      operationInstant,
+      businessDate,
     );
   }
 
   async listDebts(
     currentOwner: AuthenticatedOwner,
     customerId: string,
+    query: DebtListQuery,
   ): Promise<DebtListResponse> {
-    await this.requireOwnedCustomer(currentOwner, customerId);
     const operationInstant = new Date();
+    const businessDate = getIstanbulBusinessDate(operationInstant);
+    await this.requireOwnedCustomer(currentOwner, customerId);
 
     const listFilter = eq(debts.customerId, customerId);
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
       .select({ totalItems: count() })
       .from(debts)
       .where(listFilter);
+    const { offset, ...paginationMetadata } = calculatePagination({
+      page: query.page,
+      pageSize: debtListPageSize,
+      totalItems,
+    });
+    const timingPriority = sql<number>`
+      CASE
+        WHEN ${debtScheduleItems.dueDate} < ${businessDate} THEN 0
+        WHEN ${debtScheduleItems.dueDate} = ${businessDate} THEN 1
+        ELSE 2
+      END
+    `;
     const debtRows = await this.databaseService.db
-      .select()
+      .select({ debt: debts })
       .from(debts)
+      .innerJoin(
+        debtScheduleItems,
+        and(
+          eq(debtScheduleItems.debtId, debts.id),
+          eq(debtScheduleItems.position, 1),
+        ),
+      )
       .where(listFilter)
-      .orderBy(desc(debts.createdAt), desc(debts.id))
-      .limit(debtListPageSize);
+      .orderBy(
+        asc(timingPriority),
+        asc(debtScheduleItems.dueDate),
+        asc(debts.createdAt),
+        asc(debts.id),
+      )
+      .limit(paginationMetadata.pageSize)
+      .offset(offset);
+    const selectedDebts = debtRows.map(({ debt }) => debt);
     const scheduleRows = debtRows.length
       ? await this.databaseService.db
           .select()
@@ -95,7 +129,7 @@ export class DebtsService {
           .where(
             inArray(
               debtScheduleItems.debtId,
-              debtRows.map((debt) => debt.id),
+              selectedDebts.map((debt) => debt.id),
             ),
           )
           .orderBy(asc(debtScheduleItems.position))
@@ -103,17 +137,14 @@ export class DebtsService {
     const scheduleItemsByDebtId = groupScheduleItemsByDebtId(scheduleRows);
 
     return {
-      items: debtRows.map((debt) =>
+      items: selectedDebts.map((debt) =>
         toDebtResponse(
           debt,
           scheduleItemsByDebtId.get(debt.id) ?? [],
-          operationInstant,
+          businessDate,
         ),
       ),
-      page: 1,
-      pageSize: debtListPageSize,
-      totalItems,
-      totalPages: Math.ceil(totalItems / debtListPageSize),
+      ...paginationMetadata,
     };
   }
 
@@ -155,7 +186,7 @@ function groupScheduleItemsByDebtId(
 function toDebtResponse(
   debt: DebtRow,
   scheduleRows: DebtScheduleItemRow[],
-  operationInstant: Date,
+  businessDate: string,
 ): DebtResponse {
   return {
     id: debt.id,
@@ -169,7 +200,7 @@ function toDebtResponse(
       position: scheduleItem.position as 1,
       amount: scheduleItem.amount,
       dueDate: scheduleItem.dueDate,
-      timing: getScheduleItemTiming(scheduleItem.dueDate, operationInstant),
+      timing: getScheduleItemTiming(scheduleItem.dueDate, businessDate),
     })) as DebtResponse['scheduleItems'],
     createdAt: debt.createdAt.toISOString(),
     updatedAt: debt.updatedAt.toISOString(),

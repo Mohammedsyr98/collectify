@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { currencySchema } from '../owner-profile/owner-profile.js';
+import { oneBasedPageSchema } from '../pagination.js';
 import { debtValidationCode } from './validation-codes.js';
 
 const createDebtAmountSchema = z
@@ -85,6 +86,10 @@ export const debtResponseSchema = z.object({
 
 export const debtListPageSize = 5;
 
+export const debtListQuerySchema = z.object({
+  page: oneBasedPageSchema,
+});
+
 export const debtListResponseSchema = z.object({
   items: z.array(debtResponseSchema),
   page: z.number().int().min(1),
@@ -94,5 +99,6 @@ export const debtListResponseSchema = z.object({
 });
 
 export type CreateDebtRequest = z.infer<typeof createDebtRequestSchema>;
+export type DebtListQuery = z.infer<typeof debtListQuerySchema>;
 export type DebtResponse = z.infer<typeof debtResponseSchema>;
 export type DebtListResponse = z.infer<typeof debtListResponseSchema>;

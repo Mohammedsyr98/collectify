@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   isCustomerApiErrorCode,
   type CreateDebtRequest,
+  type DebtListQuery,
 } from '@collectify/contracts';
 
 import { resolveApiErrorDescription } from '../../shared/api/http';
@@ -18,11 +19,21 @@ import { listDebts } from './api/list-debts';
 export const debtListQueryKey = (customerId: string) =>
   ['customers', customerId, 'debts'] as const;
 
-export function useDebtListQuery(customerId: string | undefined) {
+export const debtListPageQueryKey = (
+  customerId: string,
+  query: DebtListQuery,
+) => [...debtListQueryKey(customerId), query] as const;
+
+export function useDebtListQuery(
+  customerId: string | undefined,
+  query: DebtListQuery,
+) {
   return useQuery({
-    queryKey: debtListQueryKey(customerId ?? ''),
-    queryFn: () => listDebts(customerId!),
+    queryKey: debtListPageQueryKey(customerId ?? '', query),
+    queryFn: () => listDebts(customerId!, query),
     enabled: Boolean(customerId),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === customerId ? previousData : undefined,
   });
 }
 

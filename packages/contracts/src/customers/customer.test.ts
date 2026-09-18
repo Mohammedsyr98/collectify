@@ -10,6 +10,7 @@ import {
   updateCustomerRequestSchema,
 } from './customer.js';
 import { customerApiErrorCode } from './api-error-codes.js';
+import { oneBasedPageSchema } from '../pagination.js';
 import { customerValidationCode } from './validation-codes.js';
 
 describe('customer contracts', () => {
@@ -183,7 +184,17 @@ describe('customer contracts', () => {
     expect(customerListPageSize).toBe(25);
   });
 
-  it('normalizes customer list query pagination and search terms', () => {
+  it('enforces strict one-based page input while defaulting omitted pages', () => {
+    expect(oneBasedPageSchema.parse(undefined)).toBe(1);
+    expect(oneBasedPageSchema.parse('2')).toBe(2);
+    expect(oneBasedPageSchema.parse(3)).toBe(3);
+
+    for (const value of ['', '0', '-1', '1.5', '01', 'invalid', [], 0, -1, 1.5]) {
+      expect(oneBasedPageSchema.safeParse(value).success).toBe(false);
+    }
+  });
+
+  it('normalizes customer list search terms', () => {
     expect(
       customerListQuerySchema.parse({
         page: '2',
@@ -193,12 +204,12 @@ describe('customer contracts', () => {
       page: 2,
       search: 'acme',
     });
-    expect(customerListQuerySchema.parse({ page: 'invalid' })).toEqual({
+    expect(customerListQuerySchema.parse({ search: '   ' })).toEqual({
       page: 1,
     });
-    expect(customerListQuerySchema.parse({ page: '1', search: '   ' })).toEqual({
-      page: 1,
-    });
+    expect(customerListQuerySchema.safeParse({ page: 'invalid' }).success).toBe(
+      false,
+    );
   });
 
   it('accepts controlled customer API error responses', () => {

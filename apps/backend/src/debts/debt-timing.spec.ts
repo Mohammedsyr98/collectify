@@ -18,14 +18,15 @@ describe('debt timing', () => {
 
   it('classifies a schedule date relative to one Istanbul business date', () => {
     const operationInstant = new Date('2026-09-10T12:00:00.000Z');
+    const businessDate = getIstanbulBusinessDate(operationInstant);
 
-    expect(getScheduleItemTiming('2026-09-11', operationInstant)).toBe(
+    expect(getScheduleItemTiming('2026-09-11', businessDate)).toBe(
       'upcoming',
     );
-    expect(getScheduleItemTiming('2026-09-10', operationInstant)).toBe(
+    expect(getScheduleItemTiming('2026-09-10', businessDate)).toBe(
       'dueToday',
     );
-    expect(getScheduleItemTiming('2026-09-09', operationInstant)).toBe(
+    expect(getScheduleItemTiming('2026-09-09', businessDate)).toBe(
       'overdue',
     );
   });
