@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
   customerListQuerySchema,
-  oneBasedPageSchema,
   type CustomerListItem,
   type CustomerListQuery,
 } from '@collectify/contracts';
 
+import { usePageQueryParam } from '../../shared/usePageQueryParam';
 import { useCustomerListQuery } from './customerQueries';
 
 const emptyCustomers: CustomerListItem[] = [];
@@ -24,10 +24,10 @@ type CustomerListViewStatus =
 
 export function useCustomerListView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const pageQuery = searchParams.get('page');
-  const parsedPage = oneBasedPageSchema.safeParse(pageQuery ?? undefined);
+  const { page: currentPage, setPage: setCustomerPageQuery } =
+    usePageQueryParam('page');
   const customerListQueryParams: CustomerListQuery = customerListQuerySchema.parse({
-    page: parsedPage.success ? parsedPage.data : undefined,
+    page: currentPage,
     search: searchParams.get('search') ?? undefined,
   });
   const pendingSearchUrlUpdateRef = useRef<string | null>(null);
@@ -36,7 +36,6 @@ export function useCustomerListView() {
   const customerListQuery = useCustomerListQuery(customerListQueryParams);
   const customerList = customerListQuery.data;
   const customers = customerList?.items ?? emptyCustomers;
-  const currentPage = customerListQueryParams.page;
   const totalPages = customerList?.totalPages ?? 0;
   const totalItems = customerList?.totalItems ?? 0;
   const lastAvailablePage = totalPages > 0 ? totalPages : 1;
@@ -46,14 +45,6 @@ export function useCustomerListView() {
     customerListQuery.isLoading ||
     customerListQuery.isPlaceholderData ||
     (customerListQuery.isSuccess && hasCustomers && !hasVisibleCustomers);
-  const setCustomerPageQuery = useCallback(
-    (page: number, options?: Parameters<typeof setSearchParams>[1]) => {
-      const nextSearchParams = new URLSearchParams(searchParams);
-      nextSearchParams.set('page', String(page));
-      setSearchParams(nextSearchParams, options);
-    },
-    [searchParams, setSearchParams],
-  );
   const setCustomerSearchQuery = (search: string) => {
     setSearchValue(search);
   };
@@ -93,24 +84,7 @@ export function useCustomerListView() {
   }, [effectiveSearchValue, searchParams, searchValue, setSearchParams]);
 
   useEffect(() => {
-    const normalizedPage = String(customerListQueryParams.page);
-
-    if (pageQuery === null || pageQuery === normalizedPage) {
-      return;
-    }
-
-    setCustomerPageQuery(parsedPage.success ? customerListQueryParams.page : 1, {
-      replace: true,
-    });
-  }, [
-    customerListQueryParams.page,
-    pageQuery,
-    parsedPage.success,
-    setCustomerPageQuery,
-  ]);
-
-  useEffect(() => {
-    if (!customerListQuery.isSuccess || customerListQuery.isPlaceholderData || pageQuery === null) {
+    if (!customerListQuery.isSuccess || customerListQuery.isPlaceholderData) {
       return;
     }
 
@@ -124,7 +98,6 @@ export function useCustomerListView() {
     customerListQuery.isSuccess,
     customerListQueryParams.page,
     lastAvailablePage,
-    pageQuery,
     setCustomerPageQuery,
   ]);
 
