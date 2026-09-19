@@ -14,6 +14,22 @@ import {
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
 import { getIstanbulBusinessDate } from './debt-timing';
 
+type DebtWithScheduleRow = {
+  debt_id: string;
+  customer_id: string;
+  description: string;
+  debt_total_amount: string;
+  currency: string;
+  debt_created_at: string;
+  debt_updated_at: string;
+  schedule_id: string;
+  position: number;
+  schedule_amount: string;
+  schedule_due_date: string;
+  schedule_created_at: string;
+  schedule_updated_at: string;
+};
+
 describe('debt routes', () => {
   let postgres: IntegrationPostgres | undefined;
   let backend: IntegrationBackend | undefined;
@@ -111,6 +127,81 @@ describe('debt routes', () => {
         amount: '125.50',
       },
     ]);
+  });
+
+  it('replaces a durable one-payment debt while preserving its identities', async () => {
+    const owner = await signUpOwner('debt-replace-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_replace',
+      createdAt: '2026-09-10 10:00:00',
+      dueDate: '2026-09-30',
+      description: 'Original description',
+      totalAmount: '125.50',
+    });
+
+    const beforeRows = await readDebtWithScheduleRows('debt_replace');
+    expect(beforeRows).toHaveLength(1);
+    const before = beforeRows[0]!;
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_replace`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Updated description',
+          totalAmount: '275.75',
+          currency: 'EUR',
+          paymentPlan: {
+            type: 'onePayment',
+            dueDate: '2026-09-01',
+          },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    expect(replaced).toMatchObject({
+      id: 'debt_replace',
+      customerId: 'customer_debt',
+      description: 'Updated description',
+      totalAmount: '275.75',
+      currency: 'EUR',
+      paymentPlanType: 'onePayment',
+      scheduleItems: [
+        {
+          id: 'debt_replace_schedule',
+          position: 1,
+          amount: '275.75',
+          dueDate: '2026-09-01',
+        },
+      ],
+    });
+
+    const afterRows = await readDebtWithScheduleRows('debt_replace');
+
+    expect(afterRows).toHaveLength(1);
+    const after = afterRows[0]!;
+    expect(after).toMatchObject({
+      debt_id: before.debt_id,
+      customer_id: before.customer_id,
+      description: 'Updated description',
+      debt_total_amount: '275.75',
+      currency: 'EUR',
+      debt_created_at: before.debt_created_at,
+      schedule_id: before.schedule_id,
+      position: before.position,
+      schedule_amount: '275.75',
+      schedule_due_date: '2026-09-01',
+      schedule_created_at: before.schedule_created_at,
+    });
+    expect(after.debt_updated_at).not.toBe(before.debt_updated_at);
+    expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
   });
 
   it('returns human-readable validation messages for invalid debt input', async () => {
@@ -740,6 +831,30 @@ describe('debt routes', () => {
       await postgres!.query('DROP FUNCTION fail_debt_schedule_insert()');
     }
   });
+
+  function readDebtWithScheduleRows(
+    debtId: string,
+  ): Promise<DebtWithScheduleRow[]> {
+    return postgres!.query<DebtWithScheduleRow>(`
+      SELECT
+        d."id" AS "debt_id",
+        d."customer_id",
+        d."description",
+        d."total_amount"::text AS "debt_total_amount",
+        d."currency",
+        d."created_at"::text AS "debt_created_at",
+        d."updated_at"::text AS "debt_updated_at",
+        s."id" AS "schedule_id",
+        s."position",
+        s."amount"::text AS "schedule_amount",
+        s."due_date"::text AS "schedule_due_date",
+        s."created_at"::text AS "schedule_created_at",
+        s."updated_at"::text AS "schedule_updated_at"
+      FROM "debts" d
+      JOIN "debt_schedule_items" s ON s."debt_id" = d."id"
+      WHERE d."id" = $1 AND s."position" = 1
+    `, [debtId]);
+  }
 
   async function signUpOwner(
     email: string,

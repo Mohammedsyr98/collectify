@@ -1,8 +1,20 @@
+import { HttpException, HttpStatus } from '@nestjs/common';
 import {
+  debtApiErrorCode,
   debtValidationCode,
   isDebtValidationCode,
   type DebtValidationCode,
 } from '@collectify/contracts';
+
+const debtApiErrors = {
+  [debtApiErrorCode.debtNotFound]: {
+    response: {
+      code: debtApiErrorCode.debtNotFound,
+      message: 'Debt was not found.',
+    },
+    status: HttpStatus.NOT_FOUND,
+  },
+} as const;
 
 const debtValidationMessages = {
   [debtValidationCode.debtDescriptionRequired]: 'Description is required.',
@@ -22,4 +34,12 @@ export function resolveDebtValidationMessage(message: string): string {
   }
 
   return message;
+}
+
+export function debtException(
+  code: typeof debtApiErrorCode.debtNotFound,
+): HttpException {
+  const error = debtApiErrors[code];
+
+  return new HttpException(error.response, error.status);
 }
