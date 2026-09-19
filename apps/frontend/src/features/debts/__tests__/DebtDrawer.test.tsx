@@ -8,6 +8,7 @@ import type { CreateDebtRequest } from '@collectify/contracts';
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { DebtDrawer } from '../DebtDrawer';
+import { createDebtFixture } from './debtTestData';
 
 describe('DebtDrawer', () => {
   beforeEach(() => {
@@ -68,6 +69,89 @@ describe('DebtDrawer', () => {
         },
       }),
     );
+  });
+
+  it('prefills the edit form from the selected debt', () => {
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="TRY"
+        debt={createDebtFixture('customer_123', {
+          description: 'Website redesign',
+          totalAmount: '275.75',
+          currency: 'EUR',
+          scheduleItems: [
+            {
+              id: 'schedule_123',
+              position: 1,
+              amount: '275.75',
+              dueDate: '2026-10-01',
+              timing: 'upcoming',
+            },
+          ],
+        })}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Edit debt' });
+
+    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+      'Website redesign',
+    );
+    expect(within(drawer).getByLabelText('Total amount')).toHaveValue('275.75');
+    expect(within(drawer).getByLabelText('Currency')).toHaveValue('EUR');
+    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-10-01');
+  });
+
+  it('describes edit mode accessibly', () => {
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        debt={createDebtFixture('customer_123')}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toHaveAccessibleDescription(
+      'Edit this one-payment debt for this customer.',
+    );
+  });
+
+  it('locks the drawer while a submission is pending', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onSubmit = vi.fn(async () => undefined);
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Add debt' });
+    const saveButton = within(dialog).getByRole('button', { name: 'Saving' });
+
+    expect(saveButton).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: 'Close debt form' }),
+    ).toBeDisabled();
+
+    await user.click(saveButton);
+    await user.keyboard('{Escape}');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(dialog).toBeInTheDocument();
   });
 
   it('shows an accessible localized error and preserves the draft when validation blocks submission', async () => {

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   createDebtRequestSchema,
+  type DebtResponse,
   type CreateDebtRequest,
   type Currency,
 } from '@collectify/contracts';
@@ -33,31 +34,55 @@ const createDebtFormResolver = zodResolver(
   createDebtRequestSchema,
 ) as Resolver<DebtFormValues, unknown, CreateDebtRequest>;
 
-export function DebtDrawer({
-  defaultCurrency,
-  isSubmitting,
-  onClose,
-  onSubmit,
-  returnFocusRef,
-}: {
+type DebtDrawerProps = {
   defaultCurrency: Currency;
   isSubmitting: boolean;
   onClose: () => void;
   onSubmit: (request: CreateDebtRequest) => Promise<void>;
   returnFocusRef?: RefObject<HTMLElement | null>;
-}) {
+} & (
+  | {
+      debt?: never;
+      mode?: 'create';
+    }
+  | {
+      debt: DebtResponse;
+      mode: 'edit';
+    }
+);
+
+export function DebtDrawer({
+  defaultCurrency,
+  debt,
+  isSubmitting,
+  mode = 'create',
+  onClose,
+  onSubmit,
+  returnFocusRef,
+}: DebtDrawerProps) {
   const { t } = useTranslation();
   const formatValidationError = useDebtValidationErrorFormatter();
   const form = useForm<DebtFormValues, unknown, CreateDebtRequest>({
-    defaultValues: {
-      description: '',
-      totalAmount: '',
-      currency: defaultCurrency,
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '',
-      },
-    },
+    defaultValues:
+      mode === 'edit' && debt
+        ? {
+            description: debt.description,
+            totalAmount: debt.totalAmount,
+            currency: debt.currency,
+            paymentPlan: {
+              type: 'onePayment',
+              dueDate: debt.scheduleItems[0]?.dueDate ?? '',
+            },
+          }
+        : {
+            description: '',
+            totalAmount: '',
+            currency: defaultCurrency,
+            paymentPlan: {
+              type: 'onePayment',
+              dueDate: '',
+            },
+          },
     resolver: createDebtFormResolver,
   });
 
@@ -92,7 +117,11 @@ export function DebtDrawer({
         >
           <div className="flex items-center justify-between gap-3">
             <Dialog.Title className="m-0 text-[1.15rem] font-black leading-tight tracking-normal">
-              {t('debts.drawer.title')}
+              {t(
+                mode === 'edit'
+                  ? 'debts.drawer.editTitle'
+                  : 'debts.drawer.createTitle',
+              )}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
@@ -109,7 +138,11 @@ export function DebtDrawer({
             className="sr-only"
             id="debt-drawer-description"
           >
-            {t('debts.drawer.description')}
+            {t(
+              mode === 'edit'
+                ? 'debts.drawer.editDescription'
+                : 'debts.drawer.description',
+            )}
           </Dialog.Description>
 
           <FormProvider {...form}>

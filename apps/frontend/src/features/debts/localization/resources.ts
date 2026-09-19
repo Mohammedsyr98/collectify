@@ -18,7 +18,9 @@ export const debtResources = {
         drawer: {
           close: 'Close debt form',
           description: 'Create a one-payment debt for this customer.',
-          title: 'Add debt',
+          editDescription: 'Edit this one-payment debt for this customer.',
+          editTitle: 'Edit debt',
+          createTitle: 'Add debt',
         },
         form: {
           cancel: 'Cancel',
@@ -77,7 +79,9 @@ export const debtResources = {
         drawer: {
           close: 'Borç formunu kapat',
           description: 'Bu müşteri için tek ödemeli bir borç oluşturun.',
-          title: 'Borç ekle',
+          editDescription: 'Bu müşterinin tek ödemeli borcunu düzenleyin.',
+          editTitle: 'Borcu düzenle',
+          createTitle: 'Borç ekle',
         },
         form: {
           cancel: 'İptal',
@@ -136,7 +140,9 @@ export const debtResources = {
         drawer: {
           close: 'إغلاق نموذج الدين',
           description: 'أنشئ دينًا بدفعة واحدة لهذا العميل.',
-          title: 'إضافة دين',
+          editDescription: 'حرّر الدين ذي الدفعة الواحدة لهذا العميل.',
+          editTitle: 'تحرير الدين',
+          createTitle: 'إضافة دين',
         },
         form: {
           cancel: 'إلغاء',
