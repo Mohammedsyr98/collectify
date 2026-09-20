@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import {
-  isCustomerApiErrorCode,
+  isDebtApiErrorCode,
   type CreateDebtRequest,
   type DebtListQuery,
+  type ReplaceDebtRequest,
 } from '@collectify/contracts';
 
 import { resolveApiErrorDescription } from '../../shared/api/http';
@@ -15,6 +16,7 @@ import {
 } from '../customers/customerQueries';
 import { createDebt } from './api/create-debt';
 import { listDebts } from './api/list-debts';
+import { replaceDebt } from './api/replace-debt';
 
 export const debtListQueryKey = (customerId: string) =>
   ['customers', customerId, 'debts'] as const;
@@ -72,9 +74,9 @@ export function useCreateDebtMutation({
         variant: 'error',
         title: t('debts.toast.create.errorTitle'),
         description: resolveApiErrorDescription(error, {
-          describeKnownCode: (code) => t(`customers.errors.${code}`),
+          describeKnownCode: (code) => t(`debts.errors.${code}`),
           fallbackDescription: t('errors.genericDescription'),
-          isKnownCode: isCustomerApiErrorCode,
+          isKnownCode: isDebtApiErrorCode,
         }),
       });
     },
@@ -89,5 +91,61 @@ export function useCreateDebtMutation({
       }
     },
     isCreating: mutation.isPending,
+  };
+}
+
+export function useReplaceDebtMutation({
+  customerId,
+  onReplaced,
+}: {
+  customerId: string;
+  onReplaced?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: ({ debtId, request }: { debtId: string; request: ReplaceDebtRequest }) =>
+      replaceDebt(customerId, debtId, request),
+    onSuccess: (debt) => {
+      void queryClient.invalidateQueries({
+        queryKey: debtListQueryKey(customerId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: customerDetailsQueryKey(customerId),
+      });
+      void queryClient.invalidateQueries({ queryKey: customerListQueryKey });
+      showToast({
+        variant: 'success',
+        title: t('debts.toast.edit.successTitle'),
+        description: t('debts.toast.edit.successDescription', {
+          description: debt.description,
+        }),
+      });
+      onReplaced?.();
+    },
+    onError: (error) => {
+      showToast({
+        variant: 'error',
+        title: t('debts.toast.edit.errorTitle'),
+        description: resolveApiErrorDescription(error, {
+          describeKnownCode: (code) => t(`debts.errors.${code}`),
+          fallbackDescription: t('errors.genericDescription'),
+          isKnownCode: isDebtApiErrorCode,
+        }),
+      });
+    },
+  });
+
+  return {
+    isReplacing: mutation.isPending,
+    replaceDebt: async (debtId: string, request: ReplaceDebtRequest) => {
+      try {
+        await mutation.mutateAsync({ debtId, request });
+      } catch {
+        // Failure presentation is handled in the next edit-workflow slice.
+      }
+    },
   };
 }

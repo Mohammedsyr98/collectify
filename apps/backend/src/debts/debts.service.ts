@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
   customerApiErrorCode,
+  debtApiErrorCode,
   debtListPageSize,
   type CreateDebtRequest,
   type DebtListQuery,
   type DebtListResponse,
   type DebtResponse,
+  type ReplaceDebtRequest,
 } from '@collectify/contracts';
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -20,6 +22,7 @@ import {
   getIstanbulBusinessDate,
   getScheduleItemTiming,
 } from './debt-timing';
+import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
 type DebtScheduleItemRow = typeof debtScheduleItems.$inferSelect;
@@ -153,6 +156,75 @@ export class DebtsService {
       ),
       ...paginationMetadata,
     };
+  }
+
+  async replaceDebt(
+    currentOwner: AuthenticatedOwner,
+    customerId: string,
+    debtId: string,
+    request: ReplaceDebtRequest,
+  ): Promise<DebtResponse> {
+    const operationInstant = new Date();
+    const businessDate = getIstanbulBusinessDate(operationInstant);
+
+    const replaced = await this.databaseService.db.transaction(async (tx) => {
+      const [ownedDebt] = await tx
+        .select({ debt: debts, scheduleItem: debtScheduleItems })
+        .from(debts)
+        .innerJoin(customers, eq(customers.id, debts.customerId))
+        .innerJoin(
+          debtScheduleItems,
+          and(
+            eq(debtScheduleItems.debtId, debts.id),
+            eq(debtScheduleItems.position, 1),
+          ),
+        )
+        .where(
+          and(
+            eq(debts.id, debtId),
+            eq(debts.customerId, customerId),
+            eq(customers.ownerProfileId, currentOwner.ownerProfile.id),
+          ),
+        )
+        .limit(1);
+
+      if (!ownedDebt) {
+        throw debtException(debtApiErrorCode.debtNotFound);
+      }
+
+      const [debt] = await tx
+        .update(debts)
+        .set({
+          description: request.description,
+          totalAmount: request.totalAmount,
+          currency: request.currency,
+          updatedAt: operationInstant,
+        })
+        .where(eq(debts.id, ownedDebt.debt.id))
+        .returning();
+
+      const [scheduleItem] = await tx
+        .update(debtScheduleItems)
+        .set({
+          amount: request.totalAmount,
+          dueDate: request.paymentPlan.dueDate,
+          updatedAt: operationInstant,
+        })
+        .where(eq(debtScheduleItems.id, ownedDebt.scheduleItem.id))
+        .returning();
+
+      if (!debt || !scheduleItem) {
+        throw debtException(debtApiErrorCode.debtNotFound);
+      }
+
+      return { debt, scheduleItem };
+    });
+
+    return toDebtResponse(
+      replaced.debt,
+      [replaced.scheduleItem],
+      businessDate,
+    );
   }
 
   private async requireOwnedCustomer(

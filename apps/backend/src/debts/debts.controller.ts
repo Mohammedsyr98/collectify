@@ -5,15 +5,18 @@ import {
   HttpCode,
   Param,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
   createDebtRequestSchema,
   debtListQuerySchema,
+  replaceDebtRequestSchema,
   type CreateDebtRequest,
   type DebtListQuery,
   type DebtListResponse,
   type DebtResponse,
+  type ReplaceDebtRequest,
 } from '@collectify/contracts';
 
 import { CurrentOwner, type AuthenticatedOwner } from '../auth';
@@ -23,6 +26,12 @@ import { DebtsService } from './debts.service';
 
 const createDebtValidationPipe = new ZodValidationPipe(
   createDebtRequestSchema,
+  {
+    resolveIssueMessage: resolveDebtValidationMessage,
+  },
+);
+const replaceDebtValidationPipe = new ZodValidationPipe(
+  replaceDebtRequestSchema,
   {
     resolveIssueMessage: resolveDebtValidationMessage,
   },
@@ -43,6 +52,21 @@ export class DebtsController {
     @Body(createDebtValidationPipe) body: CreateDebtRequest,
   ): Promise<DebtResponse> {
     return this.debtsService.createDebt(currentOwner, customerId, body);
+  }
+
+  @Put(':debtId')
+  replaceDebt(
+    @CurrentOwner() currentOwner: AuthenticatedOwner,
+    @Param('customerId') customerId: string,
+    @Param('debtId') debtId: string,
+    @Body(replaceDebtValidationPipe) body: ReplaceDebtRequest,
+  ): Promise<DebtResponse> {
+    return this.debtsService.replaceDebt(
+      currentOwner,
+      customerId,
+      debtId,
+      body,
+    );
   }
 
   @Get()

@@ -7,6 +7,7 @@ import {
   customerApiErrorCode,
   type Currency,
   type CustomerCurrencySummary,
+  type DebtResponse,
 } from '@collectify/contracts';
 
 import { isApiError } from '../../shared/api/http';
@@ -26,6 +27,7 @@ import { DebtDrawer } from '../debts/DebtDrawer';
 import { DebtLedgerSection } from '../debts/DebtLedgerSection';
 import {
   useCreateDebtMutation,
+  useReplaceDebtMutation,
 } from '../debts/debtQueries';
 import { useDebtListView } from '../debts/useDebtListView';
 
@@ -42,17 +44,30 @@ export function CustomerDetailsPage({
   const { locale } = useLocalization();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<DebtResponse | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
+  const editDebtTriggerRef = useRef<HTMLElement | null>(null);
   const customerQuery = useCustomerDetailsQuery(customerId);
   const debtQuery = useDebtListView(customerId);
   const { createDebt, isCreating } = useCreateDebtMutation({
     customerId: customerId ?? '',
     onCreated: () => setIsDebtDrawerOpen(false),
   });
+  const { isReplacing, replaceDebt } = useReplaceDebtMutation({
+    customerId: customerId ?? '',
+    onReplaced: () => setEditingDebt(null),
+  });
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
     onUpdated: () => setIsEditModalOpen(false),
   });
+  const openDebtEditor = (
+    debt: DebtResponse,
+    trigger: HTMLButtonElement | null,
+  ) => {
+    editDebtTriggerRef.current = trigger;
+    setEditingDebt(debt);
+  };
 
   if (customerQuery.isLoading) {
     return <LoadingScreen ariaLabel={t('app.loading.ariaLabel')} />;
@@ -170,6 +185,7 @@ export function CustomerDetailsPage({
             <DebtLedgerSection
               debts={debtQuery.data?.items ?? []}
               isLoading={debtQuery.isLoading}
+              onEditDebt={openDebtEditor}
               pagination={debtQuery.pagination}
               search={debtQuery.search}
               status={debtQuery.status}
@@ -203,6 +219,17 @@ export function CustomerDetailsPage({
           onClose={() => setIsDebtDrawerOpen(false)}
           onSubmit={createDebt}
           returnFocusRef={addDebtButtonRef}
+        />
+      ) : null}
+      {editingDebt ? (
+        <DebtDrawer
+          defaultCurrency={editingDebt.currency}
+          debt={editingDebt}
+          isSubmitting={isReplacing}
+          mode="edit"
+          onClose={() => setEditingDebt(null)}
+          onSubmit={(request) => replaceDebt(editingDebt.id, request)}
+          returnFocusRef={editDebtTriggerRef}
         />
       ) : null}
     </>

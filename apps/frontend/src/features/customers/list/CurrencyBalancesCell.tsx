@@ -7,7 +7,7 @@ import type {
   CustomerListItem,
 } from '@collectify/contracts';
 
-import { useAnchoredPopup } from './useAnchoredPopup';
+import { useAnchoredPopup } from '../../../shared/ui/anchored-popup/useAnchoredPopup';
 
 const currencyPopoverGap = 8;
 const currencyPopoverEstimatedHeight = 128;

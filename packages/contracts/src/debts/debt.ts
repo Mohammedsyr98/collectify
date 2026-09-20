@@ -7,18 +7,9 @@ import { debtValidationCode } from './validation-codes.js';
 const createDebtAmountSchema = z
   .string()
   .trim()
-  .regex(
-    /^\d+(?:\.\d{1,2})?$/,
-    debtValidationCode.debtTotalAmountInvalid,
-  )
-  .refine(
-    isPositiveDebtAmount,
-    debtValidationCode.debtTotalAmountMustBePositive,
-  )
-  .refine(
-    isWithinNumeric182Precision,
-    debtValidationCode.debtTotalAmountTooLarge,
-  )
+  .regex(/^\d+(?:\.\d{1,2})?$/, debtValidationCode.debtTotalAmountInvalid)
+  .refine(isPositiveDebtAmount, debtValidationCode.debtTotalAmountMustBePositive)
+  .refine(isWithinNumeric182Precision, debtValidationCode.debtTotalAmountTooLarge)
   .transform((amount) => {
     const [wholeAmount, fractionalAmount = ''] = amount.split('.');
     const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
@@ -53,7 +44,7 @@ const onePaymentPlanSchema = z
   })
   .strict();
 
-export const createDebtRequestSchema = z.object({
+const onePaymentDebtRequestSchema = z.object({
   description: z
     .string()
     .trim()
@@ -63,6 +54,9 @@ export const createDebtRequestSchema = z.object({
   currency: currencySchema,
   paymentPlan: onePaymentPlanSchema,
 });
+
+export const createDebtRequestSchema = onePaymentDebtRequestSchema;
+export const replaceDebtRequestSchema = onePaymentDebtRequestSchema;
 
 const onePaymentScheduleItemSchema = z.object({
   id: z.string().min(1),
@@ -91,9 +85,7 @@ export const debtListQuerySchema = z
     page: oneBasedPageSchema,
     search: z.string().trim().optional(),
   })
-  .transform(({ page, search }) =>
-    search ? { page, search } : { page },
-  );
+  .transform(({ page, search }) => (search ? { page, search } : { page }));
 
 export const debtListResponseSchema = z.object({
   items: z.array(debtResponseSchema),
@@ -104,6 +96,7 @@ export const debtListResponseSchema = z.object({
 });
 
 export type CreateDebtRequest = z.infer<typeof createDebtRequestSchema>;
+export type ReplaceDebtRequest = z.infer<typeof replaceDebtRequestSchema>;
 export type DebtListQuery = z.infer<typeof debtListQuerySchema>;
 export type DebtResponse = z.infer<typeof debtResponseSchema>;
 export type DebtListResponse = z.infer<typeof debtListResponseSchema>;

@@ -1,4 +1,4 @@
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
@@ -7,18 +7,44 @@ import {
   formatCurrencyAmount,
   useLocalization,
 } from '../../shared/localization';
+import { AnchoredMenu } from '../../shared/ui/anchored-menu/AnchoredMenu';
 
-export function DebtCard({ debt }: { debt: DebtResponse }) {
+export function DebtCard({
+  debt,
+  onEdit,
+}: {
+  debt: DebtResponse;
+  onEdit?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
+}) {
+  const { t } = useTranslation();
   const { locale } = useLocalization();
 
   return (
-    <article className="grid gap-3 rounded-[5px] border border-border bg-background p-3">
+    <article className="relative grid gap-3 rounded-[5px] border border-border bg-background p-3">
       <header className="grid gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h3 className="m-0 text-[0.88rem] font-black">{debt.description}</h3>
-          <bdi className="text-[0.9rem] font-black" dir="ltr">
-            {formatCurrencyAmount(debt.totalAmount, debt.currency, locale)}
-          </bdi>
+          <div className="flex items-center gap-2">
+            <bdi className="text-[0.9rem] font-black" dir="ltr">
+              {formatCurrencyAmount(debt.totalAmount, debt.currency, locale)}
+            </bdi>
+            <AnchoredMenu
+              items={[
+                {
+                  icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
+                  id: 'edit-debt',
+                  label: t('debts.card.actions.edit'),
+                  onSelect: (trigger) => onEdit?.(debt, trigger),
+                },
+              ]}
+              menuLabel={t('debts.card.actions.menuLabel', {
+                description: debt.description,
+              })}
+              triggerLabel={t('debts.card.actions.openMenu', {
+                description: debt.description,
+              })}
+            />
+          </div>
         </div>
       </header>
 

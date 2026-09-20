@@ -1,11 +1,17 @@
 import type { SupportedLocale } from '../../../shared/localization';
+import { debtApiErrorTranslations } from './debtApiErrorTranslations';
 import { debtValidationTranslations } from './debtValidationTranslations';
 
 export const debtResources = {
   en: {
     common: {
       debts: {
-        card: {
+          card: {
+          actions: {
+            edit: 'Edit debt',
+            menuLabel: 'Actions for {{description}}',
+            openMenu: 'Open actions for {{description}}',
+          },
           dueDate: 'Due',
           dueToday: 'Due today',
           onePayment: 'One payment',
@@ -18,8 +24,11 @@ export const debtResources = {
         drawer: {
           close: 'Close debt form',
           description: 'Create a one-payment debt for this customer.',
-          title: 'Add debt',
+          editDescription: 'Edit this one-payment debt for this customer.',
+          editTitle: 'Edit debt',
+          createTitle: 'Add debt',
         },
+        errors: debtApiErrorTranslations.en,
         form: {
           cancel: 'Cancel',
           currencyLabel: 'Currency',
@@ -56,6 +65,11 @@ export const debtResources = {
             successDescription: '{{description}} was added.',
             successTitle: 'Debt created',
           },
+          edit: {
+            errorTitle: 'Could not update debt',
+            successDescription: '{{description}} was updated.',
+            successTitle: 'Debt updated',
+          },
         },
         validation: debtValidationTranslations.en,
       },
@@ -64,7 +78,12 @@ export const debtResources = {
   tr: {
     common: {
       debts: {
-        card: {
+          card: {
+          actions: {
+            edit: 'Borcu düzenle',
+            menuLabel: '{{description}} işlemleri',
+            openMenu: '{{description}} işlemlerini aç',
+          },
           dueDate: 'Vade',
           dueToday: 'Vadesi bugün',
           onePayment: 'Tek ödeme',
@@ -77,7 +96,9 @@ export const debtResources = {
         drawer: {
           close: 'Borç formunu kapat',
           description: 'Bu müşteri için tek ödemeli bir borç oluşturun.',
-          title: 'Borç ekle',
+          editDescription: 'Bu müşterinin tek ödemeli borcunu düzenleyin.',
+          editTitle: 'Borcu düzenle',
+          createTitle: 'Borç ekle',
         },
         form: {
           cancel: 'İptal',
@@ -115,15 +136,26 @@ export const debtResources = {
             successDescription: '{{description}} eklendi.',
             successTitle: 'Borç oluşturuldu',
           },
+          edit: {
+            errorTitle: 'Borç güncellenemedi',
+            successDescription: '{{description}} güncellendi.',
+            successTitle: 'Borç güncellendi',
+          },
         },
         validation: debtValidationTranslations.tr,
+        errors: debtApiErrorTranslations.tr,
       },
     },
   },
   ar: {
     common: {
       debts: {
-        card: {
+          card: {
+          actions: {
+            edit: 'تحرير الدين',
+            menuLabel: 'إجراءات {{description}}',
+            openMenu: 'فتح إجراءات {{description}}',
+          },
           dueDate: 'الاستحقاق',
           dueToday: 'مستحق اليوم',
           onePayment: 'دفعة واحدة',
@@ -136,7 +168,9 @@ export const debtResources = {
         drawer: {
           close: 'إغلاق نموذج الدين',
           description: 'أنشئ دينًا بدفعة واحدة لهذا العميل.',
-          title: 'إضافة دين',
+          editDescription: 'حرّر الدين ذي الدفعة الواحدة لهذا العميل.',
+          editTitle: 'تحرير الدين',
+          createTitle: 'إضافة دين',
         },
         form: {
           cancel: 'إلغاء',
@@ -174,8 +208,14 @@ export const debtResources = {
             successDescription: 'تمت إضافة {{description}}.',
             successTitle: 'تم إنشاء الدين',
           },
+          edit: {
+            errorTitle: 'تعذر تحديث الدين',
+            successDescription: 'تم تحديث {{description}}.',
+            successTitle: 'تم تحديث الدين',
+          },
         },
         validation: debtValidationTranslations.ar,
+        errors: debtApiErrorTranslations.ar,
       },
     },
   },

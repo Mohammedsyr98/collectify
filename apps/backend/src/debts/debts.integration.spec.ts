@@ -14,6 +14,22 @@ import {
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
 import { getIstanbulBusinessDate } from './debt-timing';
 
+type DebtWithScheduleRow = {
+  debt_id: string;
+  customer_id: string;
+  description: string;
+  debt_total_amount: string;
+  currency: string;
+  debt_created_at: string;
+  debt_updated_at: string;
+  schedule_id: string;
+  position: number;
+  schedule_amount: string;
+  schedule_due_date: string;
+  schedule_created_at: string;
+  schedule_updated_at: string;
+};
+
 describe('debt routes', () => {
   let postgres: IntegrationPostgres | undefined;
   let backend: IntegrationBackend | undefined;
@@ -111,6 +127,230 @@ describe('debt routes', () => {
         amount: '125.50',
       },
     ]);
+  });
+
+  it('replaces a durable one-payment debt while preserving its identities', async () => {
+    const owner = await signUpOwner('debt-replace-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_replace',
+      createdAt: '2026-09-10 10:00:00',
+      dueDate: '2026-09-30',
+      description: 'Original description',
+      totalAmount: '125.50',
+    });
+
+    const beforeRows = await readDebtWithScheduleRows('debt_replace');
+    expect(beforeRows).toHaveLength(1);
+    const before = beforeRows[0]!;
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_replace`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Updated description',
+          totalAmount: '275.75',
+          currency: 'EUR',
+          paymentPlan: {
+            type: 'onePayment',
+            dueDate: '2026-09-01',
+          },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    expect(replaced).toMatchObject({
+      id: 'debt_replace',
+      customerId: 'customer_debt',
+      description: 'Updated description',
+      totalAmount: '275.75',
+      currency: 'EUR',
+      paymentPlanType: 'onePayment',
+      scheduleItems: [
+        {
+          id: 'debt_replace_schedule',
+          position: 1,
+          amount: '275.75',
+          dueDate: '2026-09-01',
+        },
+      ],
+    });
+
+    const afterRows = await readDebtWithScheduleRows('debt_replace');
+
+    expect(afterRows).toHaveLength(1);
+    const after = afterRows[0]!;
+    expect(after).toMatchObject({
+      debt_id: before.debt_id,
+      customer_id: before.customer_id,
+      description: 'Updated description',
+      debt_total_amount: '275.75',
+      currency: 'EUR',
+      debt_created_at: before.debt_created_at,
+      schedule_id: before.schedule_id,
+      position: before.position,
+      schedule_amount: '275.75',
+      schedule_due_date: '2026-09-01',
+      schedule_created_at: before.schedule_created_at,
+    });
+    expect(after.debt_updated_at).not.toBe(before.debt_updated_at);
+    expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
+  });
+
+  it('does not reveal whether an inaccessible debt exists', async () => {
+    const owner = await signUpOwner('debt-not-found-owner@example.com');
+    await insertCustomer(owner.ownerProfileId, {
+      id: 'customer_not_found_owner',
+      code: 'DEBT-NOT-FOUND-OWNER',
+    });
+    await insertCustomer(owner.ownerProfileId, {
+      id: 'customer_wrong_path',
+      code: 'DEBT-WRONG-PATH',
+    });
+    await insertDebt({
+      id: 'debt_lookup',
+      customerId: 'customer_not_found_owner',
+      createdAt: '2026-09-10 10:00:00',
+    });
+
+    const otherOwner = await signUpOwner('debt-not-found-other-owner@example.com');
+    await insertCustomer(otherOwner.ownerProfileId, {
+      id: 'customer_other_owner',
+      code: 'DEBT-OTHER-OWNER',
+    });
+    await insertDebt({
+      id: 'debt_other_owner',
+      customerId: 'customer_other_owner',
+      createdAt: '2026-09-11 10:00:00',
+    });
+
+    const beforeOwnedDebt = await readDebtWithScheduleRows('debt_lookup');
+    const beforeOtherOwnerDebt = await readDebtWithScheduleRows('debt_other_owner');
+    const requestBody = JSON.stringify({
+      description: 'Should not be saved',
+      totalAmount: '999.99',
+      currency: 'EUR',
+      paymentPlan: {
+        type: 'onePayment',
+        dueDate: '2026-10-01',
+      },
+    });
+    const expectedNotFoundBody = JSON.stringify({
+      code: 'DEBT_NOT_FOUND',
+      message: 'Debt was not found.',
+    });
+    const requests = [
+      {
+        customerId: 'customer_not_found_owner',
+        debtId: 'debt_missing',
+      },
+      {
+        customerId: 'customer_wrong_path',
+        debtId: 'debt_lookup',
+      },
+      {
+        customerId: 'customer_other_owner',
+        debtId: 'debt_other_owner',
+      },
+    ];
+
+    const responses = await Promise.all(
+      requests.map(({ customerId, debtId }) =>
+        fetch(
+          `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
+          {
+            method: 'PUT',
+            headers: {
+              'content-type': 'application/json',
+              cookie: owner.cookieHeader,
+            },
+            body: requestBody,
+          },
+        ),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([404, 404, 404]);
+    const responseBodies = await Promise.all(
+      responses.map((response) => response.text()),
+    );
+    expect(new Set(responseBodies)).toEqual(new Set([expectedNotFoundBody]));
+
+    expect(await readDebtWithScheduleRows('debt_lookup')).toEqual(beforeOwnedDebt);
+    expect(await readDebtWithScheduleRows('debt_other_owner')).toEqual(
+      beforeOtherOwnerDebt,
+    );
+  });
+
+  it('rolls back debt replacement when the schedule update fails', async () => {
+    await postgres!.query(`
+      CREATE FUNCTION fail_debt_schedule_update()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        RAISE EXCEPTION 'Injected schedule update failure'
+          USING ERRCODE = 'P0001';
+      END;
+      $$
+    `);
+    await postgres!.query(`
+      CREATE TRIGGER debt_schedule_items_injected_update_failure
+      BEFORE UPDATE ON "debt_schedule_items"
+      FOR EACH ROW
+      EXECUTE FUNCTION fail_debt_schedule_update()
+    `);
+
+    try {
+      const owner = await signUpOwner('debt-replacement-rollback-owner@example.com');
+      await insertCustomer(owner.ownerProfileId, {
+        id: 'customer_replacement_rollback',
+        code: 'DEBT-REPLACEMENT-ROLLBACK',
+      });
+      await insertDebt({
+        id: 'debt_replacement_rollback',
+        customerId: 'customer_replacement_rollback',
+        createdAt: '2026-09-10 10:00:00',
+      });
+
+      const before = await readDebtWithScheduleRows('debt_replacement_rollback');
+      const response = await fetch(
+        `${backend!.baseUrl}/customers/customer_replacement_rollback/debts/debt_replacement_rollback`,
+        {
+          method: 'PUT',
+          headers: {
+            'content-type': 'application/json',
+            cookie: owner.cookieHeader,
+          },
+          body: JSON.stringify({
+            description: 'Should be rolled back',
+            totalAmount: '999.99',
+            currency: 'EUR',
+            paymentPlan: {
+              type: 'onePayment',
+              dueDate: '2026-10-01',
+            },
+          }),
+        },
+      );
+
+      expect(response.status).toBe(500);
+      expect(await readDebtWithScheduleRows('debt_replacement_rollback')).toEqual(
+        before,
+      );
+    } finally {
+      await postgres!.query(
+        'DROP TRIGGER debt_schedule_items_injected_update_failure ON "debt_schedule_items"',
+      );
+      await postgres!.query('DROP FUNCTION fail_debt_schedule_update()');
+    }
   });
 
   it('returns human-readable validation messages for invalid debt input', async () => {
@@ -740,6 +980,30 @@ describe('debt routes', () => {
       await postgres!.query('DROP FUNCTION fail_debt_schedule_insert()');
     }
   });
+
+  function readDebtWithScheduleRows(
+    debtId: string,
+  ): Promise<DebtWithScheduleRow[]> {
+    return postgres!.query<DebtWithScheduleRow>(`
+      SELECT
+        d."id" AS "debt_id",
+        d."customer_id",
+        d."description",
+        d."total_amount"::text AS "debt_total_amount",
+        d."currency",
+        d."created_at"::text AS "debt_created_at",
+        d."updated_at"::text AS "debt_updated_at",
+        s."id" AS "schedule_id",
+        s."position",
+        s."amount"::text AS "schedule_amount",
+        s."due_date"::text AS "schedule_due_date",
+        s."created_at"::text AS "schedule_created_at",
+        s."updated_at"::text AS "schedule_updated_at"
+      FROM "debts" d
+      JOIN "debt_schedule_items" s ON s."debt_id" = d."id"
+      WHERE d."id" = $1 AND s."position" = 1
+    `, [debtId]);
+  }
 
   async function signUpOwner(
     email: string,

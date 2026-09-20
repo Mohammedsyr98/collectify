@@ -5,6 +5,7 @@ import {
   debtListQuerySchema,
   debtListResponseSchema,
   debtResponseSchema,
+  replaceDebtRequestSchema,
 } from './debt.js';
 import { debtValidationCode } from './validation-codes.js';
 
@@ -19,6 +20,32 @@ describe('debt contracts', () => {
           type: 'onePayment',
           dueDate: '2026-09-30',
         },
+      }),
+    ).toEqual({
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+      paymentPlan: {
+        type: 'onePayment',
+        dueDate: '2026-09-30',
+      },
+    });
+  });
+
+  it('normalizes a replacement request without accepting identity fields', () => {
+    expect(
+      replaceDebtRequestSchema.parse({
+        description: '  Website redesign  ',
+        totalAmount: ' 125.5 ',
+        currency: 'USD',
+        paymentPlan: {
+          type: 'onePayment',
+          dueDate: '2026-09-30',
+        },
+        customerId: 'customer_attacker',
+        debtId: 'debt_attacker',
+        scheduleItemId: 'schedule_attacker',
+        scheduleItems: [],
       }),
     ).toEqual({
       description: 'Website redesign',

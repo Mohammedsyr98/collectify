@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { DebtResponse } from '@collectify/contracts';
@@ -54,6 +55,28 @@ describe('DebtLedgerSection', () => {
     ).toHaveAttribute('aria-valuenow', '0');
     expect(within(debtCard).queryByText('Due today')).not.toBeInTheDocument();
     expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
+  });
+
+  it('opens the debt actions menu with Enter', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(<DebtLedgerSection debts={[createdDebt]} />);
+
+    const debtCard = getDebtCard('Website redesign');
+    const actionsTrigger = within(debtCard).getByRole('button', {
+      name: 'Open actions for Website redesign',
+    });
+
+    actionsTrigger.focus();
+    await user.keyboard('{Enter}');
+
+    const actionsMenu = await screen.findByRole('menu', {
+      name: 'Actions for Website redesign',
+    });
+
+    expect(
+      within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+    ).toBeInTheDocument();
   });
 
   it('shows only the applicable timing label on each debt', () => {

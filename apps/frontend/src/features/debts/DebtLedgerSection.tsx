@@ -31,15 +31,22 @@ type DebtLedgerSearch = {
   value: string;
 };
 
+type DebtEditHandler = (
+  debt: DebtResponse,
+  trigger: HTMLButtonElement | null,
+) => void;
+
 export function DebtLedgerSection({
   debts,
   isLoading = false,
   pagination,
   search,
   status,
+  onEditDebt,
 }: {
   debts: DebtResponse[];
   isLoading?: boolean;
+  onEditDebt?: DebtEditHandler;
   pagination?: DebtLedgerPagination;
   search?: DebtLedgerSearch;
   status?: DebtLedgerStatus;
@@ -129,7 +136,7 @@ export function DebtLedgerSection({
       ) : (
         <div className="grid gap-3">
           {debts.map((debt) => (
-            <DebtCard debt={debt} key={debt.id} />
+            <DebtCard debt={debt} key={debt.id} onEdit={onEditDebt} />
           ))}
         </div>
       )}
