@@ -389,6 +389,29 @@ describe('CustomerDetailsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps the edited debt draft after an unexpected replacement failure', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.put(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => HttpResponse.text('Internal server error', { status: 500 }),
+      ),
+    );
+
+    const { drawer } = await openSelectedDebtEditor(user);
+    const descriptionInput = within(drawer).getByLabelText('Description');
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, 'Updated website redesign');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not update debt' }),
+    ).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeInTheDocument();
+    expect(descriptionInput).toHaveValue('Updated website redesign');
+  });
+
   it('renders populated financial summary values without combining currencies', async () => {
     server.use(
       http.get(`${getBackendUrl()}/customers/:customerId`, () =>

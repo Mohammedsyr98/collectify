@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import {
-  isCustomerApiErrorCode,
+  isDebtApiErrorCode,
   type CreateDebtRequest,
   type DebtListQuery,
   type ReplaceDebtRequest,
@@ -74,9 +74,9 @@ export function useCreateDebtMutation({
         variant: 'error',
         title: t('debts.toast.create.errorTitle'),
         description: resolveApiErrorDescription(error, {
-          describeKnownCode: (code) => t(`customers.errors.${code}`),
+          describeKnownCode: (code) => t(`debts.errors.${code}`),
           fallbackDescription: t('errors.genericDescription'),
-          isKnownCode: isCustomerApiErrorCode,
+          isKnownCode: isDebtApiErrorCode,
         }),
       });
     },
@@ -124,6 +124,17 @@ export function useReplaceDebtMutation({
         }),
       });
       onReplaced?.();
+    },
+    onError: (error) => {
+      showToast({
+        variant: 'error',
+        title: t('debts.toast.edit.errorTitle'),
+        description: resolveApiErrorDescription(error, {
+          describeKnownCode: (code) => t(`debts.errors.${code}`),
+          fallbackDescription: t('errors.genericDescription'),
+          isKnownCode: isDebtApiErrorCode,
+        }),
+      });
     },
   });
 

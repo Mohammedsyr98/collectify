@@ -27,6 +27,10 @@ export const debtResources = {
           editTitle: 'Edit debt',
           createTitle: 'Add debt',
         },
+        errors: {
+          DEBT_NOT_FOUND: 'Debt was not found.',
+          VALIDATION_ERROR: 'Check the highlighted fields.',
+        },
         form: {
           cancel: 'Cancel',
           currencyLabel: 'Currency',
@@ -64,6 +68,7 @@ export const debtResources = {
             successTitle: 'Debt created',
           },
           edit: {
+            errorTitle: 'Could not update debt',
             successDescription: '{{description}} was updated.',
             successTitle: 'Debt updated',
           },
@@ -134,11 +139,16 @@ export const debtResources = {
             successTitle: 'Borç oluşturuldu',
           },
           edit: {
+            errorTitle: 'Borç güncellenemedi',
             successDescription: '{{description}} güncellendi.',
             successTitle: 'Borç güncellendi',
           },
         },
         validation: debtValidationTranslations.tr,
+        errors: {
+          DEBT_NOT_FOUND: 'Borç bulunamadı.',
+          VALIDATION_ERROR: 'Vurgulanan alanları kontrol edin.',
+        },
       },
     },
   },
@@ -204,11 +214,16 @@ export const debtResources = {
             successTitle: 'تم إنشاء الدين',
           },
           edit: {
+            errorTitle: 'تعذر تحديث الدين',
             successDescription: 'تم تحديث {{description}}.',
             successTitle: 'تم تحديث الدين',
           },
         },
         validation: debtValidationTranslations.ar,
+        errors: {
+          DEBT_NOT_FOUND: 'لم يتم العثور على الدين.',
+          VALIDATION_ERROR: 'تحقق من الحقول المميزة.',
+        },
       },
     },
   },
