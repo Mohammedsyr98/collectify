@@ -1,4 +1,5 @@
 import type { SupportedLocale } from '../../../shared/localization';
+import { debtApiErrorTranslations } from './debtApiErrorTranslations';
 import { debtValidationTranslations } from './debtValidationTranslations';
 
 export const debtResources = {
@@ -27,10 +28,7 @@ export const debtResources = {
           editTitle: 'Edit debt',
           createTitle: 'Add debt',
         },
-        errors: {
-          DEBT_NOT_FOUND: 'Debt was not found.',
-          VALIDATION_ERROR: 'Check the highlighted fields.',
-        },
+        errors: debtApiErrorTranslations.en,
         form: {
           cancel: 'Cancel',
           currencyLabel: 'Currency',
@@ -145,10 +143,7 @@ export const debtResources = {
           },
         },
         validation: debtValidationTranslations.tr,
-        errors: {
-          DEBT_NOT_FOUND: 'Borç bulunamadı.',
-          VALIDATION_ERROR: 'Vurgulanan alanları kontrol edin.',
-        },
+        errors: debtApiErrorTranslations.tr,
       },
     },
   },
@@ -220,10 +215,7 @@ export const debtResources = {
           },
         },
         validation: debtValidationTranslations.ar,
-        errors: {
-          DEBT_NOT_FOUND: 'لم يتم العثور على الدين.',
-          VALIDATION_ERROR: 'تحقق من الحقول المميزة.',
-        },
+        errors: debtApiErrorTranslations.ar,
       },
     },
   },
