@@ -27,6 +27,7 @@ import { DebtDrawer } from '../debts/DebtDrawer';
 import { DebtLedgerSection } from '../debts/DebtLedgerSection';
 import {
   useCreateDebtMutation,
+  useReplaceDebtMutation,
 } from '../debts/debtQueries';
 import { useDebtListView } from '../debts/useDebtListView';
 
@@ -52,6 +53,10 @@ export function CustomerDetailsPage({
   const { createDebt, isCreating } = useCreateDebtMutation({
     customerId: customerId ?? '',
     onCreated: () => setIsDebtDrawerOpen(false),
+  });
+  const { isReplacing, replaceDebt } = useReplaceDebtMutation({
+    customerId: customerId ?? '',
+    onReplaced: () => setEditingDebt(null),
   });
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
     onUpdated: () => setIsEditModalOpen(false),
@@ -220,10 +225,10 @@ export function CustomerDetailsPage({
         <DebtDrawer
           defaultCurrency={editingDebt.currency}
           debt={editingDebt}
-          isSubmitting={false}
+          isSubmitting={isReplacing}
           mode="edit"
           onClose={() => setEditingDebt(null)}
-          onSubmit={async () => undefined}
+          onSubmit={(request) => replaceDebt(editingDebt.id, request)}
           returnFocusRef={editDebtTriggerRef}
         />
       ) : null}

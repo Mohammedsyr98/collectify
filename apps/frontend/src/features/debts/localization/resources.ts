@@ -63,6 +63,10 @@ export const debtResources = {
             successDescription: '{{description}} was added.',
             successTitle: 'Debt created',
           },
+          edit: {
+            successDescription: '{{description}} was updated.',
+            successTitle: 'Debt updated',
+          },
         },
         validation: debtValidationTranslations.en,
       },
@@ -129,6 +133,10 @@ export const debtResources = {
             successDescription: '{{description}} eklendi.',
             successTitle: 'Borç oluşturuldu',
           },
+          edit: {
+            successDescription: '{{description}} güncellendi.',
+            successTitle: 'Borç güncellendi',
+          },
         },
         validation: debtValidationTranslations.tr,
       },
@@ -194,6 +202,10 @@ export const debtResources = {
             errorTitle: 'تعذر إنشاء الدين',
             successDescription: 'تمت إضافة {{description}}.',
             successTitle: 'تم إنشاء الدين',
+          },
+          edit: {
+            successDescription: 'تم تحديث {{description}}.',
+            successTitle: 'تم تحديث الدين',
           },
         },
         validation: debtValidationTranslations.ar,
