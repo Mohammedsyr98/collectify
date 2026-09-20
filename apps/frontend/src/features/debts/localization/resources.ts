@@ -5,7 +5,12 @@ export const debtResources = {
   en: {
     common: {
       debts: {
-        card: {
+          card: {
+          actions: {
+            edit: 'Edit debt',
+            menuLabel: 'Actions for {{description}}',
+            openMenu: 'Open actions for {{description}}',
+          },
           dueDate: 'Due',
           dueToday: 'Due today',
           onePayment: 'One payment',
@@ -66,7 +71,12 @@ export const debtResources = {
   tr: {
     common: {
       debts: {
-        card: {
+          card: {
+          actions: {
+            edit: 'Borcu düzenle',
+            menuLabel: '{{description}} işlemleri',
+            openMenu: '{{description}} işlemlerini aç',
+          },
           dueDate: 'Vade',
           dueToday: 'Vadesi bugün',
           onePayment: 'Tek ödeme',
@@ -127,7 +137,12 @@ export const debtResources = {
   ar: {
     common: {
       debts: {
-        card: {
+          card: {
+          actions: {
+            edit: 'تحرير الدين',
+            menuLabel: 'إجراءات {{description}}',
+            openMenu: 'فتح إجراءات {{description}}',
+          },
           dueDate: 'الاستحقاق',
           dueToday: 'مستحق اليوم',
           onePayment: 'دفعة واحدة',

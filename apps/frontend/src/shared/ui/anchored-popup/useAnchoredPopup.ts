@@ -1,5 +1,4 @@
 import {
-  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -19,7 +18,6 @@ type UseAnchoredPopupOptions = {
   estimatedHeight: number;
   gap: number;
   horizontalAlignment?: AnchoredPopupHorizontalAlignment;
-  initialFocusRef?: RefObject<HTMLElement | null>;
   width: number;
 };
 
@@ -30,7 +28,6 @@ export function useAnchoredPopup<
   estimatedHeight,
   gap,
   horizontalAlignment = 'start',
-  initialFocusRef,
   width,
 }: UseAnchoredPopupOptions) {
   const triggerRef = useRef<TTrigger>(null);
@@ -106,8 +103,6 @@ export function useAnchoredPopup<
       return undefined;
     }
 
-    initialFocusRef?.current?.focus();
-
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         close();
@@ -139,7 +134,7 @@ export function useAnchoredPopup<
       document.removeEventListener('keydown', closeOnEscape);
       document.removeEventListener('pointerdown', closeOnOutsidePointer);
     };
-  }, [close, initialFocusRef, isOpen]);
+  }, [close, isOpen]);
 
   return {
     close,
