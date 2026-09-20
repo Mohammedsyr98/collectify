@@ -9,7 +9,13 @@ import {
 } from '../../shared/localization';
 import { AnchoredMenu } from '../../shared/ui/anchored-menu/AnchoredMenu';
 
-export function DebtCard({ debt }: { debt: DebtResponse }) {
+export function DebtCard({
+  debt,
+  onEdit,
+}: {
+  debt: DebtResponse;
+  onEdit?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
+}) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
 
@@ -28,6 +34,7 @@ export function DebtCard({ debt }: { debt: DebtResponse }) {
                   icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
                   id: 'edit-debt',
                   label: t('debts.card.actions.edit'),
+                  onSelect: (trigger) => onEdit?.(debt, trigger),
                 },
               ]}
               menuLabel={t('debts.card.actions.menuLabel', {

@@ -12,7 +12,7 @@ export type AnchoredMenuItem = {
   icon?: ReactNode;
   id: string;
   label: string;
-  onSelect?: () => void;
+  onSelect?: (trigger: HTMLButtonElement | null) => void;
 };
 
 export function AnchoredMenu({
@@ -77,7 +77,7 @@ export function AnchoredMenu({
                   key={item.id}
                   onClick={() => {
                     menu.close();
-                    item.onSelect?.();
+                    item.onSelect?.(menu.triggerRef.current);
                   }}
                   role="menuitem"
                   type="button"

@@ -11,7 +11,10 @@ import { getBackendUrl } from '../../../shared/api/http';
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
-import { emptyDebtList } from '../../debts/__tests__/debtTestData';
+import {
+  createDebtFixture,
+  emptyDebtList,
+} from '../../debts/__tests__/debtTestData';
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
 import { CustomersPage } from '../CustomersPage';
 import {
@@ -189,6 +192,30 @@ describe('CustomerDetailsPage', () => {
     expect(addDebtButton).toHaveFocus();
   });
 
+  it('opens the selected debt editor with its saved values', async () => {
+    const user = userEvent.setup();
+    const { drawer } = await openSelectedDebtEditor(user);
+
+    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+      'Website redesign',
+    );
+    expect(within(drawer).getByLabelText('Total amount')).toHaveValue('275.75');
+    expect(within(drawer).getByLabelText('Currency')).toHaveValue('EUR');
+    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-10-01');
+  });
+
+  it('returns focus to the debt menu trigger after closing the editor', async () => {
+    const user = userEvent.setup();
+    const { actionsTrigger } = await openSelectedDebtEditor(user);
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Edit debt' })).not.toBeInTheDocument(),
+    );
+    expect(actionsTrigger).toHaveFocus();
+  });
+
   it('renders populated financial summary values without combining currencies', async () => {
     server.use(
       http.get(`${getBackendUrl()}/customers/:customerId`, () =>
@@ -298,3 +325,68 @@ describe('CustomerDetailsPage', () => {
     ).toBeInTheDocument();
   });
 });
+
+async function openSelectedDebtEditor(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<{
+  actionsTrigger: HTMLElement;
+  drawer: HTMLElement;
+}> {
+  const debt = createDebtFixture(baseCustomer.id, {
+    description: 'Website redesign',
+    totalAmount: '275.75',
+    currency: 'EUR',
+    scheduleItems: [
+      {
+        id: 'schedule_123',
+        position: 1,
+        amount: '275.75',
+        dueDate: '2026-10-01',
+        timing: 'upcoming',
+      },
+    ],
+  });
+
+  server.use(
+    http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+      HttpResponse.json(baseCustomer),
+    ),
+    http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+      HttpResponse.json({
+        ...emptyDebtList,
+        items: [debt],
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    ),
+  );
+
+  renderCustomerRoutes([`/customers/${baseCustomer.id}`], {
+    defaultCurrency: 'USD',
+  });
+
+  await screen.findByRole('heading', { name: 'Website redesign' });
+  const debtCard = screen
+    .getByRole('heading', { name: 'Website redesign' })
+    .closest('article');
+
+  if (!debtCard) {
+    throw new Error('Expected the debt heading to belong to a debt card.');
+  }
+
+  const actionsTrigger = within(debtCard).getByRole('button', {
+    name: 'Open actions for Website redesign',
+  });
+  await user.click(actionsTrigger);
+  const actionsMenu = await screen.findByRole('menu', {
+    name: 'Actions for Website redesign',
+  });
+  await user.click(
+    within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+  );
+
+  return {
+    actionsTrigger,
+    drawer: await screen.findByRole('dialog', { name: 'Edit debt' }),
+  };
+}
