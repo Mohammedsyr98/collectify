@@ -204,6 +204,50 @@ describe('debt routes', () => {
     expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
   });
 
+  it('permanently deletes an owned one-payment debt and its schedule', async () => {
+    const owner = await signUpOwner('debt-delete-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_delete',
+      createdAt: '2026-09-10 10:00:00',
+      description: 'Debt to delete',
+    });
+
+    expect(await readDebtWithScheduleRows('debt_delete')).toHaveLength(1);
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_delete`,
+      {
+        method: 'DELETE',
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe('');
+
+    const remainingRows = await postgres!.query<{
+      debt_count: number;
+      schedule_count: number;
+    }>(
+      `
+        SELECT
+          (SELECT count(*)::int FROM "debts" WHERE "id" = $1) AS "debt_count",
+          (SELECT count(*)::int FROM "debt_schedule_items" WHERE "debt_id" = $1) AS "schedule_count"
+      `,
+      ['debt_delete'],
+    );
+
+    expect(remainingRows).toEqual([
+      {
+        debt_count: 0,
+        schedule_count: 0,
+      },
+    ]);
+  });
+
   it('does not reveal whether an inaccessible debt exists', async () => {
     const owner = await signUpOwner('debt-not-found-owner@example.com');
     await insertCustomer(owner.ownerProfileId, {

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -67,6 +68,16 @@ export class DebtsController {
       debtId,
       body,
     );
+  }
+
+  @Delete(':debtId')
+  @HttpCode(204)
+  deleteDebt(
+    @CurrentOwner() currentOwner: AuthenticatedOwner,
+    @Param('customerId') customerId: string,
+    @Param('debtId') debtId: string,
+  ): Promise<void> {
+    return this.debtsService.deleteDebt(currentOwner, customerId, debtId);
   }
 
   @Get()

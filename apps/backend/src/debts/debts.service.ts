@@ -13,7 +13,10 @@ import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
-import { DatabaseService } from '../database/database.service';
+import {
+  DatabaseService,
+  type Database,
+} from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
@@ -168,27 +171,24 @@ export class DebtsService {
     const businessDate = getIstanbulBusinessDate(operationInstant);
 
     const replaced = await this.databaseService.db.transaction(async (tx) => {
-      const [ownedDebt] = await tx
-        .select({ debt: debts, scheduleItem: debtScheduleItems })
-        .from(debts)
-        .innerJoin(customers, eq(customers.id, debts.customerId))
-        .innerJoin(
-          debtScheduleItems,
-          and(
-            eq(debtScheduleItems.debtId, debts.id),
-            eq(debtScheduleItems.position, 1),
-          ),
-        )
+      const ownedDebt = await this.requireOwnedDebt(
+        tx,
+        currentOwner.ownerProfile.id,
+        customerId,
+        debtId,
+      );
+      const [scheduleItem] = await tx
+        .select()
+        .from(debtScheduleItems)
         .where(
           and(
-            eq(debts.id, debtId),
-            eq(debts.customerId, customerId),
-            eq(customers.ownerProfileId, currentOwner.ownerProfile.id),
+            eq(debtScheduleItems.debtId, ownedDebt.id),
+            eq(debtScheduleItems.position, 1),
           ),
         )
         .limit(1);
 
-      if (!ownedDebt) {
+      if (!scheduleItem) {
         throw debtException(debtApiErrorCode.debtNotFound);
       }
 
@@ -200,24 +200,24 @@ export class DebtsService {
           currency: request.currency,
           updatedAt: operationInstant,
         })
-        .where(eq(debts.id, ownedDebt.debt.id))
+        .where(eq(debts.id, ownedDebt.id))
         .returning();
 
-      const [scheduleItem] = await tx
+      const [updatedScheduleItem] = await tx
         .update(debtScheduleItems)
         .set({
           amount: request.totalAmount,
           dueDate: request.paymentPlan.dueDate,
           updatedAt: operationInstant,
         })
-        .where(eq(debtScheduleItems.id, ownedDebt.scheduleItem.id))
+        .where(eq(debtScheduleItems.id, scheduleItem.id))
         .returning();
 
-      if (!debt || !scheduleItem) {
+      if (!debt || !updatedScheduleItem) {
         throw debtException(debtApiErrorCode.debtNotFound);
       }
 
-      return { debt, scheduleItem };
+      return { debt, scheduleItem: updatedScheduleItem };
     });
 
     return toDebtResponse(
@@ -225,6 +225,55 @@ export class DebtsService {
       [replaced.scheduleItem],
       businessDate,
     );
+  }
+
+  async deleteDebt(
+    currentOwner: AuthenticatedOwner,
+    customerId: string,
+    debtId: string,
+  ): Promise<void> {
+    await this.databaseService.db.transaction(async (tx) => {
+      const ownedDebt = await this.requireOwnedDebt(
+        tx,
+        currentOwner.ownerProfile.id,
+        customerId,
+        debtId,
+      );
+      const deletedRows = await tx
+        .delete(debts)
+        .where(eq(debts.id, ownedDebt.id))
+        .returning({ id: debts.id });
+
+      if (deletedRows.length === 0) {
+        throw debtException(debtApiErrorCode.debtNotFound);
+      }
+    });
+  }
+
+  private async requireOwnedDebt(
+    executor: Pick<Database, 'select'>,
+    ownerProfileId: string,
+    customerId: string,
+    debtId: string,
+  ): Promise<DebtRow> {
+    const [ownedDebt] = await executor
+      .select({ debt: debts })
+      .from(debts)
+      .innerJoin(customers, eq(customers.id, debts.customerId))
+      .where(
+        and(
+          eq(debts.id, debtId),
+          eq(debts.customerId, customerId),
+          eq(customers.ownerProfileId, ownerProfileId),
+        ),
+      )
+      .limit(1);
+
+    if (!ownedDebt) {
+      throw debtException(debtApiErrorCode.debtNotFound);
+    }
+
+    return ownedDebt.debt;
   }
 
   private async requireOwnedCustomer(
