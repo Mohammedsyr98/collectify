@@ -13,21 +13,33 @@ type BackendResponseSchema<TResponse> = {
   ) => { data: TResponse; success: true } | { success: false };
 };
 
-type FetchBackendOptions<TResponse> = {
+type FetchBackendJsonOptions<TResponse> = {
   body?: unknown;
   method: BackendMethod;
   path: `/${string}`;
   responseSchema: BackendResponseSchema<TResponse>;
+  responseMode?: 'json';
   unexpectedMessage: string;
 };
 
-export async function fetchBackend<TResponse>({
-  body,
-  method,
-  path,
-  responseSchema,
-  unexpectedMessage,
-}: FetchBackendOptions<TResponse>): Promise<TResponse> {
+type FetchBackendNoContentOptions = {
+  body?: unknown;
+  method: BackendMethod;
+  path: `/${string}`;
+  responseMode: 'noContent';
+  unexpectedMessage: string;
+};
+
+export function fetchBackend<TResponse>(
+  options: FetchBackendJsonOptions<TResponse>,
+): Promise<TResponse>;
+export function fetchBackend(
+  options: FetchBackendNoContentOptions,
+): Promise<void>;
+export async function fetchBackend<TResponse>(
+  options: FetchBackendJsonOptions<TResponse> | FetchBackendNoContentOptions,
+): Promise<TResponse | void> {
+  const { body, method, path, unexpectedMessage } = options;
   const requestInit: RequestInit = {
     method,
     credentials: 'include',
@@ -41,14 +53,26 @@ export async function fetchBackend<TResponse>({
   }
 
   const response = await fetch(`${getBackendUrl()}${path}`, requestInit);
-  const responseBody = await readJsonResponse(response);
 
   if (!response.ok) {
+    const responseBody = await readJsonResponse(response);
     throw createApiErrorFromResponseBody(responseBody, {
       status: response.status,
     });
   }
 
+  if (options.responseMode === 'noContent') {
+    if (response.status !== 204) {
+      throw createApiError(unexpectedMessage, {
+        status: response.status,
+      });
+    }
+
+    return;
+  }
+
+  const responseSchema = options.responseSchema;
+  const responseBody = await readJsonResponse(response);
   const responseResult = responseSchema.safeParse(responseBody);
 
   if (!responseResult.success) {

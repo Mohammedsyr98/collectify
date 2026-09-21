@@ -28,6 +28,7 @@ import { DebtDrawer } from '../debts/DebtDrawer';
 import { DebtLedgerSection } from '../debts/DebtLedgerSection';
 import {
   useCreateDebtMutation,
+  useDeleteDebtMutation,
   useReplaceDebtMutation,
 } from '../debts/debtQueries';
 import { useDebtListView } from '../debts/useDebtListView';
@@ -60,6 +61,10 @@ export function CustomerDetailsPage({
   const { isReplacing, replaceDebt } = useReplaceDebtMutation({
     customerId: customerId ?? '',
     onReplaced: () => setEditingDebt(null),
+  });
+  const { deleteDebt, isDeleting } = useDeleteDebtMutation({
+    customerId: customerId ?? '',
+    onDeleted: () => setDeletingDebt(null),
   });
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
     onUpdated: () => setIsEditModalOpen(false),
@@ -235,9 +240,11 @@ export function CustomerDetailsPage({
       {deletingDebt ? (
         <DebtDeletionDialog
           debt={deletingDebt}
-          isDeleting={false}
+          isDeleting={isDeleting}
           onClose={() => setDeletingDebt(null)}
-          onConfirm={() => undefined}
+          onConfirm={() => {
+            void deleteDebt(deletingDebt.id, deletingDebt.description);
+          }}
           returnFocusRef={deleteDebtTriggerRef}
         />
       ) : null}

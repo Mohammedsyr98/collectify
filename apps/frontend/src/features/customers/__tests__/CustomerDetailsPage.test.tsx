@@ -256,15 +256,10 @@ describe('CustomerDetailsPage', () => {
     });
 
     await screen.findByRole('heading', { name: debt.description });
-    const debtCard = getDebtCard(debt.description);
-    const actionsTrigger = within(debtCard).getByRole('button', {
-      name: `Open actions for ${debt.description}`,
-    });
-
-    await user.click(actionsTrigger);
-    const actionsMenu = await screen.findByRole('menu', {
-      name: `Actions for ${debt.description}`,
-    });
+    const { actionsMenu, actionsTrigger } = await openDebtActionMenu(
+      user,
+      debt.description,
+    );
     await user.click(
       within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
     );
@@ -288,6 +283,108 @@ describe('CustomerDetailsPage', () => {
     );
     expect(deleteRequestCount).toBe(0);
     expect(actionsTrigger).toHaveFocus();
+  });
+
+  it('deletes the confirmed debt and refreshes customer views', async () => {
+    const user = userEvent.setup();
+    const initialDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+    });
+    const initialCustomer = {
+      ...baseCustomer,
+      financialSummary: [
+        {
+          currency: 'USD' as const,
+          totalDebtAmount: '125.50',
+          totalPaidAmount: '0.00',
+          remainingAmount: '125.50',
+        },
+      ],
+    };
+    const updatedCustomer = {
+      ...baseCustomer,
+      financialSummary: [],
+    };
+    const initialDirectoryCustomer = customerList.items[0]!;
+    const updatedDirectoryCustomer = {
+      ...initialDirectoryCustomer,
+      financialSummary: {
+        balancesByCurrency: [],
+      },
+    };
+    let isDeleted = false;
+    let deleteRequestCount = 0;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () =>
+        HttpResponse.json({
+          ...customerList,
+          items: [isDeleted ? updatedDirectoryCustomer : initialDirectoryCustomer],
+        }),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(isDeleted ? updatedCustomer : initialCustomer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(
+          isDeleted
+            ? emptyDebtList
+            : {
+                ...emptyDebtList,
+                items: [initialDebt],
+                totalItems: 1,
+                totalPages: 1,
+              },
+        ),
+      ),
+      http.delete(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => {
+          deleteRequestCount += 1;
+          isDeleted = true;
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
+    );
+
+    renderCustomerRoutes(['/customers', `/customers/${baseCustomer.id}`], {
+      defaultCurrency: 'USD',
+    });
+
+    await screen.findByRole('heading', { name: initialDebt.description });
+    const { actionsMenu } = await openDebtActionMenu(
+      user,
+      initialDebt.description,
+    );
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Delete debt' }),
+    );
+
+    expect(deleteRequestCount).toBe(1);
+    expect(
+      await screen.findByRole('status', { name: 'Debt deleted' }),
+    ).toHaveTextContent('Website redesign was deleted.');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: initialDebt.description }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      await screen.findByRole('region', { name: 'Financial summary' }),
+    ).toHaveTextContent('No financial activity');
+
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+    expect(
+      await screen.findByRole('cell', { name: baseCustomer.name }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'No debt' })).toBeInTheDocument();
   });
 
   it('saves an edited debt and refreshes affected views', async () => {
@@ -631,15 +728,10 @@ async function openSelectedDebtEditor(
   });
 
   await screen.findByRole('heading', { name: 'Website redesign' });
-  const debtCard = getDebtCard('Website redesign');
-
-  const actionsTrigger = within(debtCard).getByRole('button', {
-    name: 'Open actions for Website redesign',
-  });
-  await user.click(actionsTrigger);
-  const actionsMenu = await screen.findByRole('menu', {
-    name: 'Actions for Website redesign',
-  });
+  const { actionsMenu, actionsTrigger } = await openDebtActionMenu(
+    user,
+    'Website redesign',
+  );
   await user.click(
     within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
   );
@@ -647,6 +739,25 @@ async function openSelectedDebtEditor(
   return {
     actionsTrigger,
     drawer: await screen.findByRole('dialog', { name: 'Edit debt' }),
+  };
+}
+
+async function openDebtActionMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  description: string,
+): Promise<{ actionsMenu: HTMLElement; actionsTrigger: HTMLElement }> {
+  const debtCard = getDebtCard(description);
+  const actionsTrigger = within(debtCard).getByRole('button', {
+    name: `Open actions for ${description}`,
+  });
+
+  await user.click(actionsTrigger);
+
+  return {
+    actionsMenu: await screen.findByRole('menu', {
+      name: `Actions for ${description}`,
+    }),
+    actionsTrigger,
   };
 }
 
