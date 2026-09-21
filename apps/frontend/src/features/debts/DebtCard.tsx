@@ -1,4 +1,4 @@
-import { CalendarDays, Pencil } from 'lucide-react';
+import { CalendarDays, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
@@ -12,8 +12,10 @@ import { AnchoredMenu } from '../../shared/ui/anchored-menu/AnchoredMenu';
 export function DebtCard({
   debt,
   onEdit,
+  onDelete,
 }: {
   debt: DebtResponse;
+  onDelete?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
   onEdit?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
 }) {
   const { t } = useTranslation();
@@ -35,6 +37,12 @@ export function DebtCard({
                   id: 'edit-debt',
                   label: t('debts.card.actions.edit'),
                   onSelect: (trigger) => onEdit?.(debt, trigger),
+                },
+                {
+                  icon: <Trash2 aria-hidden="true" size={15} strokeWidth={2.5} />,
+                  id: 'delete-debt',
+                  label: t('debts.card.actions.delete'),
+                  onSelect: (trigger) => onDelete?.(debt, trigger),
                 },
               ]}
               menuLabel={t('debts.card.actions.menuLabel', {

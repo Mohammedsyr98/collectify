@@ -30,6 +30,11 @@ type DebtWithScheduleRow = {
   schedule_updated_at: string;
 };
 
+type DebtRouteOperation = (
+  customerId: string,
+  debtId: string,
+) => Promise<Response>;
+
 describe('debt routes', () => {
   let postgres: IntegrationPostgres | undefined;
   let backend: IntegrationBackend | undefined;
@@ -204,7 +209,51 @@ describe('debt routes', () => {
     expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
   });
 
-  it('does not reveal whether an inaccessible debt exists', async () => {
+  it('permanently deletes an owned one-payment debt and its schedule', async () => {
+    const owner = await signUpOwner('debt-delete-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_delete',
+      createdAt: '2026-09-10 10:00:00',
+      description: 'Debt to delete',
+    });
+
+    expect(await readDebtWithScheduleRows('debt_delete')).toHaveLength(1);
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_delete`,
+      {
+        method: 'DELETE',
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe('');
+
+    const remainingRows = await postgres!.query<{
+      debt_count: number;
+      schedule_count: number;
+    }>(
+      `
+        SELECT
+          (SELECT count(*)::int FROM "debts" WHERE "id" = $1) AS "debt_count",
+          (SELECT count(*)::int FROM "debt_schedule_items" WHERE "debt_id" = $1) AS "schedule_count"
+      `,
+      ['debt_delete'],
+    );
+
+    expect(remainingRows).toEqual([
+      {
+        debt_count: 0,
+        schedule_count: 0,
+      },
+    ]);
+  });
+
+  it('does not reveal whether an inaccessible debt exists for replacement or deletion', async () => {
     const owner = await signUpOwner('debt-not-found-owner@example.com');
     await insertCustomer(owner.ownerProfileId, {
       id: 'customer_not_found_owner',
@@ -246,45 +295,39 @@ describe('debt routes', () => {
       code: 'DEBT_NOT_FOUND',
       message: 'Debt was not found.',
     });
-    const requests = [
-      {
-        customerId: 'customer_not_found_owner',
-        debtId: 'debt_missing',
-      },
-      {
-        customerId: 'customer_wrong_path',
-        debtId: 'debt_lookup',
-      },
-      {
-        customerId: 'customer_other_owner',
-        debtId: 'debt_other_owner',
-      },
-    ];
-
-    const responses = await Promise.all(
-      requests.map(({ customerId, debtId }) =>
-        fetch(
-          `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
-          {
-            method: 'PUT',
-            headers: {
-              'content-type': 'application/json',
-              cookie: owner.cookieHeader,
-            },
-            body: requestBody,
+    const replaceDebt: DebtRouteOperation = (customerId, debtId) =>
+      fetch(
+        `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'content-type': 'application/json',
+            cookie: owner.cookieHeader,
           },
-        ),
-      ),
-    );
+          body: requestBody,
+        },
+      );
+    const deleteDebt: DebtRouteOperation = (customerId, debtId) =>
+      fetch(
+        `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            cookie: owner.cookieHeader,
+          },
+        },
+      );
 
-    expect(responses.map((response) => response.status)).toEqual([404, 404, 404]);
-    const responseBodies = await Promise.all(
-      responses.map((response) => response.text()),
+    await expectInaccessibleDebtOperation(
+      replaceDebt,
+      expectedNotFoundBody,
+      beforeOwnedDebt,
+      beforeOtherOwnerDebt,
     );
-    expect(new Set(responseBodies)).toEqual(new Set([expectedNotFoundBody]));
-
-    expect(await readDebtWithScheduleRows('debt_lookup')).toEqual(beforeOwnedDebt);
-    expect(await readDebtWithScheduleRows('debt_other_owner')).toEqual(
+    await expectInaccessibleDebtOperation(
+      deleteDebt,
+      expectedNotFoundBody,
+      beforeOwnedDebt,
       beforeOtherOwnerDebt,
     );
   });
@@ -1003,6 +1046,42 @@ describe('debt routes', () => {
       JOIN "debt_schedule_items" s ON s."debt_id" = d."id"
       WHERE d."id" = $1 AND s."position" = 1
     `, [debtId]);
+  }
+
+  async function expectInaccessibleDebtOperation(
+    operation: DebtRouteOperation,
+    expectedNotFoundBody: string,
+    beforeOwnedDebt: DebtWithScheduleRow[],
+    beforeOtherOwnerDebt: DebtWithScheduleRow[],
+  ): Promise<void> {
+    const requests = [
+      {
+        customerId: 'customer_not_found_owner',
+        debtId: 'debt_missing',
+      },
+      {
+        customerId: 'customer_wrong_path',
+        debtId: 'debt_lookup',
+      },
+      {
+        customerId: 'customer_other_owner',
+        debtId: 'debt_other_owner',
+      },
+    ];
+    const responses = await Promise.all(
+      requests.map(({ customerId, debtId }) => operation(customerId, debtId)),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([404, 404, 404]);
+    const responseBodies = await Promise.all(
+      responses.map((response) => response.text()),
+    );
+    expect(new Set(responseBodies)).toEqual(new Set([expectedNotFoundBody]));
+
+    expect(await readDebtWithScheduleRows('debt_lookup')).toEqual(beforeOwnedDebt);
+    expect(await readDebtWithScheduleRows('debt_other_owner')).toEqual(
+      beforeOtherOwnerDebt,
+    );
   }
 
   async function signUpOwner(

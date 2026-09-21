@@ -15,6 +15,7 @@ import {
   customerListQueryKey,
 } from '../customers/customerQueries';
 import { createDebt } from './api/create-debt';
+import { deleteDebt } from './api/delete-debt';
 import { listDebts } from './api/list-debts';
 import { replaceDebt } from './api/replace-debt';
 
@@ -147,5 +148,61 @@ export function useReplaceDebtMutation({
         // Failure presentation is handled in the next edit-workflow slice.
       }
     },
+  };
+}
+
+export function useDeleteDebtMutation({
+  customerId,
+  onDeleted,
+}: {
+  customerId: string;
+  onDeleted?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: ({ debtId }: { debtId: string; description: string }) =>
+      deleteDebt(customerId, debtId),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: debtListQueryKey(customerId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: customerDetailsQueryKey(customerId),
+      });
+      void queryClient.invalidateQueries({ queryKey: customerListQueryKey });
+      showToast({
+        variant: 'success',
+        title: t('debts.toast.delete.successTitle'),
+        description: t('debts.toast.delete.successDescription', {
+          description: variables.description,
+        }),
+      });
+      onDeleted?.();
+    },
+    onError: (error) => {
+      showToast({
+        variant: 'error',
+        title: t('debts.toast.delete.errorTitle'),
+        description: resolveApiErrorDescription(error, {
+          describeKnownCode: (code) => t(`debts.errors.${code}`),
+          fallbackDescription: t('errors.genericDescription'),
+          isKnownCode: isDebtApiErrorCode,
+        }),
+      });
+    },
+  });
+
+  return {
+    deleteDebt: async (debtId: string, description: string) => {
+      try {
+        await mutation.mutateAsync({ debtId, description });
+      } catch {
+        // Failure presentation is handled by the mutation toast path.
+      }
+    },
+    isDeleting: mutation.isPending,
   };
 }

@@ -23,10 +23,12 @@ import {
 } from '../../shared/ui/segmented-control/SegmentedControl';
 import { CustomerEditModal } from './CustomerEditModal';
 import { useCustomerDetailsQuery, useUpdateCustomerMutation } from './customerQueries';
+import { DebtDeletionDialog } from '../debts/DebtDeletionDialog';
 import { DebtDrawer } from '../debts/DebtDrawer';
 import { DebtLedgerSection } from '../debts/DebtLedgerSection';
 import {
   useCreateDebtMutation,
+  useDeleteDebtMutation,
   useReplaceDebtMutation,
 } from '../debts/debtQueries';
 import { useDebtListView } from '../debts/useDebtListView';
@@ -44,9 +46,11 @@ export function CustomerDetailsPage({
   const { locale } = useLocalization();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
+  const [deletingDebt, setDeletingDebt] = useState<DebtResponse | null>(null);
   const [editingDebt, setEditingDebt] = useState<DebtResponse | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteDebtTriggerRef = useRef<HTMLElement | null>(null);
   const editDebtTriggerRef = useRef<HTMLElement | null>(null);
   const customerQuery = useCustomerDetailsQuery(customerId);
   const debtQuery = useDebtListView(customerId);
@@ -58,6 +62,10 @@ export function CustomerDetailsPage({
     customerId: customerId ?? '',
     onReplaced: () => setEditingDebt(null),
   });
+  const { deleteDebt, isDeleting } = useDeleteDebtMutation({
+    customerId: customerId ?? '',
+    onDeleted: () => setDeletingDebt(null),
+  });
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
     onUpdated: () => setIsEditModalOpen(false),
   });
@@ -67,6 +75,13 @@ export function CustomerDetailsPage({
   ) => {
     editDebtTriggerRef.current = trigger;
     setEditingDebt(debt);
+  };
+  const openDebtDeletion = (
+    debt: DebtResponse,
+    trigger: HTMLButtonElement | null,
+  ) => {
+    deleteDebtTriggerRef.current = trigger;
+    setDeletingDebt(debt);
   };
 
   if (customerQuery.isLoading) {
@@ -185,6 +200,7 @@ export function CustomerDetailsPage({
             <DebtLedgerSection
               debts={debtQuery.data?.items ?? []}
               isLoading={debtQuery.isLoading}
+              onDeleteDebt={openDebtDeletion}
               onEditDebt={openDebtEditor}
               pagination={debtQuery.pagination}
               search={debtQuery.search}
@@ -219,6 +235,17 @@ export function CustomerDetailsPage({
           onClose={() => setIsDebtDrawerOpen(false)}
           onSubmit={createDebt}
           returnFocusRef={addDebtButtonRef}
+        />
+      ) : null}
+      {deletingDebt ? (
+        <DebtDeletionDialog
+          debt={deletingDebt}
+          isDeleting={isDeleting}
+          onClose={() => setDeletingDebt(null)}
+          onConfirm={() => {
+            void deleteDebt(deletingDebt.id, deletingDebt.description);
+          }}
+          returnFocusRef={deleteDebtTriggerRef}
         />
       ) : null}
       {editingDebt ? (

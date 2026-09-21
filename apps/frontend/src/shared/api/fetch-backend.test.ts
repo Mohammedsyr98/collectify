@@ -52,6 +52,52 @@ describe('fetchBackend', () => {
     });
   });
 
+  it('returns successfully for an empty 204 response without parsing JSON', async () => {
+    const json = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+        json,
+      }),
+    );
+
+    await expect(
+      fetchBackend({
+        path: '/customers/customer_123/debts/debt_123',
+        method: 'DELETE',
+        responseMode: 'noContent',
+        unexpectedMessage: 'Debt deletion returned an unexpected response.',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(json).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-204 response in no-content mode', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      }),
+    );
+
+    await expect(
+      fetchBackend({
+        path: '/customers/customer_123/debts/debt_123',
+        method: 'DELETE',
+        responseMode: 'noContent',
+        unexpectedMessage: 'Debt deletion returned an unexpected response.',
+      }),
+    ).rejects.toMatchObject({
+      message: 'Debt deletion returned an unexpected response.',
+      status: 200,
+    });
+  });
+
   it('omits the JSON body and content-type header for body-less requests', async () => {
     vi.stubGlobal(
       'fetch',
