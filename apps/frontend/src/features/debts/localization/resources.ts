@@ -8,6 +8,7 @@ export const debtResources = {
       debts: {
           card: {
           actions: {
+            delete: 'Delete debt',
             edit: 'Edit debt',
             menuLabel: 'Actions for {{description}}',
             openMenu: 'Open actions for {{description}}',
@@ -20,6 +21,15 @@ export const debtResources = {
           paymentProgress: 'Payment progress for {{description}}',
           remaining: 'Remaining',
           upcoming: 'Upcoming',
+        },
+        delete: {
+          amountLabel: 'Total to delete',
+          cancel: 'Cancel',
+          confirm: 'Delete debt',
+          deleting: 'Deleting',
+          description:
+            'Are you sure you want to permanently delete "{{description}}"? This action cannot be undone.',
+          title: 'Delete debt',
         },
         drawer: {
           close: 'Close debt form',
@@ -80,6 +90,7 @@ export const debtResources = {
       debts: {
           card: {
           actions: {
+            delete: 'Borcu sil',
             edit: 'Borcu düzenle',
             menuLabel: '{{description}} işlemleri',
             openMenu: '{{description}} işlemlerini aç',
@@ -92,6 +103,15 @@ export const debtResources = {
           paymentProgress: '{{description}} ödeme ilerlemesi',
           remaining: 'Kalan',
           upcoming: 'Bekliyor',
+        },
+        delete: {
+          amountLabel: 'Silinecek toplam',
+          cancel: 'İptal',
+          confirm: 'Borcu sil',
+          deleting: 'Siliniyor',
+          description:
+            '"{{description}}" borcunu kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+          title: 'Borcu sil',
         },
         drawer: {
           close: 'Borç formunu kapat',
@@ -152,6 +172,7 @@ export const debtResources = {
       debts: {
           card: {
           actions: {
+            delete: 'حذف الدين',
             edit: 'تحرير الدين',
             menuLabel: 'إجراءات {{description}}',
             openMenu: 'فتح إجراءات {{description}}',
@@ -164,6 +185,15 @@ export const debtResources = {
           paymentProgress: 'تقدم الدفع لـ {{description}}',
           remaining: 'المتبقي',
           upcoming: 'قادم',
+        },
+        delete: {
+          amountLabel: 'الإجمالي المراد حذفه',
+          cancel: 'إلغاء',
+          confirm: 'حذف الدين',
+          deleting: 'جارٍ الحذف',
+          description:
+            'هل أنت متأكد من حذف الدين "{{description}}" نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.',
+          title: 'حذف الدين',
         },
         drawer: {
           close: 'إغلاق نموذج الدين',

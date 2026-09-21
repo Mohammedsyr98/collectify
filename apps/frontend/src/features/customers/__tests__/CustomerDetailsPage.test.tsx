@@ -221,6 +221,75 @@ describe('CustomerDetailsPage', () => {
     expect(actionsTrigger).toHaveFocus();
   });
 
+  it('opens the selected debt deletion confirmation and cancels without deleting', async () => {
+    const user = userEvent.setup();
+    const debt = createDebtFixture(baseCustomer.id, {
+      description: 'Website redesign',
+      totalAmount: '275.75',
+      currency: 'EUR',
+    });
+    let deleteRequestCount = 0;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json({
+          ...emptyDebtList,
+          items: [debt],
+          totalItems: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.delete(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => {
+          deleteRequestCount += 1;
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`], {
+      defaultCurrency: 'USD',
+    });
+
+    await screen.findByRole('heading', { name: debt.description });
+    const debtCard = getDebtCard(debt.description);
+    const actionsTrigger = within(debtCard).getByRole('button', {
+      name: `Open actions for ${debt.description}`,
+    });
+
+    await user.click(actionsTrigger);
+    const actionsMenu = await screen.findByRole('menu', {
+      name: `Actions for ${debt.description}`,
+    });
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+    expect(dialog).toHaveTextContent(debt.description);
+    expect(dialog).toHaveTextContent('€275.75');
+    expect(dialog).toHaveTextContent('This action cannot be undone.');
+    const cancelButton = within(dialog).getByRole('button', {
+      name: 'Cancel',
+    });
+    const deleteButton = within(dialog).getByRole('button', {
+      name: 'Delete debt',
+    });
+    expect(deleteButton).toBeEnabled();
+
+    await user.click(cancelButton);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Delete debt' })).not.toBeInTheDocument(),
+    );
+    expect(deleteRequestCount).toBe(0);
+    expect(actionsTrigger).toHaveFocus();
+  });
+
   it('saves an edited debt and refreshes affected views', async () => {
     const user = userEvent.setup();
     const initialDebt = createDebtFixture(baseCustomer.id, {
