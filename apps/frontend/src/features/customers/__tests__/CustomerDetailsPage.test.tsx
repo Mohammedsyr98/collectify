@@ -127,6 +127,35 @@ describe('CustomerDetailsPage', () => {
     await waitFor(() => expect(detailsRequestCount).toBe(1));
   });
 
+  it('starts loading debts only after customer details resolve', async () => {
+    let resolveCustomer!: () => void;
+    const customerRequest = new Promise<void>((resolve) => {
+      resolveCustomer = resolve;
+    });
+    let debtRequestCount = 0;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, async () => {
+        await customerRequest;
+        return HttpResponse.json(baseCustomer);
+      }),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () => {
+        debtRequestCount += 1;
+        return HttpResponse.json(emptyDebtList);
+      }),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+
+    await waitFor(() => expect(debtRequestCount).toBe(0));
+    resolveCustomer();
+
+    expect(
+      await screen.findByRole('heading', { name: baseCustomer.name }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(debtRequestCount).toBe(1));
+  });
+
   it('opens a prefilled edit form from loaded details', async () => {
     const user = userEvent.setup();
     let detailsRequestCount = 0;

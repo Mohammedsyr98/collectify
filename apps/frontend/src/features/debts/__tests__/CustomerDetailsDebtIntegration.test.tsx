@@ -33,7 +33,7 @@ const ownerSession: SessionResponse = {
 
 const createdDebt = createDebtFixture(baseCustomer.id);
 
-describe('Customer debt workflow', () => {
+describe('Customer details debt integration', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(

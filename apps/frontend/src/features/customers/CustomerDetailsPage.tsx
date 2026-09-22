@@ -1,12 +1,10 @@
-import { CreditCard, Pencil, Plus, type LucideIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { CreditCard, Pencil, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 
 import {
   customerApiErrorCode,
   type Currency,
-  type DebtResponse,
 } from '@collectify/contracts';
 
 import { isApiError } from '../../shared/api/http';
@@ -15,15 +13,7 @@ import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { useCustomerDetailsQuery } from './customerQueries';
 import { CustomerFinancialSummary } from './CustomerFinancialSummary';
 import { useCustomerEditor } from './useCustomerEditor';
-import { DebtDeletionDialog } from '../debts/DebtDeletionDialog';
-import { DebtDrawer } from '../debts/DebtDrawer';
-import { DebtLedgerSection } from '../debts/DebtLedgerSection';
-import {
-  useCreateDebtMutation,
-  useDeleteDebtMutation,
-  useReplaceDebtMutation,
-} from '../debts/debtQueries';
-import { useDebtListView } from '../debts/useDebtListView';
+import { CustomerDebtLedger } from '../debts/CustomerDebtLedger';
 
 export function CustomerDetailsPage({
   defaultCurrency,
@@ -33,41 +23,8 @@ export function CustomerDetailsPage({
   const { customerId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
-  const [deletingDebt, setDeletingDebt] = useState<DebtResponse | null>(null);
-  const [editingDebt, setEditingDebt] = useState<DebtResponse | null>(null);
-  const addDebtButtonRef = useRef<HTMLButtonElement>(null);
-  const deleteDebtTriggerRef = useRef<HTMLElement | null>(null);
-  const editDebtTriggerRef = useRef<HTMLElement | null>(null);
   const customerQuery = useCustomerDetailsQuery(customerId);
   const customerEditor = useCustomerEditor();
-  const debtQuery = useDebtListView(customerId);
-  const { createDebt, isCreating } = useCreateDebtMutation({
-    customerId: customerId ?? '',
-    onCreated: () => setIsDebtDrawerOpen(false),
-  });
-  const { isReplacing, replaceDebt } = useReplaceDebtMutation({
-    customerId: customerId ?? '',
-    onReplaced: () => setEditingDebt(null),
-  });
-  const { deleteDebt, isDeleting } = useDeleteDebtMutation({
-    customerId: customerId ?? '',
-    onDeleted: () => setDeletingDebt(null),
-  });
-  const openDebtEditor = (
-    debt: DebtResponse,
-    trigger: HTMLButtonElement | null,
-  ) => {
-    editDebtTriggerRef.current = trigger;
-    setEditingDebt(debt);
-  };
-  const openDebtDeletion = (
-    debt: DebtResponse,
-    trigger: HTMLButtonElement | null,
-  ) => {
-    deleteDebtTriggerRef.current = trigger;
-    setDeletingDebt(debt);
-  };
 
   if (customerQuery.isLoading) {
     return <LoadingScreen ariaLabel={t('app.loading.ariaLabel')} />;
@@ -130,16 +87,6 @@ export function CustomerDetailsPage({
               </button>
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-muted-foreground opacity-65"
-                disabled={!defaultCurrency}
-                onClick={() => setIsDebtDrawerOpen(true)}
-                ref={addDebtButtonRef}
-                type="button"
-              >
-                <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
-                {t('customers.actions.addDebt')}
-              </button>
-              <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-muted-foreground opacity-65"
                 disabled
                 type="button"
               >
@@ -162,14 +109,9 @@ export function CustomerDetailsPage({
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <DebtLedgerSection
-              debts={debtQuery.data?.items ?? []}
-              isLoading={debtQuery.isLoading}
-              onDeleteDebt={openDebtDeletion}
-              onEditDebt={openDebtEditor}
-              pagination={debtQuery.pagination}
-              search={debtQuery.search}
-              status={debtQuery.status}
+            <CustomerDebtLedger
+              customerId={customer.id}
+              defaultCurrency={defaultCurrency}
             />
             <EmptyLedgerSection
               Icon={CreditCard}
@@ -181,37 +123,6 @@ export function CustomerDetailsPage({
       </main>
 
       {customerEditor.dialog}
-      {isDebtDrawerOpen && defaultCurrency ? (
-        <DebtDrawer
-          defaultCurrency={defaultCurrency}
-          isSubmitting={isCreating}
-          onClose={() => setIsDebtDrawerOpen(false)}
-          onSubmit={createDebt}
-          returnFocusRef={addDebtButtonRef}
-        />
-      ) : null}
-      {deletingDebt ? (
-        <DebtDeletionDialog
-          debt={deletingDebt}
-          isDeleting={isDeleting}
-          onClose={() => setDeletingDebt(null)}
-          onConfirm={() => {
-            void deleteDebt(deletingDebt.id, deletingDebt.description);
-          }}
-          returnFocusRef={deleteDebtTriggerRef}
-        />
-      ) : null}
-      {editingDebt ? (
-        <DebtDrawer
-          defaultCurrency={editingDebt.currency}
-          debt={editingDebt}
-          isSubmitting={isReplacing}
-          mode="edit"
-          onClose={() => setEditingDebt(null)}
-          onSubmit={(request) => replaceDebt(editingDebt.id, request)}
-          returnFocusRef={editDebtTriggerRef}
-        />
-      ) : null}
     </>
   );
 }
