@@ -21,8 +21,8 @@ import {
   SegmentedControl,
   type SegmentedControlOption,
 } from '../../shared/ui/segmented-control/SegmentedControl';
-import { CustomerEditModal } from './CustomerEditModal';
-import { useCustomerDetailsQuery, useUpdateCustomerMutation } from './customerQueries';
+import { useCustomerDetailsQuery } from './customerQueries';
+import { useCustomerEditor } from './useCustomerEditor';
 import { DebtDeletionDialog } from '../debts/DebtDeletionDialog';
 import { DebtDrawer } from '../debts/DebtDrawer';
 import { DebtLedgerSection } from '../debts/DebtLedgerSection';
@@ -44,7 +44,6 @@ export function CustomerDetailsPage({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { locale } = useLocalization();
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
   const [deletingDebt, setDeletingDebt] = useState<DebtResponse | null>(null);
   const [editingDebt, setEditingDebt] = useState<DebtResponse | null>(null);
@@ -53,6 +52,7 @@ export function CustomerDetailsPage({
   const deleteDebtTriggerRef = useRef<HTMLElement | null>(null);
   const editDebtTriggerRef = useRef<HTMLElement | null>(null);
   const customerQuery = useCustomerDetailsQuery(customerId);
+  const customerEditor = useCustomerEditor();
   const debtQuery = useDebtListView(customerId);
   const { createDebt, isCreating } = useCreateDebtMutation({
     customerId: customerId ?? '',
@@ -65,9 +65,6 @@ export function CustomerDetailsPage({
   const { deleteDebt, isDeleting } = useDeleteDebtMutation({
     customerId: customerId ?? '',
     onDeleted: () => setDeletingDebt(null),
-  });
-  const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
-    onUpdated: () => setIsEditModalOpen(false),
   });
   const openDebtEditor = (
     debt: DebtResponse,
@@ -137,7 +134,7 @@ export function CustomerDetailsPage({
             <div className="flex flex-wrap gap-2">
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
-                onClick={() => setIsEditModalOpen(true)}
+                onClick={() => customerEditor.open({ customer })}
                 type="button"
               >
                 <Pencil aria-hidden="true" size={16} strokeWidth={2.6} />
@@ -215,19 +212,7 @@ export function CustomerDetailsPage({
         </div>
       </main>
 
-      {isEditModalOpen ? (
-        <CustomerEditModal
-          customer={customer}
-          isSubmitting={isUpdating}
-          onClose={() => setIsEditModalOpen(false)}
-          onSubmit={(request) =>
-            updateCustomer({
-              customerId: customer.id,
-              request,
-            })
-          }
-        />
-      ) : null}
+      {customerEditor.dialog}
       {isDebtDrawerOpen && defaultCurrency ? (
         <DebtDrawer
           defaultCurrency={defaultCurrency}

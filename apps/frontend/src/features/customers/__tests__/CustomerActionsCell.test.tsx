@@ -29,7 +29,7 @@ describe('CustomerActionsCell', () => {
                 customerId="customer_456"
                 customerName="North Star Cafe"
                 onEditCustomer={vi.fn()}
-                onPrepareEditCustomer={vi.fn()}
+                onPrefetchEditCustomer={vi.fn()}
               />
               <RouterLocationProbe />
             </>
@@ -73,7 +73,7 @@ describe('CustomerActionsCell', () => {
               customerId="customer_456"
               customerName="North Star Cafe"
               onEditCustomer={onEditCustomer}
-              onPrepareEditCustomer={vi.fn()}
+              onPrefetchEditCustomer={vi.fn()}
             />
           }
           path="/customers"

@@ -8,14 +8,14 @@ type CustomerActionsCellProps = {
   customerId: string;
   customerName: string;
   onEditCustomer: (customerId: string) => void;
-  onPrepareEditCustomer: (customerId: string) => void;
+  onPrefetchEditCustomer: (customerId: string) => void;
 };
 
 export function CustomerActionsCell({
   customerId,
   customerName,
   onEditCustomer,
-  onPrepareEditCustomer,
+  onPrefetchEditCustomer,
 }: CustomerActionsCellProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ export function CustomerActionsCell({
       menuLabel={t('customers.list.actions.menuLabel', {
         name: customerName,
       })}
-      onOpen={() => onPrepareEditCustomer(customerId)}
+      onOpen={() => onPrefetchEditCustomer(customerId)}
       triggerLabel={t('customers.list.actions.openMenu', {
         name: customerName,
       })}
