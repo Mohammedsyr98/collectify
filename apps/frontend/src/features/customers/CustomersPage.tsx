@@ -1,70 +1,27 @@
 import { Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { isCustomerApiErrorCode } from '@collectify/contracts';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
 import {
-  CustomerEditLoadingModal,
-  CustomerEditModal,
-} from './CustomerEditModal';
-import {
   useCreateCustomerMutation,
-  useCustomerDetailsQuery,
-  useUpdateCustomerMutation,
 } from './customerQueries';
 import { CustomerTable } from './list/CustomerTable';
+import { useCustomerEditor } from './useCustomerEditor';
 import { useCustomerListView } from './useCustomerListView';
-import { resolveApiErrorDescription } from '../../shared/api/http';
-import { useToast } from '../../shared/ui/toast/toastContext';
 import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
 import { SearchField } from '../../shared/ui/search/SearchField';
 
 export function CustomersPage() {
   const { t } = useTranslation();
-  const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingCustomerId, setEditingCustomerId] = useState<string>();
+  const customerEditor = useCustomerEditor();
   const { customers, pagination, search, status } = useCustomerListView();
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
-  const editingCustomerQuery = useCustomerDetailsQuery(editingCustomerId);
-  const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
-    onUpdated: () => setEditingCustomerId(undefined),
-  });
   const isTableLoading = status.status === 'loading';
   const showsCustomerTable = isTableLoading || status.status === 'ready';
-  const editingCustomer = editingCustomerQuery.customer;
-
-  useEffect(() => {
-    if (
-      !editingCustomerId ||
-      !editingCustomerQuery.isError ||
-      editingCustomerQuery.isFetching
-    ) {
-      return;
-    }
-
-    setEditingCustomerId(undefined);
-    showToast({
-      variant: 'error',
-      title: t('customers.toast.editLoad.errorTitle'),
-      description: resolveApiErrorDescription(editingCustomerQuery.error, {
-        describeKnownCode: (code) => t(`customers.errors.${code}`),
-        fallbackDescription: t('errors.genericDescription'),
-        isKnownCode: isCustomerApiErrorCode,
-      }),
-    });
-  }, [
-    editingCustomerId,
-    editingCustomerQuery.error,
-    editingCustomerQuery.isFetching,
-    editingCustomerQuery.isError,
-    showToast,
-    t,
-  ]);
 
   return (
     <main
@@ -149,8 +106,10 @@ export function CustomersPage() {
             <CustomerTable
               customers={customers}
               isLoading={isTableLoading}
-              onEditCustomer={setEditingCustomerId}
-              onPrepareEditCustomer={editingCustomerQuery.prefetch}
+              onEditCustomer={(customerId) =>
+                customerEditor.open({ customerId })
+              }
+              onPrefetchEditCustomer={customerEditor.prefetch}
             />
           </div>
         ) : null}
@@ -175,22 +134,7 @@ export function CustomersPage() {
           onSubmit={createCustomer}
         />
       ) : null}
-      {editingCustomerQuery.isLoadingCustomer ? (
-        <CustomerEditLoadingModal onClose={() => setEditingCustomerId(undefined)} />
-      ) : null}
-      {editingCustomer ? (
-        <CustomerEditModal
-          customer={editingCustomer}
-          isSubmitting={isUpdating}
-          onClose={() => setEditingCustomerId(undefined)}
-          onSubmit={(request) =>
-            updateCustomer({
-              customerId: editingCustomer.id,
-              request,
-            })
-          }
-        />
-      ) : null}
+      {customerEditor.dialog}
     </main>
   );
 }

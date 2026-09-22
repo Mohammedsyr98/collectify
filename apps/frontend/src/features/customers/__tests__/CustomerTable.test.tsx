@@ -24,7 +24,7 @@ describe('CustomerTable', () => {
       <CustomerTable
         customers={customerList.items}
         onEditCustomer={vi.fn()}
-        onPrepareEditCustomer={vi.fn()}
+        onPrefetchEditCustomer={vi.fn()}
       />,
     );
 
@@ -58,7 +58,7 @@ describe('CustomerTable', () => {
       <CustomerTable
         customers={[financialCustomer, customerList.items[0]]}
         onEditCustomer={vi.fn()}
-        onPrepareEditCustomer={vi.fn()}
+        onPrefetchEditCustomer={vi.fn()}
       />,
     );
 
@@ -87,7 +87,7 @@ describe('CustomerTable', () => {
         customers={customerList.items}
         isLoading
         onEditCustomer={vi.fn()}
-        onPrepareEditCustomer={vi.fn()}
+        onPrefetchEditCustomer={vi.fn()}
       />,
     );
 
