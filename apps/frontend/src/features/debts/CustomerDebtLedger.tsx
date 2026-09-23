@@ -18,6 +18,12 @@ import { useDebtListView } from './useDebtListView';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 
+type ActiveDebtAction =
+  | { kind: 'create'; currency: Currency }
+  | { kind: 'delete'; debt: DebtResponse }
+  | { kind: 'edit'; debt: DebtResponse }
+  | null;
+
 export function CustomerDebtLedger({
   customerId,
   defaultCurrency,
@@ -27,23 +33,24 @@ export function CustomerDebtLedger({
 }) {
   const { t } = useTranslation();
   const debtQuery = useDebtListView(customerId);
-  const [isDebtDrawerOpen, setIsDebtDrawerOpen] = useState(false);
-  const [deletingDebt, setDeletingDebt] = useState<DebtResponse | null>(null);
-  const [editingDebt, setEditingDebt] = useState<DebtResponse | null>(null);
+  const [activeDebtAction, setActiveDebtAction] =
+    useState<ActiveDebtAction>(null);
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
-  const deleteDebtTriggerRef = useRef<HTMLElement | null>(null);
-  const editDebtTriggerRef = useRef<HTMLElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const { createDebt, isCreating } = useCreateDebtMutation({
     customerId,
-    onCreated: () => setIsDebtDrawerOpen(false),
+    onCreated: () => setActiveDebtAction(null),
   });
   const { isReplacing, replaceDebt } = useReplaceDebtMutation({
     customerId,
-    onReplaced: () => setEditingDebt(null),
+    onReplaced: () => setActiveDebtAction(null),
   });
   const { deleteDebt, isDeleting } = useDeleteDebtMutation({
     customerId,
-    onDeleted: () => setDeletingDebt(null),
+    onDeleted: () => {
+      returnFocusRef.current = addDebtButtonRef.current;
+      setActiveDebtAction(null);
+    },
   });
   const debtStatus = debtQuery.status;
   const isRetrying = debtStatus.status === 'error' && debtStatus.isRetrying;
@@ -63,7 +70,17 @@ export function CustomerDebtLedger({
           <button
             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!defaultCurrency}
-            onClick={() => setIsDebtDrawerOpen(true)}
+            onClick={(event) => {
+              if (!defaultCurrency) {
+                return;
+              }
+
+              returnFocusRef.current = event.currentTarget;
+              setActiveDebtAction({
+                currency: defaultCurrency,
+                kind: 'create',
+              });
+            }}
             ref={addDebtButtonRef}
             type="button"
           >
@@ -145,12 +162,18 @@ export function CustomerDebtLedger({
                 debt={debt}
                 key={debt.id}
                 onDelete={(selectedDebt, trigger) => {
-                  deleteDebtTriggerRef.current = trigger;
-                  setDeletingDebt(selectedDebt);
+                  returnFocusRef.current = trigger ?? addDebtButtonRef.current;
+                  setActiveDebtAction({
+                    debt: selectedDebt,
+                    kind: 'delete',
+                  });
                 }}
                 onEdit={(selectedDebt, trigger) => {
-                  editDebtTriggerRef.current = trigger;
-                  setEditingDebt(selectedDebt);
+                  returnFocusRef.current = trigger ?? addDebtButtonRef.current;
+                  setActiveDebtAction({
+                    debt: selectedDebt,
+                    kind: 'edit',
+                  });
                 }}
               />
             ))}
@@ -169,35 +192,40 @@ export function CustomerDebtLedger({
         ) : null}
       </section>
 
-      {isDebtDrawerOpen && defaultCurrency ? (
+      {activeDebtAction?.kind === 'create' ? (
         <DebtDrawer
-          defaultCurrency={defaultCurrency}
+          defaultCurrency={activeDebtAction.currency}
           isSubmitting={isCreating}
-          onClose={() => setIsDebtDrawerOpen(false)}
+          onClose={() => setActiveDebtAction(null)}
           onSubmit={createDebt}
-          returnFocusRef={addDebtButtonRef}
+          returnFocusRef={returnFocusRef}
         />
       ) : null}
-      {deletingDebt ? (
+      {activeDebtAction?.kind === 'delete' ? (
         <DebtDeletionDialog
-          debt={deletingDebt}
+          debt={activeDebtAction.debt}
           isDeleting={isDeleting}
-          onClose={() => setDeletingDebt(null)}
+          onClose={() => setActiveDebtAction(null)}
           onConfirm={() => {
-            void deleteDebt(deletingDebt.id, deletingDebt.description);
+            void deleteDebt(
+              activeDebtAction.debt.id,
+              activeDebtAction.debt.description,
+            );
           }}
-          returnFocusRef={deleteDebtTriggerRef}
+          returnFocusRef={returnFocusRef}
         />
       ) : null}
-      {editingDebt ? (
+      {activeDebtAction?.kind === 'edit' ? (
         <DebtDrawer
-          defaultCurrency={editingDebt.currency}
-          debt={editingDebt}
+          defaultCurrency={activeDebtAction.debt.currency}
+          debt={activeDebtAction.debt}
           isSubmitting={isReplacing}
           mode="edit"
-          onClose={() => setEditingDebt(null)}
-          onSubmit={(request) => replaceDebt(editingDebt.id, request)}
-          returnFocusRef={editDebtTriggerRef}
+          onClose={() => setActiveDebtAction(null)}
+          onSubmit={(request) =>
+            replaceDebt(activeDebtAction.debt.id, request)
+          }
+          returnFocusRef={returnFocusRef}
         />
       ) : null}
     </>

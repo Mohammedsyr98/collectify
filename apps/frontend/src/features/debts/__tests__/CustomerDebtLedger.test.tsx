@@ -312,6 +312,62 @@ describe('CustomerDebtLedger', () => {
     expect(actionsTrigger).toHaveFocus();
   });
 
+  it('returns focus to Add debt after successfully deleting a debt', async () => {
+    const user = userEvent.setup();
+    const debt = createDebtFixture(baseCustomer.id, {
+      description: 'Website redesign',
+    });
+    let debts = [debt];
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json({
+          items: debts,
+          page: 1,
+          pageSize: 5,
+          totalItems: debts.length,
+          totalPages: debts.length > 0 ? 1 : 0,
+        }),
+      ),
+      http.delete(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => {
+          debts = [];
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
+    );
+
+    renderWithAppProviders(
+      <CustomerDebtLedger
+        customerId={baseCustomer.id}
+        defaultCurrency="USD"
+      />,
+      { initialEntries: [`/customers/${baseCustomer.id}`] },
+    );
+
+    const addDebtButton = await screen.findByRole('button', {
+      name: 'Add debt',
+    });
+    await screen.findByRole('heading', { name: debt.description });
+    const { actionsMenu } = await openDebtActionMenu(user, debt.description);
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Delete debt' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: debt.description }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(addDebtButton).toHaveFocus();
+  });
+
   it('keeps the edited debt draft after an unexpected replacement failure', async () => {
     const user = userEvent.setup();
 
