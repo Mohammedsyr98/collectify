@@ -60,7 +60,7 @@ describe('CustomerDebtLedger', () => {
     vi.useRealTimers();
   });
 
-  // List presentation and local debt controls
+  describe('direct ledger behavior', () => {
   it('renders the empty debt state', async () => {
     renderLedger([]);
 
@@ -335,7 +335,10 @@ describe('CustomerDebtLedger', () => {
     expect(descriptionInput).toHaveValue('Updated website redesign');
   });
 
-  // Debt creation
+  });
+
+  describe('customer-route workflows', () => {
+  describe('creation', () => {
   it('creates a debt from customer details and keeps it after a route remount', async () => {
     const user = userEvent.setup();
     let debtList: DebtListResponse = emptyDebtList;
@@ -357,7 +360,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    const firstRender = renderDebtWorkflow();
+    const firstRender = renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
     const drawer = await openAndFillDebtDrawer(user);
 
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
@@ -366,12 +369,14 @@ describe('CustomerDebtLedger', () => {
     expect(screen.getByRole('status', { name: 'Debt created' })).toBeInTheDocument();
 
     firstRender.unmount();
-    renderDebtWorkflow();
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
   }, 10_000);
 
-  // Debt query and URL state
+  });
+
+  describe('query and URL state', () => {
   it('shows debt loading state without replacing customer details while the initial list loads', async () => {
     let resolveDebtRequest!: () => void;
     const pendingDebtRequest = new Promise<void>((resolve) => {
@@ -386,7 +391,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderDebtWorkflow();
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
 
     try {
       expect(
@@ -442,17 +447,9 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [
-          `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
-        ],
-      },
-    );
+    renderCustomerDebtRoute([
+      `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
+    ]);
 
     expect(await screen.findByText('Initial debt')).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
@@ -524,17 +521,9 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [
-          `/customers/${baseCustomer.id}?debtPage=2&debtSearch=redesign&view=summary`,
-        ],
-      },
-    );
+    renderCustomerDebtRoute([
+      `/customers/${baseCustomer.id}?debtPage=2&debtSearch=redesign&view=summary`,
+    ]);
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);
@@ -599,17 +588,9 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [
-          `/customers/${baseCustomer.id}?debtPage=1&debtSearch=redesign&view=summary`,
-        ],
-      },
-    );
+    renderCustomerDebtRoute([
+      `/customers/${baseCustomer.id}?debtPage=1&debtSearch=redesign&view=summary`,
+    ]);
 
     expect(await screen.findByText('First redesign debt')).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '1', search: 'redesign' }]);
@@ -659,17 +640,9 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [
-          `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
-        ],
-      },
-    );
+    renderCustomerDebtRoute([
+      `/customers/${baseCustomer.id}?debtPage=2&view=summary`,
+    ]);
 
     try {
       const errorState = await screen.findByRole('alert', {
@@ -753,15 +726,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1`],
-      },
-    );
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}?debtPage=1`]);
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
 
@@ -900,9 +865,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(<App />, {
-      initialEntries: [`/customers/${baseCustomer.id}?debtPage=2`],
-    });
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}?debtPage=2`]);
 
     expect(await screen.findByText('Page two debt')).toBeInTheDocument();
     expect(requestedPages).toEqual(['2']);
@@ -935,15 +898,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1`],
-      },
-    );
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}?debtPage=1`]);
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
 
@@ -981,15 +936,9 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1&view=summary`],
-      },
-    );
+    renderCustomerDebtRoute([
+      `/customers/${baseCustomer.id}?debtPage=1&view=summary`,
+    ]);
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
 
@@ -1021,17 +970,9 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [
-          `/customers/${baseCustomer.id}?debtPage=invalid`,
-        ],
-      },
-    );
+    renderCustomerDebtRoute([
+      `/customers/${baseCustomer.id}?debtPage=invalid`,
+    ]);
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
     await waitFor(() =>
@@ -1079,15 +1020,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [`/customers/${baseCustomer.id}?debtPage=99`],
-      },
-    );
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}?debtPage=99`]);
 
     await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
 
@@ -1134,15 +1067,7 @@ describe('CustomerDebtLedger', () => {
       }),
     );
 
-    renderWithAppProviders(
-      <>
-        <App />
-        <RouterLocationProbe />
-      </>,
-      {
-        initialEntries: [`/customers/${baseCustomer.id}?debtPage=1`],
-      },
-    );
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}?debtPage=1`]);
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Next page' }));
@@ -1158,7 +1083,9 @@ describe('CustomerDebtLedger', () => {
     );
   });
 
-  // Debt creation failure states
+  });
+
+  describe('creation failure states', () => {
   it('shows backend validation failure in a toast and preserves the draft', async () => {
     const user = userEvent.setup();
 
@@ -1177,7 +1104,7 @@ describe('CustomerDebtLedger', () => {
       ),
     );
 
-    renderDebtWorkflow();
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
     const drawer = await openAndFillDebtDrawer(user);
 
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
@@ -1202,7 +1129,7 @@ describe('CustomerDebtLedger', () => {
       ),
     );
 
-    renderDebtWorkflow();
+    renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
     const drawer = await openAndFillDebtDrawer(user);
 
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
@@ -1215,6 +1142,8 @@ describe('CustomerDebtLedger', () => {
       'Website redesign',
     );
   }, 10_000);
+  });
+  });
 });
 
 function renderLedger(debts: DebtResponse[]) {
@@ -1302,10 +1231,14 @@ async function openDebtActionMenu(
   };
 }
 
-function renderDebtWorkflow() {
-  return renderWithAppProviders(<App />, {
-    initialEntries: [`/customers/${baseCustomer.id}`],
-  });
+function renderCustomerDebtRoute(initialEntries: string[]) {
+  return renderWithAppProviders(
+    <>
+      <App />
+      <RouterLocationProbe />
+    </>,
+    { initialEntries },
+  );
 }
 
 function CustomerRouteSwitcher({ customerId }: { customerId: string }) {
