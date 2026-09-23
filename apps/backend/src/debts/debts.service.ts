@@ -177,21 +177,6 @@ export class DebtsService {
         customerId,
         debtId,
       );
-      const [scheduleItem] = await tx
-        .select()
-        .from(debtScheduleItems)
-        .where(
-          and(
-            eq(debtScheduleItems.debtId, ownedDebt.id),
-            eq(debtScheduleItems.position, 1),
-          ),
-        )
-        .limit(1);
-
-      if (!scheduleItem) {
-        throw debtException(debtApiErrorCode.debtNotFound);
-      }
-
       const [debt] = await tx
         .update(debts)
         .set({
@@ -210,7 +195,12 @@ export class DebtsService {
           dueDate: request.paymentPlan.dueDate,
           updatedAt: operationInstant,
         })
-        .where(eq(debtScheduleItems.id, scheduleItem.id))
+        .where(
+          and(
+            eq(debtScheduleItems.debtId, ownedDebt.id),
+            eq(debtScheduleItems.position, 1),
+          ),
+        )
         .returning();
 
       if (!debt || !updatedScheduleItem) {
