@@ -60,6 +60,7 @@ describe('CustomerDebtLedger', () => {
     vi.useRealTimers();
   });
 
+  // List presentation and local debt controls
   it('renders the empty debt state', async () => {
     renderLedger([]);
 
@@ -221,6 +222,120 @@ describe('CustomerDebtLedger', () => {
     expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
   });
 
+  it('returns focus to the Add debt trigger after closing the drawer', async () => {
+    const user = userEvent.setup();
+
+    renderLedger([]);
+
+    const addDebtButton = await screen.findByRole('button', { name: 'Add debt' });
+    await user.click(addDebtButton);
+    await screen.findByRole('dialog', { name: 'Add debt' });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Add debt' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(addDebtButton).toHaveFocus();
+  });
+
+  it('opens the selected debt editor with its saved values', async () => {
+    const user = userEvent.setup();
+    const { drawer } = await openSelectedDebtEditor(user);
+
+    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+      'Website redesign',
+    );
+    expect(within(drawer).getByLabelText('Total amount')).toHaveValue('275.75');
+    expect(within(drawer).getByLabelText('Currency')).toHaveValue('EUR');
+    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-10-01');
+  });
+
+  it('returns focus to the debt menu trigger after closing the editor', async () => {
+    const user = userEvent.setup();
+    const { actionsTrigger } = await openSelectedDebtEditor(user);
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit debt' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(actionsTrigger).toHaveFocus();
+  });
+
+  it('opens the selected debt deletion confirmation and cancels without deleting', async () => {
+    const user = userEvent.setup();
+    const debt = createDebtFixture(baseCustomer.id, {
+      description: 'Website redesign',
+      totalAmount: '275.75',
+      currency: 'EUR',
+    });
+    let deleteRequestCount = 0;
+
+    server.use(
+      http.delete(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => {
+          deleteRequestCount += 1;
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
+    );
+
+    renderLedger([debt]);
+
+    const { actionsMenu, actionsTrigger } = await openDebtActionMenu(
+      user,
+      debt.description,
+    );
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+    expect(dialog).toHaveTextContent(debt.description);
+    expect(dialog).toHaveTextContent('€275.75');
+    expect(dialog).toHaveTextContent('This action cannot be undone.');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Delete debt' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(deleteRequestCount).toBe(0);
+    expect(actionsTrigger).toHaveFocus();
+  });
+
+  it('keeps the edited debt draft after an unexpected replacement failure', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.put(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => HttpResponse.text('Internal server error', { status: 500 }),
+      ),
+    );
+
+    const { drawer } = await openSelectedDebtEditor(user);
+    const descriptionInput = within(drawer).getByLabelText('Description');
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, 'Updated website redesign');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Could not update debt' }),
+    ).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeInTheDocument();
+    expect(descriptionInput).toHaveValue('Updated website redesign');
+  });
+
+  // Debt creation
   it('creates a debt from customer details and keeps it after a route remount', async () => {
     const user = userEvent.setup();
     let debtList: DebtListResponse = emptyDebtList;
@@ -256,6 +371,7 @@ describe('CustomerDebtLedger', () => {
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
   }, 10_000);
 
+  // Debt query and URL state
   it('shows debt loading state without replacing customer details while the initial list loads', async () => {
     let resolveDebtRequest!: () => void;
     const pendingDebtRequest = new Promise<void>((resolve) => {
@@ -1042,6 +1158,7 @@ describe('CustomerDebtLedger', () => {
     );
   });
 
+  // Debt creation failure states
   it('shows backend validation failure in a toast and preserves the draft', async () => {
     const user = userEvent.setup();
 
@@ -1127,6 +1244,62 @@ async function getDebtCard(description: string): Promise<HTMLElement> {
   }
 
   return debtCard;
+}
+
+async function openSelectedDebtEditor(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<{
+  actionsTrigger: HTMLElement;
+  drawer: HTMLElement;
+}> {
+  const debt = createDebtFixture(baseCustomer.id, {
+    description: 'Website redesign',
+    totalAmount: '275.75',
+    currency: 'EUR',
+    scheduleItems: [
+      {
+        id: 'schedule_123',
+        position: 1,
+        amount: '275.75',
+        dueDate: '2026-10-01',
+        timing: 'upcoming',
+      },
+    ],
+  });
+
+  renderLedger([debt]);
+
+  const { actionsMenu, actionsTrigger } = await openDebtActionMenu(
+    user,
+    debt.description,
+  );
+  await user.click(
+    within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+  );
+
+  return {
+    actionsTrigger,
+    drawer: await screen.findByRole('dialog', { name: 'Edit debt' }),
+  };
+}
+
+async function openDebtActionMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  description: string,
+): Promise<{ actionsMenu: HTMLElement; actionsTrigger: HTMLElement }> {
+  const debtCard = await getDebtCard(description);
+  const actionsTrigger = within(debtCard).getByRole('button', {
+    name: `Open actions for ${description}`,
+  });
+
+  await user.click(actionsTrigger);
+
+  return {
+    actionsMenu: await screen.findByRole('menu', {
+      name: `Actions for ${description}`,
+    }),
+    actionsTrigger,
+  };
 }
 
 function renderDebtWorkflow() {
