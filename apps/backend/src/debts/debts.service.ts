@@ -9,7 +9,7 @@ import {
   type DebtResponse,
   type ReplaceDebtRequest,
 } from '@collectify/contracts';
-import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
@@ -108,13 +108,6 @@ export class DebtsService {
       pageSize: debtListPageSize,
       totalItems,
     });
-    const timingPriority = sql<number>`
-      CASE
-        WHEN ${debtScheduleItems.dueDate} < ${businessDate} THEN 0
-        WHEN ${debtScheduleItems.dueDate} = ${businessDate} THEN 1
-        ELSE 2
-      END
-    `;
     const debtRows = await this.databaseService.db
       .select({ debt: debts })
       .from(debts)
@@ -127,7 +120,6 @@ export class DebtsService {
       )
       .where(listFilter)
       .orderBy(
-        asc(timingPriority),
         asc(debtScheduleItems.dueDate),
         asc(debts.createdAt),
         asc(debts.id),
@@ -177,21 +169,6 @@ export class DebtsService {
         customerId,
         debtId,
       );
-      const [scheduleItem] = await tx
-        .select()
-        .from(debtScheduleItems)
-        .where(
-          and(
-            eq(debtScheduleItems.debtId, ownedDebt.id),
-            eq(debtScheduleItems.position, 1),
-          ),
-        )
-        .limit(1);
-
-      if (!scheduleItem) {
-        throw debtException(debtApiErrorCode.debtNotFound);
-      }
-
       const [debt] = await tx
         .update(debts)
         .set({
@@ -210,7 +187,12 @@ export class DebtsService {
           dueDate: request.paymentPlan.dueDate,
           updatedAt: operationInstant,
         })
-        .where(eq(debtScheduleItems.id, scheduleItem.id))
+        .where(
+          and(
+            eq(debtScheduleItems.debtId, ownedDebt.id),
+            eq(debtScheduleItems.position, 1),
+          ),
+        )
         .returning();
 
       if (!debt || !updatedScheduleItem) {
