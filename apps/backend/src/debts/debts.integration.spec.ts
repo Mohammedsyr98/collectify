@@ -12,7 +12,7 @@ import {
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
-import { getIstanbulBusinessDate } from './debt-timing';
+import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 
 type DebtWithScheduleRow = {
   debt_id: string;
