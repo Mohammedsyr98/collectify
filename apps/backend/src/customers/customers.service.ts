@@ -11,37 +11,27 @@ import {
   type UpdateCustomerRequest,
   type UpdateCustomerResponse,
 } from '@collectify/contracts';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService } from '../database/database.service';
+import { customerConstraints, customers } from '../database/schema';
 import {
-  customerConstraints,
-  customers,
-  debtScheduleItems,
-  debts,
-} from '../database/schema';
-import { getIstanbulBusinessDate } from '../debts/debt-timing';
+  CustomerReceivables,
+  type CustomerCurrencySummary,
+} from '../receivables/customer-receivables';
 import { calculatePagination } from '../shared/pagination';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { customerException } from './customers.errors';
 
 type CustomerRow = typeof customers.$inferSelect;
-type DebtFinancialAggregate = {
-  customerId: string;
-  currency: Currency;
-  totalDebtAmount: string;
-  overdueAmount: string;
-};
-type DebtOverdueRow = {
-  customerId: string;
-  currency: Currency;
-  overdueAmount: string;
-};
 @Injectable()
 export class CustomersService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly customerReceivables: CustomerReceivables,
+  ) {}
 
   async createCustomer(
     currentOwner: AuthenticatedOwner,
@@ -78,6 +68,7 @@ export class CustomersService {
     currentOwner: AuthenticatedOwner,
     customerId: string,
   ): Promise<CustomerDetailsResponse> {
+    const operationInstant = new Date();
     const [customer] = await this.databaseService.db
       .select()
       .from(customers)
@@ -94,8 +85,10 @@ export class CustomersService {
     }
 
     const financialSummary = await this.getFinancialSummary(
+      currentOwner.ownerProfile.id,
       customer.id,
       currentOwner.ownerProfile.defaultCurrency,
+      operationInstant,
     );
 
     return toCustomerDetailsResponse(customer, financialSummary);
@@ -106,9 +99,10 @@ export class CustomersService {
     customerId: string,
     request: UpdateCustomerRequest,
   ): Promise<UpdateCustomerResponse> {
+    const operationInstant = new Date();
     const updateValues: Partial<typeof customers.$inferInsert> = {
       ...request,
-      updatedAt: new Date(),
+      updatedAt: operationInstant,
     };
 
     try {
@@ -128,8 +122,10 @@ export class CustomersService {
       }
 
       const financialSummary = await this.getFinancialSummary(
+        currentOwner.ownerProfile.id,
         customer.id,
         currentOwner.ownerProfile.defaultCurrency,
+        operationInstant,
       );
 
       return toCustomerDetailsResponse(customer, financialSummary);
@@ -146,6 +142,7 @@ export class CustomersService {
     currentOwner: AuthenticatedOwner,
     query: CustomerListQuery,
   ): Promise<CustomerListResponse> {
+    const operationInstant = new Date();
     const ownerProfileId = currentOwner.ownerProfile.id;
     const listFilter = customerListFilter(ownerProfileId, query.search);
     const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
@@ -164,21 +161,19 @@ export class CustomersService {
       .orderBy(desc(customers.createdAt), desc(customers.id))
       .limit(paginationMetadata.pageSize)
       .offset(offset);
-    const operationInstant = new Date();
-    const debtFinancialAggregates = await this.getDebtFinancialAggregates(
-      customerRows.map((customer) => customer.id),
-      getIstanbulBusinessDate(operationInstant),
-    );
-    const aggregatesByCustomerId = groupDebtFinancialAggregatesByCustomerId(
-      debtFinancialAggregates,
-    );
+    const summariesByCustomerId =
+      await this.customerReceivables.summarizeCustomers({
+        ownerProfileId,
+        customerIds: customerRows.map((customer) => customer.id),
+        asOf: operationInstant,
+        preferredCurrency: currentOwner.ownerProfile.defaultCurrency,
+      });
 
     return {
       items: customerRows.map((customer) =>
         toCustomerListItemResponse(
           customer,
-          aggregatesByCustomerId.get(customer.id) ?? [],
-          currentOwner.ownerProfile.defaultCurrency,
+          summariesByCustomerId.get(customer.id) ?? [],
         ),
       ),
       ...paginationMetadata,
@@ -186,75 +181,21 @@ export class CustomersService {
   }
 
   private async getFinancialSummary(
+    ownerProfileId: string,
     customerId: string,
     defaultCurrency: Currency,
-  ) {
-    const aggregates = await this.getDebtFinancialAggregates(
-      [customerId],
-      getIstanbulBusinessDate(new Date()),
-    );
+    operationInstant: Date,
+  ): Promise<CustomerDetailsResponse['financialSummary']> {
+    const summariesByCustomerId =
+      await this.customerReceivables.summarizeCustomers({
+        ownerProfileId,
+        customerIds: [customerId],
+        asOf: operationInstant,
+        preferredCurrency: defaultCurrency,
+      });
 
-    return sortDebtFinancialAggregates(aggregates, defaultCurrency).map(
-      (aggregate) => ({
-      currency: aggregate.currency,
-      totalDebtAmount: aggregate.totalDebtAmount,
-      totalPaidAmount: '0.00',
-      remainingAmount: aggregate.totalDebtAmount,
-      }),
-    );
-  }
-
-  private async getDebtFinancialAggregates(
-    customerIds: string[],
-    businessDate: string,
-  ): Promise<DebtFinancialAggregate[]> {
-    if (customerIds.length === 0) {
-      return [];
-    }
-
-    const rows = await this.databaseService.db
-      .select({
-        customerId: debts.customerId,
-        currency: debts.currency,
-        totalDebtAmount: sql<string>`cast(sum(${debts.totalAmount}) as numeric(18, 2))`,
-      })
-      .from(debts)
-      .where(inArray(debts.customerId, customerIds))
-      .groupBy(debts.customerId, debts.currency);
-
-    if (rows.length === 0) {
-      return [];
-    }
-
-    const overdueRows = await this.databaseService.db
-      .select({
-        customerId: debts.customerId,
-        currency: debts.currency,
-        overdueAmount: sql<string>`cast(sum(${debtScheduleItems.amount}) as numeric(18, 2))`,
-      })
-      .from(debtScheduleItems)
-      .innerJoin(debts, eq(debts.id, debtScheduleItems.debtId))
-      .where(
-        and(
-          inArray(debts.customerId, customerIds),
-          sql`${debtScheduleItems.dueDate} < ${businessDate}`,
-        ),
-      )
-      .groupBy(debts.customerId, debts.currency);
-    const overdueByKey = new Map(
-      (overdueRows as DebtOverdueRow[]).map((row) => [
-        financialAggregateKey(row.customerId, row.currency),
-        row.overdueAmount,
-      ]),
-    );
-
-    return (rows as Omit<DebtFinancialAggregate, 'overdueAmount'>[]).map(
-      (row) => ({
-        ...row,
-        overdueAmount:
-          overdueByKey.get(financialAggregateKey(row.customerId, row.currency)) ??
-          '0.00',
-      }),
+    return toCustomerDetailsFinancialSummary(
+      summariesByCustomerId.get(customerId) ?? [],
     );
   }
 }
@@ -294,8 +235,7 @@ function toCustomerDetailsResponse(
 
 function toCustomerListItemResponse(
   customer: CustomerRow,
-  aggregates: DebtFinancialAggregate[],
-  defaultCurrency: Currency,
+  summaries: readonly CustomerCurrencySummary[],
 ): CustomerListItem {
   return {
     id: customer.id,
@@ -305,52 +245,24 @@ function toCustomerListItemResponse(
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),
     financialSummary: {
-      balancesByCurrency: sortDebtFinancialAggregates(
-        aggregates,
-        defaultCurrency,
-      ).map((aggregate) => ({
-        currency: aggregate.currency,
-        remainingAmount: aggregate.totalDebtAmount,
-        overdueAmount: aggregate.overdueAmount,
+      balancesByCurrency: summaries.map((summary) => ({
+        currency: summary.currency,
+        remainingAmount: summary.remainingAmount,
+        overdueAmount: summary.overdueAmount,
       })),
     },
   };
 }
 
-function groupDebtFinancialAggregatesByCustomerId(
-  aggregates: DebtFinancialAggregate[],
-): Map<string, DebtFinancialAggregate[]> {
-  const aggregatesByCustomerId = new Map<string, DebtFinancialAggregate[]>();
-
-  for (const aggregate of aggregates) {
-    const customerAggregates =
-      aggregatesByCustomerId.get(aggregate.customerId) ?? [];
-    customerAggregates.push(aggregate);
-    aggregatesByCustomerId.set(aggregate.customerId, customerAggregates);
-  }
-
-  return aggregatesByCustomerId;
-}
-
-function sortDebtFinancialAggregates(
-  aggregates: DebtFinancialAggregate[],
-  defaultCurrency: Currency,
-): DebtFinancialAggregate[] {
-  return [...aggregates].sort((left, right) => {
-    if (left.currency === defaultCurrency) {
-      return -1;
-    }
-
-    if (right.currency === defaultCurrency) {
-      return 1;
-    }
-
-    return left.currency.localeCompare(right.currency);
-  });
-}
-
-function financialAggregateKey(customerId: string, currency: Currency): string {
-  return `${customerId}:${currency}`;
+function toCustomerDetailsFinancialSummary(
+  summaries: readonly CustomerCurrencySummary[],
+): CustomerDetailsResponse['financialSummary'] {
+  return summaries.map((summary) => ({
+    currency: summary.currency,
+    totalDebtAmount: summary.totalDebtAmount,
+    totalPaidAmount: summary.totalPaidAmount,
+    remainingAmount: summary.remainingAmount,
+  }));
 }
 
 function isCustomerCodeUniqueViolation(error: unknown): boolean {

@@ -21,10 +21,8 @@ import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
-import {
-  getIstanbulBusinessDate,
-  getScheduleItemTiming,
-} from './debt-timing';
+import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
+import { getScheduleItemTiming } from './debt-timing';
 import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
