@@ -7,7 +7,10 @@ import { AnchoredMenu } from '../../../shared/ui/anchored-menu/AnchoredMenu';
 type CustomerActionsCellProps = {
   customerId: string;
   customerName: string;
-  onEditCustomer: (customerId: string) => void;
+  onEditCustomer: (
+    customerId: string,
+    returnFocusTarget: HTMLButtonElement | null,
+  ) => void;
   onPrefetchEditCustomer: (customerId: string) => void;
 };
 
@@ -27,7 +30,7 @@ export function CustomerActionsCell({
           icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
           id: 'edit-customer',
           label: t('customers.list.actions.edit'),
-          onSelect: () => onEditCustomer(customerId),
+          onSelect: (trigger) => onEditCustomer(customerId, trigger),
         },
         {
           icon: <ArrowUpRight aria-hidden="true" size={15} strokeWidth={2.5} />,

@@ -16,7 +16,10 @@ const customerColumnHelper = createColumnHelper<
 type CustomerTableProps = {
   customers: CustomerListItem[];
   isLoading?: boolean;
-  onEditCustomer: (customerId: string) => void;
+  onEditCustomer: (
+    customerId: string,
+    returnFocusTarget: HTMLButtonElement | null,
+  ) => void;
   onPrefetchEditCustomer: (customerId: string) => void;
 };
 

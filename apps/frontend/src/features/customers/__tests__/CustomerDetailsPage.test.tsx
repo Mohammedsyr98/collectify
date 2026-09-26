@@ -185,7 +185,8 @@ describe('CustomerDetailsPage', () => {
     ).toBeInTheDocument();
     expect(detailsRequestCount).toBe(1);
 
-    await user.click(screen.getByRole('button', { name: 'Edit customer' }));
+    const editButton = screen.getByRole('button', { name: 'Edit customer' });
+    await user.click(editButton);
 
     expect(detailsRequestCount).toBe(1);
     expect(screen.getByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
@@ -193,6 +194,15 @@ describe('CustomerDetailsPage', () => {
     expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
     expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
     expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit customer' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(editButton).toHaveFocus();
   });
 
   it('deletes the confirmed debt and refreshes customer views', async () => {

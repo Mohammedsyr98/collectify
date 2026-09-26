@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CreateCustomerRequest } from '@collectify/contracts';
@@ -16,6 +17,79 @@ describe('CustomerCreateModal', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('opens as a described dialog focused on the name field', () => {
+    renderCustomerCreateHarness({
+      onSubmit: vi.fn<() => Promise<void>>(async () => undefined),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Create customer' }),
+    ).toHaveAccessibleDescription(
+      'Create a customer for debt and payment tracking.',
+    );
+    expect(screen.getByLabelText('Name')).toHaveFocus();
+  });
+
+  it('closes with Escape and returns focus to the opening button', async () => {
+    const user = userEvent.setup();
+    renderCustomerCreateHarness({
+      onSubmit: vi.fn<() => Promise<void>>(async () => undefined),
+    });
+    const openButton = screen.getByRole('button', { name: 'Open create' });
+
+    await user.click(openButton);
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(openButton).toHaveFocus();
+  });
+
+  it('keeps keyboard focus inside the dialog', async () => {
+    const user = userEvent.setup();
+    renderCustomerCreateHarness({
+      onSubmit: vi.fn<() => Promise<void>>(async () => undefined),
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Open create' }));
+    const dialog = screen.getByRole('dialog', { name: 'Create customer' });
+    const closeButton = within(dialog).getByRole('button', {
+      name: 'Close customer form',
+    });
+    const saveButton = within(dialog).getByRole('button', {
+      name: 'Save customer',
+    });
+
+    saveButton.focus();
+    await user.tab();
+    expect(closeButton).toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(saveButton).toHaveFocus();
+  });
+
+  it('blocks every dismissal path while submission is pending', async () => {
+    const user = userEvent.setup();
+    renderCustomerCreateHarness({
+      isSubmitting: true,
+      onSubmit: vi.fn<() => Promise<void>>(async () => undefined),
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Open create' }));
+    const dialog = screen.getByRole('dialog', { name: 'Create customer' });
+
+    expect(
+      within(dialog).getByRole('button', { name: 'Close customer form' }),
+    ).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByTestId('customer-create-overlay'));
+
+    expect(dialog).toBeInTheDocument();
   });
 
   it('closes from the header button without submitting and clears draft values after reopening', () => {
@@ -48,7 +122,8 @@ describe('CustomerCreateModal', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('closes from the overlay without submitting', () => {
+  it('closes from the overlay without submitting', async () => {
+    const user = userEvent.setup();
     const onSubmit = vi.fn<() => Promise<void>>(async () => undefined);
     renderCustomerCreateHarness({ onSubmit });
 
@@ -56,7 +131,7 @@ describe('CustomerCreateModal', () => {
     fireEvent.change(screen.getByLabelText('Name'), {
       target: { value: 'Draft Customer' },
     });
-    fireEvent.mouseDown(screen.getByRole('dialog'));
+    await user.click(screen.getByTestId('customer-create-overlay'));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -121,23 +196,31 @@ describe('CustomerCreateModal', () => {
 });
 
 function renderCustomerCreateHarness({
+  isSubmitting = false,
   onSubmit,
 }: {
+  isSubmitting?: boolean;
   onSubmit: (request: CreateCustomerRequest) => Promise<void>;
 }) {
   function CustomerCreateHarness() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const openButtonRef = useRef<HTMLButtonElement>(null);
 
     return (
       <>
-        <button onClick={() => setIsCreateModalOpen(true)} type="button">
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          ref={openButtonRef}
+          type="button"
+        >
           Open create
         </button>
         {isCreateModalOpen ? (
           <CustomerCreateModal
-            isSubmitting={false}
+            isSubmitting={isSubmitting}
             onClose={() => setIsCreateModalOpen(false)}
             onSubmit={onSubmit}
+            returnFocusRef={openButtonRef}
           />
         ) : null}
       </>

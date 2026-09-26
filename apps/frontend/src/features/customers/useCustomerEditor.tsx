@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -8,10 +8,7 @@ import {
 
 import { resolveApiErrorDescription } from '../../shared/api/http';
 import { useToast } from '../../shared/ui/toast/toastContext';
-import {
-  CustomerEditLoadingModal,
-  CustomerEditModal,
-} from './CustomerEditModal';
+import { CustomerEditModal } from './CustomerEditModal';
 import {
   useCustomerDetailsQuery,
   useUpdateCustomerMutation,
@@ -23,19 +20,28 @@ export type CustomerEditTarget =
 
 export type CustomerEditor = {
   dialog: ReactNode;
-  open: (target: CustomerEditTarget) => void;
+  open: (
+    target: CustomerEditTarget,
+    returnFocusTarget: HTMLElement | null,
+  ) => void;
   prefetch: (customerId: string) => void;
+};
+
+type CustomerEditorSession = {
+  returnFocusTarget: HTMLElement | null;
+  target: CustomerEditTarget;
 };
 
 export function useCustomerEditor(): CustomerEditor {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const [target, setTarget] = useState<CustomerEditTarget | null>(null);
+  const [session, setSession] = useState<CustomerEditorSession | null>(null);
+  const target = session?.target ?? null;
   const customerId = target && 'customerId' in target ? target.customerId : undefined;
   const customerQuery = useCustomerDetailsQuery(customerId);
   const customer = target && 'customer' in target ? target.customer : customerQuery.customer;
   const { isUpdating, updateCustomer } = useUpdateCustomerMutation({
-    onUpdated: () => setTarget(null),
+    onUpdated: () => setSession(null),
   });
 
   useEffect(() => {
@@ -47,7 +53,7 @@ export function useCustomerEditor(): CustomerEditor {
       return;
     }
 
-    setTarget(null);
+    setSession(null);
     showToast({
       variant: 'error',
       title: t('customers.toast.editLoad.errorTitle'),
@@ -66,31 +72,46 @@ export function useCustomerEditor(): CustomerEditor {
     t,
   ]);
 
-  const open = (nextTarget: CustomerEditTarget) => {
-    setTarget((currentTarget) =>
-      currentTarget === null ? nextTarget : currentTarget,
-    );
-  };
+  const open = useCallback(
+    (
+      nextTarget: CustomerEditTarget,
+      returnFocusTarget: HTMLElement | null,
+    ) => {
+      setSession((currentSession) =>
+        currentSession ?? {
+          returnFocusTarget,
+          target: nextTarget,
+        },
+      );
+    },
+    [],
+  );
 
   let dialog: ReactNode = null;
 
-  if (target) {
+  if (session) {
     if (!customer) {
       dialog = (
-        <CustomerEditLoadingModal onClose={() => setTarget(null)} />
+        <CustomerEditModal
+          onClose={() => setSession(null)}
+          returnFocusTarget={session.returnFocusTarget}
+          state="loading"
+        />
       );
     } else {
       dialog = (
         <CustomerEditModal
           customer={customer}
           isSubmitting={isUpdating}
-          onClose={() => setTarget(null)}
+          onClose={() => setSession(null)}
           onSubmit={(request) =>
             updateCustomer({
               customerId: customer.id,
               request,
             })
           }
+          returnFocusTarget={session.returnFocusTarget}
+          state="ready"
         />
       );
     }

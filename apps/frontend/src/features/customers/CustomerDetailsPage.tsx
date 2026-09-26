@@ -79,7 +79,9 @@ export function CustomerDetailsPage({
             <div className="flex flex-wrap gap-2">
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
-                onClick={() => customerEditor.open({ customer })}
+                onClick={(event) =>
+                  customerEditor.open({ customer }, event.currentTarget)
+                }
                 type="button"
               >
                 <Pencil aria-hidden="true" size={16} strokeWidth={2.6} />
