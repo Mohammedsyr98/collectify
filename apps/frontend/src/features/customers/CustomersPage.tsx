@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
@@ -17,16 +17,17 @@ export function CustomersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const createCustomerButtonRef = useRef<HTMLButtonElement>(null);
   const customerEditor = useCustomerEditor();
+  const { open: openCustomerEditorSession } = customerEditor;
   const { customers, pagination, search, status } = useCustomerListView();
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
-  const openCustomerEditor = (
-    customerId: string,
-    returnFocusTarget: HTMLButtonElement | null,
-  ) => {
-    customerEditor.open({ customerId }, returnFocusTarget);
-  };
+  const openCustomerEditor = useCallback(
+    (customerId: string, returnFocusTarget: HTMLButtonElement | null) => {
+      openCustomerEditorSession({ customerId }, returnFocusTarget);
+    },
+    [openCustomerEditorSession],
+  );
   const isTableLoading = status.status === 'loading';
   const showsCustomerTable = isTableLoading || status.status === 'ready';
 

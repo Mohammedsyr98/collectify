@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -72,17 +72,20 @@ export function useCustomerEditor(): CustomerEditor {
     t,
   ]);
 
-  const open = (
-    nextTarget: CustomerEditTarget,
-    returnFocusTarget: HTMLElement | null,
-  ) => {
-    setSession((currentSession) =>
-      currentSession ?? {
-        returnFocusTarget,
-        target: nextTarget,
-      },
-    );
-  };
+  const open = useCallback(
+    (
+      nextTarget: CustomerEditTarget,
+      returnFocusTarget: HTMLElement | null,
+    ) => {
+      setSession((currentSession) =>
+        currentSession ?? {
+          returnFocusTarget,
+          target: nextTarget,
+        },
+      );
+    },
+    [],
+  );
 
   let dialog: ReactNode = null;
 
