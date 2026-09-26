@@ -620,11 +620,10 @@ describe('CustomersPage', () => {
     renderCustomerRoutes();
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
-    await user.click(
-      within(acmeRow).getByRole('button', {
-        name: 'Open actions for Acme Market',
-      }),
-    );
+    const actionsButton = within(acmeRow).getByRole('button', {
+      name: 'Open actions for Acme Market',
+    });
+    await user.click(actionsButton);
     await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
 
     expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
@@ -649,11 +648,10 @@ describe('CustomersPage', () => {
     renderCustomerRoutes();
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
-    await user.click(
-      within(acmeRow).getByRole('button', {
-        name: 'Open actions for Acme Market',
-      }),
-    );
+    const actionsButton = within(acmeRow).getByRole('button', {
+      name: 'Open actions for Acme Market',
+    });
+    await user.click(actionsButton);
 
     await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
 
@@ -661,6 +659,35 @@ describe('CustomersPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
     expect(requestedCustomerIds).toEqual([baseCustomer.id]);
+  });
+
+  it('returns focus to the row actions button after closing the editor', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(customerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+    );
+
+    renderCustomerRoutes();
+
+    const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
+    const actionsButton = within(acmeRow).getByRole('button', {
+      name: 'Open actions for Acme Market',
+    });
+    await user.click(actionsButton);
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await screen.findByRole('dialog', { name: 'Edit customer' });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit customer' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(actionsButton).toHaveFocus();
   });
 
   it('shows disabled customer form fields while row edit details load', async () => {
@@ -691,8 +718,16 @@ describe('CustomersPage', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
     await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
 
+    const editDialog = screen.getByRole('dialog', { name: 'Edit customer' });
+    const closeButton = within(editDialog).getByRole('button', {
+      name: 'Close customer form',
+    });
+
     try {
-      const editDialog = screen.getByRole('dialog', { name: 'Edit customer' });
+      expect(
+        within(editDialog).getByRole('status'),
+      ).toHaveTextContent('Loading customer details.');
+      expect(closeButton).toHaveFocus();
       expect(within(editDialog).getByLabelText('Name')).toBeDisabled();
       expect(within(editDialog).getByLabelText('Code')).toBeDisabled();
       expect(within(editDialog).getByLabelText('Phone number')).toBeDisabled();
@@ -701,6 +736,12 @@ describe('CustomersPage', () => {
     } finally {
       resolveCustomerDetailsRequest();
     }
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Name')).toHaveValue(baseCustomer.name),
+    );
+    expect(screen.getByRole('dialog', { name: 'Edit customer' })).toBe(editDialog);
+    expect(closeButton).toHaveFocus();
   });
 
   it('closes row edit loading and shows an error toast when customer details fail to load', async () => {
@@ -718,11 +759,10 @@ describe('CustomersPage', () => {
     renderCustomerRoutes();
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
-    await user.click(
-      within(acmeRow).getByRole('button', {
-        name: 'Open actions for Acme Market',
-      }),
-    );
+    const actionsButton = within(acmeRow).getByRole('button', {
+      name: 'Open actions for Acme Market',
+    });
+    await user.click(actionsButton);
     await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
     await waitFor(() => expect(requestedCustomerIds).toContain(baseCustomer.id));
 
@@ -730,6 +770,7 @@ describe('CustomersPage', () => {
       await screen.findByRole('alert', { name: 'Could not open customer editor' }),
     ).toHaveTextContent('Something went wrong. Try again.');
     expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument();
+    expect(actionsButton).toHaveFocus();
   });
 
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {

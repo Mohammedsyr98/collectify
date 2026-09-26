@@ -16,6 +16,7 @@ export const customerResources = {
         },
         create: {
           close: 'Close customer form',
+          description: 'Create a customer for debt and payment tracking.',
           title: 'Create customer',
         },
         details: {
@@ -38,6 +39,8 @@ export const customerResources = {
         errors: customerApiErrorTranslations.en,
         edit: {
           close: 'Close customer form',
+          description: "Edit this customer's details.",
+          loading: 'Loading customer details.',
           title: 'Edit customer',
         },
         form: {
@@ -135,6 +138,7 @@ export const customerResources = {
         },
         create: {
           close: 'Musteri formunu kapat',
+          description: 'Borç ve ödeme takibi için bir müşteri oluşturun.',
           title: 'Musteri olustur',
         },
         details: {
@@ -157,6 +161,8 @@ export const customerResources = {
         errors: customerApiErrorTranslations.tr,
         edit: {
           close: 'Musteri formunu kapat',
+          description: 'Bu müşterinin bilgilerini düzenleyin.',
+          loading: 'Müşteri bilgileri yükleniyor.',
           title: 'Musteriyi duzenle',
         },
         form: {
@@ -254,6 +260,7 @@ export const customerResources = {
         },
         create: {
           close: 'أغلق نموذج العميل',
+          description: 'أنشئ عميلًا لتتبع الديون والمدفوعات.',
           title: 'أنشئ عميلًا',
         },
         details: {
@@ -276,6 +283,8 @@ export const customerResources = {
         errors: customerApiErrorTranslations.ar,
         edit: {
           close: 'أغلق نموذج العميل',
+          description: 'عدّل تفاصيل هذا العميل.',
+          loading: 'جارٍ تحميل تفاصيل العميل.',
           title: 'عدّل العميل',
         },
         form: {

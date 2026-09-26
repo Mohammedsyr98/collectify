@@ -95,7 +95,10 @@ describe('CustomerActionsCell', () => {
       within(actionsMenu).getByRole('menuitem', { name: 'Edit customer' }),
     );
 
-    expect(onEditCustomer).toHaveBeenCalledExactlyOnceWith('customer_456');
+    expect(onEditCustomer).toHaveBeenCalledExactlyOnceWith(
+      'customer_456',
+      screen.getByRole('button', { name: 'Open actions for North Star Cafe' }),
+    );
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });

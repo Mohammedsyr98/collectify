@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
@@ -15,11 +15,18 @@ import { SearchField } from '../../shared/ui/search/SearchField';
 export function CustomersPage() {
   const { t } = useTranslation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const createCustomerButtonRef = useRef<HTMLButtonElement>(null);
   const customerEditor = useCustomerEditor();
   const { customers, pagination, search, status } = useCustomerListView();
   const { createCustomer, isCreating } = useCreateCustomerMutation({
     onCreated: () => setIsCreateModalOpen(false),
   });
+  const openCustomerEditor = (
+    customerId: string,
+    returnFocusTarget: HTMLButtonElement | null,
+  ) => {
+    customerEditor.open({ customerId }, returnFocusTarget);
+  };
   const isTableLoading = status.status === 'loading';
   const showsCustomerTable = isTableLoading || status.status === 'ready';
 
@@ -49,6 +56,7 @@ export function CustomersPage() {
             <button
               className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-[5px] border-0 bg-primary px-4 text-[0.8rem] font-extrabold text-primary-foreground transition duration-150 hover:-translate-y-px hover:brightness-95"
               onClick={() => setIsCreateModalOpen(true)}
+              ref={createCustomerButtonRef}
               type="button"
             >
               <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
@@ -106,9 +114,7 @@ export function CustomersPage() {
             <CustomerTable
               customers={customers}
               isLoading={isTableLoading}
-              onEditCustomer={(customerId) =>
-                customerEditor.open({ customerId })
-              }
+              onEditCustomer={openCustomerEditor}
               onPrefetchEditCustomer={customerEditor.prefetch}
             />
           </div>
@@ -132,6 +138,7 @@ export function CustomersPage() {
           isSubmitting={isCreating}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={createCustomer}
+          returnFocusRef={createCustomerButtonRef}
         />
       ) : null}
       {customerEditor.dialog}

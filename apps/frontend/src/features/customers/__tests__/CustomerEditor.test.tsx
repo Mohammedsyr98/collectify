@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -39,7 +39,8 @@ describe('useCustomerEditor', () => {
 
     renderWithAppProviders(<CustomerEditorHarness />);
 
-    await user.click(screen.getByRole('button', { name: 'Open editor' }));
+    const openButton = screen.getByRole('button', { name: 'Open editor' });
+    await user.click(openButton);
     await user.clear(screen.getByLabelText('Name'));
     await user.type(screen.getByLabelText('Name'), 'Acme Wholesale');
     await user.click(screen.getByRole('button', { name: 'Save customer' }));
@@ -47,6 +48,22 @@ describe('useCustomerEditor', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument(),
     );
+    expect(openButton).toHaveFocus();
+  });
+
+  it('returns focus to the button that opened the editor', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(<CustomerEditorHarness />);
+
+    const openButton = screen.getByRole('button', { name: 'Open editor' });
+    await user.click(openButton);
+    await user.keyboard('{Escape}');
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Edit customer' }),
+    ).not.toBeInTheDocument();
+    expect(openButton).toHaveFocus();
   });
 
   it('keeps the active customer draft when another editor is opened during submission', async () => {
@@ -84,7 +101,8 @@ describe('useCustomerEditor', () => {
     await user.type(nameInput, 'Draft customer');
     await user.click(screen.getByRole('button', { name: 'Save customer' }));
 
-    await user.click(screen.getByRole('button', { name: 'Open another editor' }));
+    // Exercise the editor API while Radix correctly hides background controls from users.
+    fireEvent.click(screen.getByText('Open another editor'));
 
     expect(screen.getByLabelText('Name')).toHaveValue('Draft customer');
 
@@ -107,13 +125,17 @@ function CustomerEditorHarness() {
   return (
     <>
       <button
-        onClick={() => editor.open({ customer: baseCustomer })}
+        onClick={(event) =>
+          editor.open({ customer: baseCustomer }, event.currentTarget)
+        }
         type="button"
       >
         Open editor
       </button>
       <button
-        onClick={() => editor.open({ customer: northStarCustomer })}
+        onClick={(event) =>
+          editor.open({ customer: northStarCustomer }, event.currentTarget)
+        }
         type="button"
       >
         Open another editor
