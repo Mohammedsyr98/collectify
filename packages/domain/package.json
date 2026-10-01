@@ -1,0 +1,26 @@
+{
+  "name": "@collectify/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./debt-plan": {
+      "types": "./src/debt-plan/index.ts",
+      "import": "./dist/debt-plan/index.js",
+      "default": "./dist/debt-plan/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run && tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@collectify/eslint-config": "workspace:*",
+    "@collectify/typescript-config": "workspace:*",
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
