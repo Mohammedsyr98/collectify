@@ -37,14 +37,19 @@ export class DebtsService {
     customerId: string,
     request: CreateDebtRequest,
   ): Promise<DebtResponse> {
-    await this.requireOwnedCustomer(currentOwner, customerId);
-
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
     const debtId = randomUUID();
     const scheduleItemId = randomUUID();
+    const submittedScheduleItem = request.scheduleItems[0];
 
     const created = await this.databaseService.db.transaction(async (tx) => {
+      await this.requireOwnedCustomer(
+        tx,
+        currentOwner.ownerProfile.id,
+        customerId,
+      );
+
       const [debt] = await tx
         .insert(debts)
         .values({
@@ -58,20 +63,20 @@ export class DebtsService {
         })
         .returning();
 
-      const [scheduleItem] = await tx
+      const [createdScheduleItem] = await tx
         .insert(debtScheduleItems)
         .values({
           id: scheduleItemId,
           debtId,
           position: 1,
-          amount: request.totalAmount,
-          dueDate: request.paymentPlan.dueDate,
+          amount: submittedScheduleItem.amount,
+          dueDate: submittedScheduleItem.dueDate,
           createdAt: operationInstant,
           updatedAt: operationInstant,
         })
         .returning();
 
-      return { debt: debt!, scheduleItem: scheduleItem! };
+      return { debt: debt!, scheduleItem: createdScheduleItem! };
     });
 
     return toDebtResponse(
@@ -88,7 +93,11 @@ export class DebtsService {
   ): Promise<DebtListResponse> {
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
-    await this.requireOwnedCustomer(currentOwner, customerId);
+    await this.requireOwnedCustomer(
+      this.databaseService.db,
+      currentOwner.ownerProfile.id,
+      customerId,
+    );
 
     const customerFilter = eq(debts.customerId, customerId);
     const listFilter = query.search
@@ -178,20 +187,52 @@ export class DebtsService {
         .where(eq(debts.id, ownedDebt.id))
         .returning();
 
-      const [updatedScheduleItem] = await tx
-        .update(debtScheduleItems)
-        .set({
-          amount: request.totalAmount,
-          dueDate: request.paymentPlan.dueDate,
-          updatedAt: operationInstant,
-        })
-        .where(
-          and(
-            eq(debtScheduleItems.debtId, ownedDebt.id),
-            eq(debtScheduleItems.position, 1),
-          ),
-        )
-        .returning();
+      const submittedScheduleItem = request.scheduleItems[0];
+      let updatedScheduleItem: DebtScheduleItemRow | undefined;
+
+      if (submittedScheduleItem.id) {
+        [updatedScheduleItem] = await tx
+          .update(debtScheduleItems)
+          .set({
+            amount: submittedScheduleItem.amount,
+            dueDate: submittedScheduleItem.dueDate,
+            updatedAt: operationInstant,
+          })
+          .where(
+            and(
+              eq(debtScheduleItems.id, submittedScheduleItem.id),
+              eq(debtScheduleItems.debtId, ownedDebt.id),
+            ),
+          )
+          .returning();
+      } else {
+        const [deletedScheduleItem] = await tx
+          .delete(debtScheduleItems)
+          .where(
+            and(
+              eq(debtScheduleItems.debtId, ownedDebt.id),
+              eq(debtScheduleItems.position, 1),
+            ),
+          )
+          .returning();
+
+        if (!deletedScheduleItem) {
+          throw debtException(debtApiErrorCode.debtNotFound);
+        }
+
+        [updatedScheduleItem] = await tx
+          .insert(debtScheduleItems)
+          .values({
+            id: randomUUID(),
+            debtId: ownedDebt.id,
+            position: deletedScheduleItem.position,
+            amount: submittedScheduleItem.amount,
+            dueDate: submittedScheduleItem.dueDate,
+            createdAt: operationInstant,
+            updatedAt: operationInstant,
+          })
+          .returning();
+      }
 
       if (!debt || !updatedScheduleItem) {
         throw debtException(debtApiErrorCode.debtNotFound);
@@ -257,16 +298,17 @@ export class DebtsService {
   }
 
   private async requireOwnedCustomer(
-    currentOwner: AuthenticatedOwner,
+    executor: Pick<Database, 'select'>,
+    ownerProfileId: string,
     customerId: string,
   ): Promise<void> {
-    const [customer] = await this.databaseService.db
+    const [customer] = await executor
       .select({ id: customers.id })
       .from(customers)
       .where(
         and(
           eq(customers.id, customerId),
-          eq(customers.ownerProfileId, currentOwner.ownerProfile.id),
+          eq(customers.ownerProfileId, ownerProfileId),
         ),
       )
       .limit(1);
@@ -296,6 +338,21 @@ function toDebtResponse(
   scheduleRows: DebtScheduleItemRow[],
   businessDate: string,
 ): DebtResponse {
+  if (scheduleRows.length !== 1) {
+    throw new Error(
+      'A one-payment debt must have exactly one schedule item.',
+    );
+  }
+
+  const scheduleItem = scheduleRows[0];
+  const position = scheduleItem?.position;
+
+  if (!scheduleItem || position !== 1) {
+    throw new Error(
+      'A one-payment debt schedule item must have position 1.',
+    );
+  }
+
   return {
     id: debt.id,
     customerId: debt.customerId,
@@ -303,13 +360,13 @@ function toDebtResponse(
     totalAmount: debt.totalAmount,
     currency: debt.currency,
     paymentPlanType: 'onePayment',
-    scheduleItems: scheduleRows.map((scheduleItem) => ({
+    scheduleItems: [{
       id: scheduleItem.id,
-      position: scheduleItem.position as 1,
+      position,
       amount: scheduleItem.amount,
       dueDate: scheduleItem.dueDate,
       timing: getScheduleItemTiming(scheduleItem.dueDate, businessDate),
-    })) as DebtResponse['scheduleItems'],
+    }],
     createdAt: debt.createdAt.toISOString(),
     updatedAt: debt.updatedAt.toISOString(),
   };

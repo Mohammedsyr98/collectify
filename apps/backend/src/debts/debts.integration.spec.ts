@@ -71,10 +71,12 @@ describe('debt routes', () => {
           description: 'Website redesign',
           totalAmount: '125.50',
           currency: 'USD',
-          paymentPlan: {
-            type: 'onePayment',
-            dueDate: '2026-09-30',
-          },
+          scheduleItems: [
+            {
+              amount: '125.50',
+              dueDate: '2026-09-30',
+            },
+          ],
         }),
       },
     );
@@ -161,10 +163,13 @@ describe('debt routes', () => {
           description: 'Updated description',
           totalAmount: '275.75',
           currency: 'EUR',
-          paymentPlan: {
-            type: 'onePayment',
-            dueDate: '2026-09-01',
-          },
+          scheduleItems: [
+            {
+              id: 'debt_replace_schedule',
+              amount: '275.75',
+              dueDate: '2026-09-01',
+            },
+          ],
         }),
       },
     );
@@ -207,6 +212,102 @@ describe('debt routes', () => {
     });
     expect(after.debt_updated_at).not.toBe(before.debt_updated_at);
     expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
+  });
+
+  it('rejects a schedule identity that belongs to another debt', async () => {
+    const owner = await signUpOwner('debt-schedule-identity-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_identity_target',
+      createdAt: '2026-09-10 10:00:00',
+    });
+    await insertDebt({
+      id: 'debt_identity_other',
+      createdAt: '2026-09-10 10:00:00',
+    });
+
+    const before = await readDebtWithScheduleRows('debt_identity_target');
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_identity_target`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Should not be saved',
+          totalAmount: '275.75',
+          currency: 'EUR',
+          scheduleItems: [
+            {
+              id: 'debt_identity_other_schedule',
+              amount: '275.75',
+              dueDate: '2026-09-01',
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      code: 'DEBT_NOT_FOUND',
+      message: 'Debt was not found.',
+    });
+    expect(await readDebtWithScheduleRows('debt_identity_target')).toEqual(
+      before,
+    );
+  });
+
+  it('generates a new schedule identity when replacement omits one', async () => {
+    const owner = await signUpOwner('debt-schedule-new-identity-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_new_identity',
+      createdAt: '2026-09-10 10:00:00',
+    });
+
+    const before = await readDebtWithScheduleRows('debt_new_identity');
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_new_identity`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Replaced debt',
+          totalAmount: '275.75',
+          currency: 'EUR',
+          scheduleItems: [
+            {
+              amount: '275.75',
+              dueDate: '2026-09-01',
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    expect(replaced.scheduleItems[0]).toMatchObject({
+      position: 1,
+      amount: '275.75',
+      dueDate: '2026-09-01',
+    });
+    expect(replaced.scheduleItems[0]!.id).not.toBe(before[0]!.schedule_id);
+
+    const after = await readDebtWithScheduleRows('debt_new_identity');
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({
+      schedule_id: replaced.scheduleItems[0]!.id,
+      position: 1,
+      schedule_amount: '275.75',
+      schedule_due_date: '2026-09-01',
+    });
   });
 
   it('permanently deletes an owned one-payment debt and its schedule', async () => {
@@ -286,10 +387,12 @@ describe('debt routes', () => {
       description: 'Should not be saved',
       totalAmount: '999.99',
       currency: 'EUR',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-10-01',
-      },
+      scheduleItems: [
+        {
+          amount: '999.99',
+          dueDate: '2026-10-01',
+        },
+      ],
     });
     const expectedNotFoundBody = JSON.stringify({
       code: 'DEBT_NOT_FOUND',
@@ -376,10 +479,13 @@ describe('debt routes', () => {
             description: 'Should be rolled back',
             totalAmount: '999.99',
             currency: 'EUR',
-            paymentPlan: {
-              type: 'onePayment',
-              dueDate: '2026-10-01',
-            },
+            scheduleItems: [
+              {
+                id: 'debt_replacement_rollback_schedule',
+                amount: '999.99',
+                dueDate: '2026-10-01',
+              },
+            ],
           }),
         },
       );
@@ -411,10 +517,12 @@ describe('debt routes', () => {
           description: 'Website redesign',
           totalAmount: '125.50',
           currency: 'USD',
-          paymentPlan: {
-            type: 'onePayment',
-            dueDate: 'not-a-date',
-          },
+          scheduleItems: [
+            {
+              amount: '125.50',
+              dueDate: 'not-a-date',
+            },
+          ],
         }),
       },
     );
@@ -424,7 +532,7 @@ describe('debt routes', () => {
       code: 'VALIDATION_ERROR',
       message: 'Check the highlighted fields.',
       fieldErrors: {
-        paymentPlan: ['Enter a valid due date.'],
+        scheduleItems: ['Enter a valid due date.'],
       },
     });
   });
@@ -446,10 +554,12 @@ describe('debt routes', () => {
           description: 'Timing debt',
           totalAmount: '125.50',
           currency: 'USD',
-          paymentPlan: {
-            type: 'onePayment',
-            dueDate,
-          },
+          scheduleItems: [
+            {
+              amount: '125.50',
+              dueDate,
+            },
+          ],
         }),
       },
     );
@@ -990,10 +1100,12 @@ describe('debt routes', () => {
             description: 'Injected failure debt',
             totalAmount: '999.99',
             currency: 'USD',
-            paymentPlan: {
-              type: 'onePayment',
-              dueDate: '2026-09-30',
-            },
+            scheduleItems: [
+              {
+                amount: '999.99',
+                dueDate: '2026-09-30',
+              },
+            ],
           }),
         },
       );
