@@ -3,6 +3,12 @@ export const debtValidationCode = {
   debtDescriptionTooLong: 'DEBT_DESCRIPTION_TOO_LONG',
   debtDueDateInvalid: 'DEBT_DUE_DATE_INVALID',
   debtDueDateRequired: 'DEBT_DUE_DATE_REQUIRED',
+  debtScheduleItemAmountDoesNotMatchTotal:
+    'DEBT_SCHEDULE_ITEM_AMOUNT_DOES_NOT_MATCH_TOTAL',
+  debtScheduleItemAmountInvalid: 'DEBT_SCHEDULE_ITEM_AMOUNT_INVALID',
+  debtScheduleItemAmountMustBePositive:
+    'DEBT_SCHEDULE_ITEM_AMOUNT_MUST_BE_POSITIVE',
+  debtScheduleItemCountInvalid: 'DEBT_SCHEDULE_ITEM_COUNT_INVALID',
   debtTotalAmountInvalid: 'DEBT_TOTAL_AMOUNT_INVALID',
   debtTotalAmountTooLarge: 'DEBT_TOTAL_AMOUNT_TOO_LARGE',
   debtTotalAmountMustBePositive: 'DEBT_TOTAL_AMOUNT_MUST_BE_POSITIVE',
@@ -13,6 +19,10 @@ export const debtValidationCodes = [
   debtValidationCode.debtDescriptionTooLong,
   debtValidationCode.debtDueDateInvalid,
   debtValidationCode.debtDueDateRequired,
+  debtValidationCode.debtScheduleItemAmountDoesNotMatchTotal,
+  debtValidationCode.debtScheduleItemAmountInvalid,
+  debtValidationCode.debtScheduleItemAmountMustBePositive,
+  debtValidationCode.debtScheduleItemCountInvalid,
   debtValidationCode.debtTotalAmountInvalid,
   debtValidationCode.debtTotalAmountTooLarge,
   debtValidationCode.debtTotalAmountMustBePositive,

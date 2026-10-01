@@ -220,6 +220,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@collectify/domain':
+        specifier: workspace:*
+        version: link:../domain
       zod:
         specifier: ^4.0.0
         version: 4.4.3

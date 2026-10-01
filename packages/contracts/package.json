@@ -19,6 +19,7 @@
     "test": "vitest run && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@collectify/domain": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {

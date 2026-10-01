@@ -22,6 +22,14 @@ const debtValidationMessages = {
     'Description must be 200 characters or fewer.',
   [debtValidationCode.debtDueDateInvalid]: 'Enter a valid due date.',
   [debtValidationCode.debtDueDateRequired]: 'Due date is required.',
+  [debtValidationCode.debtScheduleItemAmountDoesNotMatchTotal]:
+    'Payment amount must match the debt total.',
+  [debtValidationCode.debtScheduleItemAmountInvalid]:
+    'Enter a valid payment amount.',
+  [debtValidationCode.debtScheduleItemAmountMustBePositive]:
+    'Payment amount must be greater than zero.',
+  [debtValidationCode.debtScheduleItemCountInvalid]:
+    'A one-payment debt must contain exactly one payment.',
   [debtValidationCode.debtTotalAmountInvalid]: 'Enter a valid amount.',
   [debtValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
   [debtValidationCode.debtTotalAmountMustBePositive]:

@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import {
+  debtPlanIssueCode,
+  validateDebtPlan,
+  type DebtPlan,
+  type DebtPlanIssue,
+} from '@collectify/domain/debt-plan';
 import { currencySchema } from '../owner-profile/owner-profile.js';
 import { oneBasedPageSchema } from '../pagination.js';
 import { debtValidationCode } from './validation-codes.js';
@@ -8,7 +14,6 @@ const createDebtAmountSchema = z
   .string()
   .trim()
   .regex(/^\d+(?:\.\d{1,2})?$/, debtValidationCode.debtTotalAmountInvalid)
-  .refine(isPositiveDebtAmount, debtValidationCode.debtTotalAmountMustBePositive)
   .refine(isWithinNumeric182Precision, debtValidationCode.debtTotalAmountTooLarge)
   .transform((amount) => {
     const [wholeAmount, fractionalAmount = ''] = amount.split('.');
@@ -16,6 +21,11 @@ const createDebtAmountSchema = z
 
     return `${normalizedWholeAmount}.${fractionalAmount.padEnd(2, '0')}`;
   });
+
+const createDebtTotalAmountSchema = createDebtAmountSchema.refine(
+  isPositiveDebtAmount,
+  debtValidationCode.debtTotalAmountMustBePositive,
+);
 
 const canonicalDebtAmountSchema = z
   .string()
@@ -34,29 +44,107 @@ function isWithinNumeric182Precision(amount: string): boolean {
   return significantWholeAmount.length <= 16;
 }
 
-const onePaymentPlanSchema = z
+const debtDueDateSchema = z
+  .string()
+  .min(1, debtValidationCode.debtDueDateRequired)
+  .pipe(z.iso.date(debtValidationCode.debtDueDateInvalid));
+
+const createScheduleItemSchema = z
   .object({
-    type: z.literal('onePayment'),
-    dueDate: z
-      .string()
-      .min(1, debtValidationCode.debtDueDateRequired)
-      .pipe(z.iso.date(debtValidationCode.debtDueDateInvalid)),
+    amount: createDebtAmountSchema,
+    dueDate: debtDueDateSchema,
   })
   .strict();
 
-const onePaymentDebtRequestSchema = z.object({
+const replaceScheduleItemSchema = z
+  .object({
+    id: z.string().min(1).optional(),
+    amount: createDebtAmountSchema,
+    dueDate: debtDueDateSchema,
+  })
+  .strict();
+
+const debtRequestFields = {
   description: z
     .string()
     .trim()
     .min(1, debtValidationCode.debtDescriptionRequired)
     .max(200, debtValidationCode.debtDescriptionTooLong),
-  totalAmount: createDebtAmountSchema,
+  totalAmount: createDebtTotalAmountSchema,
   currency: currencySchema,
-  paymentPlan: onePaymentPlanSchema,
-});
+};
 
-export const createDebtRequestSchema = onePaymentDebtRequestSchema;
-export const replaceDebtRequestSchema = onePaymentDebtRequestSchema;
+function buildDebtRequestSchema<T extends z.ZodType>(scheduleItemSchema: T) {
+  return z
+    .object({
+      ...debtRequestFields,
+      scheduleItems: z.tuple([scheduleItemSchema]),
+    })
+    .strict()
+    .superRefine((request, context) => {
+      const validation = validateDebtPlan({
+        totalAmount: request.totalAmount,
+        scheduleItems: request.scheduleItems as DebtPlan['scheduleItems'],
+      });
+
+      if (validation.success) {
+        return;
+      }
+
+      for (const issue of validation.issues) {
+        context.addIssue({
+          code: 'custom',
+          path: debtPlanIssuePath(issue),
+          message: debtPlanIssueMessage(issue),
+        });
+      }
+    });
+}
+
+export const createDebtRequestSchema = buildDebtRequestSchema(
+  createScheduleItemSchema,
+);
+export const replaceDebtRequestSchema = buildDebtRequestSchema(
+  replaceScheduleItemSchema,
+);
+
+function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
+  switch (issue.target.kind) {
+    case 'schedule':
+      return ['scheduleItems'];
+    case 'totalAmount':
+      return ['totalAmount'];
+    case 'scheduleItemAmount':
+      return ['scheduleItems', issue.target.index, 'amount'];
+    case 'scheduleItemDueDate':
+      return ['scheduleItems', issue.target.index, 'dueDate'];
+    default:
+      return assertNever(issue.target);
+  }
+}
+
+function debtPlanIssueMessage(issue: DebtPlanIssue): string {
+  switch (issue.code) {
+    case debtPlanIssueCode.scheduleItemCountInvalid:
+      return debtValidationCode.debtScheduleItemCountInvalid;
+    case debtPlanIssueCode.totalAmountInvalid:
+      return debtValidationCode.debtTotalAmountInvalid;
+    case debtPlanIssueCode.scheduleItemAmountInvalid:
+      return debtValidationCode.debtScheduleItemAmountInvalid;
+    case debtPlanIssueCode.scheduleItemAmountNotPositive:
+      return debtValidationCode.debtScheduleItemAmountMustBePositive;
+    case debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal:
+      return debtValidationCode.debtScheduleItemAmountDoesNotMatchTotal;
+    case debtPlanIssueCode.scheduleItemDueDateInvalid:
+      return debtValidationCode.debtDueDateInvalid;
+    default:
+      return assertNever(issue.code);
+  }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled debt plan value: ${String(value)}`);
+}
 
 const onePaymentScheduleItemSchema = z.object({
   id: z.string().min(1),
