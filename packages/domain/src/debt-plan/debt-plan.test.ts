@@ -76,26 +76,6 @@ describe('validateDebtPlan', () => {
     });
   });
 
-  it('rejects amounts that cannot be represented by NUMERIC(18,2)', () => {
-    const issues = issuesFor({
-      totalAmount: '10000000000000000.00',
-      scheduleItems: [
-        { amount: '10000000000000000.00', dueDate: '2026-09-30' },
-      ],
-    });
-
-    expect(issues).toEqual([
-      {
-        code: debtPlanIssueCode.totalAmountInvalid,
-        target: { kind: 'totalAmount' },
-      },
-      {
-        code: debtPlanIssueCode.scheduleItemAmountInvalid,
-        target: { kind: 'scheduleItemAmount', index: 0 },
-      },
-    ]);
-  });
-
   it('returns independent issues together', () => {
     const issues = issuesFor({
       totalAmount: '1.00',

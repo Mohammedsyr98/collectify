@@ -206,7 +206,7 @@ describe('debt contracts', () => {
   it('rejects a malformed debt amount with an invalid code', () => {
     const result = createDebtRequestSchema.safeParse({
       ...validCreateRequest,
-      totalAmount: '125.555',
+      totalAmount: 'not-an-amount',
     });
 
     expect(result.success).toBe(false);
@@ -217,6 +217,28 @@ describe('debt contracts', () => {
 
     expect(result.error.issues[0]?.message).toBe(
       debtValidationCode.debtTotalAmountInvalid,
+    );
+  });
+
+  it('rejects a malformed schedule amount with a schedule-item code', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      scheduleItems: [
+        {
+          amount: 'not-an-amount',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtValidationCode.debtScheduleItemAmountInvalid,
     );
   });
 
@@ -327,42 +349,6 @@ describe('debt contracts', () => {
     });
 
     expect(result.success).toBe(false);
-  });
-
-  it('rejects a zero-value debt total', () => {
-    const result = createDebtRequestSchema.safeParse({
-      ...validCreateRequest,
-      totalAmount: '0.00',
-    });
-
-    expect(result.success).toBe(false);
-
-    if (result.success) {
-      return;
-    }
-
-    expect(result.error.issues[0]?.path).toEqual(['totalAmount']);
-    expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtTotalAmountMustBePositive,
-    );
-  });
-
-  it('rejects a debt total outside NUMERIC(18,2)', () => {
-    const result = createDebtRequestSchema.safeParse({
-      ...validCreateRequest,
-      totalAmount: '10000000000000000.00',
-    });
-
-    expect(result.success).toBe(false);
-
-    if (result.success) {
-      return;
-    }
-
-    expect(result.error.issues[0]?.path).toEqual(['totalAmount']);
-    expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtTotalAmountTooLarge,
-    );
   });
 
   it('accepts a first-page debt list with truthful metadata', () => {

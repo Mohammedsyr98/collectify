@@ -1,4 +1,5 @@
 export type DebtPlan = {
+  /** Amounts and dates are canonicalized by the contract layer before validation. */
   readonly totalAmount: string;
   readonly scheduleItems: readonly {
     readonly amount: string;
@@ -7,8 +8,6 @@ export type DebtPlan = {
 };
 export const debtPlanIssueCode = {
   scheduleItemCountInvalid: 'SCHEDULE_ITEM_COUNT_INVALID',
-  totalAmountInvalid: 'TOTAL_AMOUNT_INVALID',
-  scheduleItemAmountInvalid: 'SCHEDULE_ITEM_AMOUNT_INVALID',
   scheduleItemAmountNotPositive: 'SCHEDULE_ITEM_AMOUNT_NOT_POSITIVE',
   scheduleItemAmountDoesNotMatchTotal: 'SCHEDULE_ITEM_AMOUNT_DOES_NOT_MATCH_TOTAL',
   scheduleItemDueDateInvalid: 'SCHEDULE_ITEM_DUE_DATE_INVALID',
@@ -18,7 +17,6 @@ export type DebtPlanIssueCode = (typeof debtPlanIssueCode)[keyof typeof debtPlan
 
 export type DebtPlanIssueTarget =
   | { readonly kind: 'schedule' }
-  | { readonly kind: 'totalAmount' }
   | { readonly kind: 'scheduleItemAmount'; readonly index: number }
   | { readonly kind: 'scheduleItemDueDate'; readonly index: number };
 
@@ -30,10 +28,6 @@ export type DebtPlanIssue = {
 export type DebtPlanValidationResult =
   | { readonly success: true }
   | { readonly success: false; readonly issues: readonly DebtPlanIssue[] };
-
-const fixedScaleDecimalPattern = /^\d+\.\d{2}$/;
-const dateOnlyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
-const numeric182MaximumWholeDigits = 16;
 
 export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   const issues: DebtPlanIssue[] = [];
@@ -47,35 +41,21 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
 
   const totalMinorUnits = parseMinorUnits(plan.totalAmount);
 
-  if (totalMinorUnits === null) {
-    issues.push({
-      code: debtPlanIssueCode.totalAmountInvalid,
-      target: { kind: 'totalAmount' },
-    });
-  }
-
   for (const [index, scheduleItem] of plan.scheduleItems.entries()) {
     const scheduleItemMinorUnits = parseMinorUnits(scheduleItem.amount);
 
-    if (scheduleItemMinorUnits === null) {
+    if (scheduleItemMinorUnits === 0n) {
       issues.push({
-        code: debtPlanIssueCode.scheduleItemAmountInvalid,
+        code: debtPlanIssueCode.scheduleItemAmountNotPositive,
         target: { kind: 'scheduleItemAmount', index },
       });
-    } else {
-      if (scheduleItemMinorUnits === 0n) {
-        issues.push({
-          code: debtPlanIssueCode.scheduleItemAmountNotPositive,
-          target: { kind: 'scheduleItemAmount', index },
-        });
-      }
+    }
 
-      if (totalMinorUnits !== null && scheduleItemMinorUnits !== totalMinorUnits) {
-        issues.push({
-          code: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
-          target: { kind: 'scheduleItemAmount', index },
-        });
-      }
+    if (scheduleItemMinorUnits !== totalMinorUnits) {
+      issues.push({
+        code: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
+        target: { kind: 'scheduleItemAmount', index },
+      });
     }
 
     if (!isValidDateOnly(scheduleItem.dueDate)) {
@@ -89,33 +69,23 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   return issues.length === 0 ? { success: true } : { success: false, issues };
 }
 
-function parseMinorUnits(amount: string): bigint | null {
-  if (!fixedScaleDecimalPattern.test(amount)) {
-    return null;
-  }
-
+function parseMinorUnits(amount: string): bigint {
   const [wholeAmount, fractionalAmount] = amount.split('.');
-  const significantWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
-
-  if (significantWholeAmount.length > numeric182MaximumWholeDigits) {
-    return null;
-  }
-
-  return BigInt(`${significantWholeAmount}${fractionalAmount}`);
+  return BigInt(`${wholeAmount}${fractionalAmount}`);
 }
 
 function isValidDateOnly(value: string): boolean {
-  const match = dateOnlyPattern.exec(value);
+  const [year, month, day] = value.split('-').map(Number);
 
-  if (!match) {
-    return false;
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-
-  if (year === 0 || month < 1 || month > 12 || day < 1) {
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    year === 0 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1
+  ) {
     return false;
   }
 
