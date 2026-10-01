@@ -1,13 +1,15 @@
 import { z } from 'zod';
 
 import {
-  debtPlanIssueCode,
   validateDebtPlan,
   type DebtPlanIssue,
 } from '@collectify/domain/debt-plan';
 import { currencySchema } from '../owner-profile/owner-profile.js';
 import { oneBasedPageSchema } from '../pagination.js';
-import { debtValidationCode } from './validation-codes.js';
+import {
+  debtRequestValidationCode,
+  type DebtValidationCode,
+} from './validation-codes.js';
 
 function createDebtAmountSchema(invalidCode: string) {
   return z
@@ -23,10 +25,10 @@ function createDebtAmountSchema(invalidCode: string) {
 }
 
 const createDebtTotalAmountSchema = createDebtAmountSchema(
-  debtValidationCode.debtTotalAmountInvalid,
+  debtRequestValidationCode.debtTotalAmountInvalid,
 );
 const createDebtScheduleAmountSchema = createDebtAmountSchema(
-  debtValidationCode.debtScheduleItemAmountInvalid,
+  debtRequestValidationCode.debtScheduleItemAmountInvalid,
 );
 const canonicalDebtAmountSchema = z.string().regex(/^\d+\.\d{2}$/);
 const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,8 +36,8 @@ const dateOnlySyntaxSchema = z.string().regex(dateOnlySyntaxPattern);
 
 const debtDueDateSchema = z
   .string()
-  .min(1, debtValidationCode.debtDueDateRequired)
-  .regex(dateOnlySyntaxPattern, debtValidationCode.debtDueDateInvalid);
+  .min(1, debtRequestValidationCode.debtDueDateRequired)
+  .regex(dateOnlySyntaxPattern, debtRequestValidationCode.debtDueDateInvalid);
 
 const createScheduleItemSchema = z
   .object({
@@ -56,8 +58,8 @@ const debtRequestFields = {
   description: z
     .string()
     .trim()
-    .min(1, debtValidationCode.debtDescriptionRequired)
-    .max(200, debtValidationCode.debtDescriptionTooLong),
+    .min(1, debtRequestValidationCode.debtDescriptionRequired)
+    .max(200, debtRequestValidationCode.debtDescriptionTooLong),
   totalAmount: createDebtTotalAmountSchema,
   currency: currencySchema,
 };
@@ -129,19 +131,8 @@ function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
   }
 }
 
-function debtPlanIssueMessage(issue: DebtPlanIssue): string {
-  switch (issue.code) {
-    case debtPlanIssueCode.scheduleItemCountInvalid:
-      return debtValidationCode.debtScheduleItemCountInvalid;
-    case debtPlanIssueCode.scheduleItemAmountNotPositive:
-      return debtValidationCode.debtScheduleItemAmountMustBePositive;
-    case debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal:
-      return debtValidationCode.debtScheduleItemAmountDoesNotMatchTotal;
-    case debtPlanIssueCode.scheduleItemDueDateInvalid:
-      return debtValidationCode.debtDueDateInvalid;
-    default:
-      return assertNever(issue.code);
-  }
+function debtPlanIssueMessage(issue: DebtPlanIssue): DebtValidationCode {
+  return issue.code;
 }
 
 function assertNever(value: never): never {

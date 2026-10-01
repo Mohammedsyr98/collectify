@@ -1,5 +1,4 @@
 export type DebtPlan = {
-  /** Amounts and dates are canonicalized by the contract layer before validation. */
   readonly totalAmount: string;
   readonly scheduleItems: readonly {
     readonly amount: string;

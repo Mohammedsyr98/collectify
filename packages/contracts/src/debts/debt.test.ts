@@ -7,7 +7,10 @@ import {
   debtResponseSchema,
   replaceDebtRequestSchema,
 } from './debt.js';
-import { debtValidationCode } from './validation-codes.js';
+import {
+  debtPlanIssueCode,
+  debtRequestValidationCode,
+} from './validation-codes.js';
 
 const validCreateRequest = {
   description: '  Website redesign  ',
@@ -150,7 +153,7 @@ describe('debt contracts', () => {
     expect(result.error.issues).toContainEqual(
       expect.objectContaining({
         path: ['scheduleItems', 0, 'amount'],
-        message: debtValidationCode.debtScheduleItemAmountDoesNotMatchTotal,
+        message: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
       }),
     );
   });
@@ -176,7 +179,7 @@ describe('debt contracts', () => {
     expect(result.error.issues).toContainEqual(
       expect.objectContaining({
         path: ['scheduleItems', 0, 'amount'],
-        message: debtValidationCode.debtScheduleItemAmountMustBePositive,
+        message: debtPlanIssueCode.scheduleItemAmountNotPositive,
       }),
     );
   });
@@ -199,7 +202,7 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDueDateInvalid,
+      debtPlanIssueCode.scheduleItemDueDateInvalid,
     );
   });
 
@@ -216,7 +219,7 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtTotalAmountInvalid,
+      debtRequestValidationCode.debtTotalAmountInvalid,
     );
   });
 
@@ -238,7 +241,7 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtScheduleItemAmountInvalid,
+      debtRequestValidationCode.debtScheduleItemAmountInvalid,
     );
   });
 
@@ -264,7 +267,7 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDescriptionRequired,
+      debtRequestValidationCode.debtDescriptionRequired,
     );
   });
 
@@ -281,7 +284,7 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDescriptionTooLong,
+      debtRequestValidationCode.debtDescriptionTooLong,
     );
   });
 
