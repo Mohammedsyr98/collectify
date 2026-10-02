@@ -25,6 +25,8 @@ const debtValidationMessages = {
   [debtRequestValidationCode.debtDueDateRequired]: 'Due date is required.',
   [debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal]:
     'Payment amount must match the debt total.',
+  [debtPlanIssueCode.scheduleTotalAmountMismatch]:
+    'Payment amounts must match the debt total.',
   [debtRequestValidationCode.debtScheduleItemAmountInvalid]:
     'Enter a valid payment amount.',
   [debtPlanIssueCode.scheduleItemAmountNotPositive]:
@@ -33,6 +35,8 @@ const debtValidationMessages = {
     'A one-payment debt must contain exactly one payment.',
   [debtPlanIssueCode.scheduleItemDueDateInvalid]:
     'Enter a valid due date.',
+  [debtPlanIssueCode.scheduleItemDueDateNotAfterPrevious]:
+    'Payment dates must be in increasing order.',
   [debtRequestValidationCode.debtTotalAmountInvalid]: 'Enter a valid amount.',
   [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
 } satisfies Record<DebtValidationCode, string>;
