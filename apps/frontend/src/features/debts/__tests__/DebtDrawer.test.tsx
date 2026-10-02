@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CreateDebtRequest } from '@collectify/contracts';
+import type { CreateDebtRequest, ReplaceDebtRequest } from '@collectify/contracts';
 
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
@@ -38,7 +38,7 @@ describe('DebtDrawer', () => {
     expect(screen.getByLabelText('Description')).toHaveFocus();
   });
 
-  it('submits a normalized one-payment debt request', async () => {
+  it('submits a normalized create request with an id-less schedule item', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(
       async () => undefined,
@@ -63,10 +63,46 @@ describe('DebtDrawer', () => {
         description: 'Website redesign',
         totalAmount: '125.50',
         currency: 'USD',
-        paymentPlan: {
-          type: 'onePayment',
-          dueDate: '2026-09-30',
-        },
+        scheduleItems: [{ amount: '125.50', dueDate: '2026-09-30' }],
+      }),
+    );
+  });
+
+  it('submits an edited debt with its saved currency and schedule identity', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
+      async () => undefined,
+    );
+    const debt = createDebtFixture('customer_123', { currency: 'EUR' });
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText('Total amount'));
+    await user.type(screen.getByLabelText('Total amount'), '275.7');
+    await user.clear(screen.getByLabelText('Due date'));
+    await user.type(screen.getByLabelText('Due date'), '2026-10-15');
+    await user.click(screen.getByRole('button', { name: 'Save debt' }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        description: debt.description,
+        totalAmount: '275.70',
+        currency: 'EUR',
+        scheduleItems: [
+          {
+            id: debt.scheduleItems[0].id,
+            amount: '275.70',
+            dueDate: '2026-10-15',
+          },
+        ],
       }),
     );
   });
@@ -74,7 +110,6 @@ describe('DebtDrawer', () => {
   it('prefills the edit form from the selected debt', () => {
     renderWithAppProviders(
       <DebtDrawer
-        defaultCurrency="TRY"
         debt={createDebtFixture('customer_123', {
           description: 'Website redesign',
           totalAmount: '275.75',
@@ -109,7 +144,6 @@ describe('DebtDrawer', () => {
   it('describes edit mode accessibly', () => {
     renderWithAppProviders(
       <DebtDrawer
-        defaultCurrency="USD"
         debt={createDebtFixture('customer_123')}
         isSubmitting={false}
         mode="edit"
@@ -177,9 +211,42 @@ describe('DebtDrawer', () => {
     await user.click(screen.getByRole('button', { name: 'Save debt' }));
 
     expect(dueDate).toHaveAccessibleDescription('Due date is required.');
+    expect(dueDate).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(description).toHaveValue('Website redesign');
     expect(screen.getByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+  });
+
+  it('shows schedule-item amount errors on the total amount field after submission', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const totalAmount = screen.getByLabelText('Total amount');
+    const dueDate = screen.getByLabelText('Due date');
+    await user.type(screen.getByLabelText('Description'), 'Website redesign');
+    await user.type(totalAmount, '0');
+    await user.type(dueDate, '2026-09-30');
+
+    expect(totalAmount).not.toHaveAccessibleDescription();
+
+    await user.click(screen.getByRole('button', { name: 'Save debt' }));
+
+    expect(totalAmount).toHaveAccessibleDescription(
+      'Payment amount must be greater than zero.',
+    );
+    expect(totalAmount).toHaveFocus();
+    expect(dueDate).not.toHaveAccessibleDescription();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(totalAmount).toHaveValue('0');
   });
 
   it('keeps keyboard focus inside the drawer', async () => {

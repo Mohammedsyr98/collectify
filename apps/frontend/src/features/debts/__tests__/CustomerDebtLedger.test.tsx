@@ -398,12 +398,14 @@ describe('CustomerDebtLedger', () => {
   it('creates a debt from customer details and keeps it after a route remount', async () => {
     const user = userEvent.setup();
     let debtList: DebtListResponse = emptyDebtList;
+    let creationRequest: unknown;
 
     server.use(
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(debtList),
       ),
-      http.post(`${getBackendUrl()}/customers/:customerId/debts`, () => {
+      http.post(`${getBackendUrl()}/customers/:customerId/debts`, async ({ request }) => {
+        creationRequest = await request.json();
         debtList = {
           items: [createdDebt],
           page: 1,
@@ -423,6 +425,13 @@ describe('CustomerDebtLedger', () => {
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Debt created' })).toBeInTheDocument();
+
+    expect(creationRequest).toEqual({
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+      scheduleItems: [{ amount: '125.50', dueDate: '2026-09-30' }],
+    });
 
     firstRender.unmount();
     renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
@@ -1152,7 +1161,7 @@ describe('CustomerDebtLedger', () => {
             code: 'VALIDATION_ERROR',
             message: 'Check the highlighted fields.',
             fieldErrors: {
-              paymentPlan: ['DEBT_DUE_DATE_INVALID'],
+              scheduleItems: ['Enter a valid due date.'],
             },
           },
           { status: 400 },

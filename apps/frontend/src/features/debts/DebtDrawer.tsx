@@ -1,89 +1,63 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
 import { type RefObject } from 'react';
-import {
-  FormProvider,
-  useForm,
-  type Resolver,
-} from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import {
-  createDebtRequestSchema,
-  type DebtResponse,
-  type CreateDebtRequest,
-  type Currency,
+import type {
+  DebtResponse,
+  CreateDebtRequest,
+  ReplaceDebtRequest,
+  Currency,
 } from '@collectify/contracts';
 
 import { FormInput } from '../../shared/ui/form/FormInput';
 import { FormSelect } from '../../shared/ui/form/FormSelect';
 import { useDebtValidationErrorFormatter } from './localization/useDebtValidationErrorFormatter';
-
-type DebtFormValues = {
-  description: string;
-  totalAmount: string;
-  currency: Currency;
-  paymentPlan: {
-    type: 'onePayment';
-    dueDate: string;
-  };
-};
-
-const createDebtFormResolver = zodResolver(
-  createDebtRequestSchema,
-) as Resolver<DebtFormValues, unknown, CreateDebtRequest>;
+import {
+  debtDraftResolver,
+  type DebtDraft,
+} from './debt-draft-resolver';
 
 type DebtDrawerProps = {
-  defaultCurrency: Currency;
   isSubmitting: boolean;
   onClose: () => void;
-  onSubmit: (request: CreateDebtRequest) => Promise<void>;
   returnFocusRef?: RefObject<HTMLElement | null>;
 } & (
   | {
       debt?: never;
       mode?: 'create';
+      defaultCurrency: Currency;
+      onSubmit: (request: CreateDebtRequest) => Promise<void>;
     }
   | {
       debt: DebtResponse;
       mode: 'edit';
+      defaultCurrency?: never;
+      onSubmit: (request: ReplaceDebtRequest) => Promise<void>;
     }
 );
 
-export function DebtDrawer({
-  defaultCurrency,
-  debt,
-  isSubmitting,
-  mode = 'create',
-  onClose,
-  onSubmit,
-  returnFocusRef,
-}: DebtDrawerProps) {
+export function DebtDrawer(props: DebtDrawerProps) {
+  const { isSubmitting, mode = 'create', onClose, returnFocusRef } = props;
   const { t } = useTranslation();
   const formatValidationError = useDebtValidationErrorFormatter();
-  const form = useForm<DebtFormValues, unknown, CreateDebtRequest>({
+  const form = useForm<DebtDraft, unknown, CreateDebtRequest>({
     defaultValues:
-      mode === 'edit' && debt
+      props.mode === 'edit'
         ? {
-            description: debt.description,
-            totalAmount: debt.totalAmount,
-            currency: debt.currency,
-            paymentPlan: {
-              type: 'onePayment',
-              dueDate: debt.scheduleItems[0]?.dueDate ?? '',
-            },
+            description: props.debt.description,
+            totalAmount: props.debt.totalAmount,
+            currency: props.debt.currency,
+            dueDate: props.debt.scheduleItems[0].dueDate,
           }
         : {
             description: '',
             totalAmount: '',
-            currency: defaultCurrency,
-            paymentPlan: {
-              type: 'onePayment',
-              dueDate: '',
-            },
+            currency: props.defaultCurrency,
+            dueDate: '',
           },
-    resolver: createDebtFormResolver,
+    resolver: debtDraftResolver,
   });
 
   return (
@@ -149,9 +123,23 @@ export function DebtDrawer({
             <form
               className="grid gap-[13px]"
               noValidate
-              onSubmit={form.handleSubmit((request) => onSubmit(request))}
+              onSubmit={form.handleSubmit((request) => {
+                if (props.mode === 'edit') {
+                  return props.onSubmit({
+                    ...request,
+                    scheduleItems: [
+                      {
+                        ...request.scheduleItems[0],
+                        id: props.debt.scheduleItems[0].id,
+                      },
+                    ],
+                  });
+                }
+
+                return props.onSubmit(request);
+              })}
             >
-              <FormInput<DebtFormValues>
+              <FormInput<DebtDraft>
                 autoComplete="off"
                 icon={<FileText aria-hidden="true" size={16} strokeWidth={2.2} />}
                 label={t('debts.form.descriptionLabel')}
@@ -160,7 +148,7 @@ export function DebtDrawer({
                 type="text"
                 formatError={formatValidationError}
               />
-              <FormInput<DebtFormValues>
+              <FormInput<DebtDraft>
                 autoComplete="off"
                 icon={
                   <CircleDollarSign
@@ -176,7 +164,7 @@ export function DebtDrawer({
                 inputMode="decimal"
                 formatError={formatValidationError}
               />
-              <FormSelect<DebtFormValues>
+              <FormSelect<DebtDraft>
                 icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
                 label={t('debts.form.currencyLabel')}
                 name="currency"
@@ -187,14 +175,22 @@ export function DebtDrawer({
                 ]}
                 formatError={formatValidationError}
               />
-              <FormInput<DebtFormValues>
+              <FormInput<DebtDraft>
                 autoComplete="off"
                 icon={<CalendarDays aria-hidden="true" size={16} strokeWidth={2.2} />}
                 label={t('debts.form.dueDateLabel')}
-                name="paymentPlan.dueDate"
+                name="dueDate"
                 type="date"
                 formatError={formatValidationError}
               />
+              {form.formState.errors.root?.message ? (
+                <p
+                  className="m-0 text-[0.72rem] font-bold leading-[1.35] text-status-overdue-foreground"
+                  role="alert"
+                >
+                  {formatValidationError(form.formState.errors.root.message)}
+                </p>
+              ) : null}
               <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
                 <Dialog.Close asChild>
                   <button
