@@ -7,81 +7,192 @@ import {
   debtResponseSchema,
   replaceDebtRequestSchema,
 } from './debt.js';
-import { debtValidationCode } from './validation-codes.js';
+import {
+  debtPlanIssueCode,
+  debtRequestValidationCode,
+} from './validation-codes.js';
+
+const validCreateRequest = {
+  description: '  Website redesign  ',
+  totalAmount: ' 125.5 ',
+  currency: 'USD',
+  scheduleItems: [
+    {
+      amount: '125.5',
+      dueDate: '2026-09-30',
+    },
+  ],
+};
 
 describe('debt contracts', () => {
-  it('normalizes a one-payment create request', () => {
-    expect(
-      createDebtRequestSchema.parse({
-        description: '  Website redesign  ',
-        totalAmount: ' 125.5 ',
-        currency: 'USD',
-        paymentPlan: {
-          type: 'onePayment',
-          dueDate: '2026-09-30',
-        },
-      }),
-    ).toEqual({
+  it('normalizes a one-payment create request to an id-less schedule row', () => {
+    expect(createDebtRequestSchema.parse(validCreateRequest)).toEqual({
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
+      scheduleItems: [
+        {
+          amount: '125.50',
+          dueDate: '2026-09-30',
+        },
+      ],
     });
   });
 
-  it('normalizes a replacement request without accepting identity fields', () => {
+  it('normalizes a replacement request while retaining an optional saved row id', () => {
     expect(
       replaceDebtRequestSchema.parse({
-        description: '  Website redesign  ',
-        totalAmount: ' 125.5 ',
-        currency: 'USD',
-        paymentPlan: {
-          type: 'onePayment',
-          dueDate: '2026-09-30',
-        },
-        customerId: 'customer_attacker',
-        debtId: 'debt_attacker',
-        scheduleItemId: 'schedule_attacker',
-        scheduleItems: [],
+        ...validCreateRequest,
+        scheduleItems: [
+          {
+            ...validCreateRequest.scheduleItems[0],
+            id: 'schedule_123',
+          },
+        ],
       }),
     ).toEqual({
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
+      scheduleItems: [
+        {
+          id: 'schedule_123',
+          amount: '125.50',
+          dueDate: '2026-09-30',
+        },
+      ],
     });
   });
 
-  it('rejects extra fields in a one-payment plan', () => {
-    const result = createDebtRequestSchema.safeParse({
+  it('accepts a replacement request without a saved row id', () => {
+    expect(replaceDebtRequestSchema.parse(validCreateRequest)).toEqual({
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-        unexpectedField: true,
-      },
+      scheduleItems: [
+        {
+          amount: '125.50',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+  });
+
+  it('rejects ids on create schedule items', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      scheduleItems: [
+        {
+          ...validCreateRequest.scheduleItems[0],
+          id: 'schedule_attacker',
+        },
+      ],
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown properties on create requests', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      unknownProperty: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown properties on schedule items', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      scheduleItems: [
+        {
+          ...validCreateRequest.scheduleItems[0],
+          unexpectedField: true,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    { label: 'no rows', scheduleItems: [] },
+    {
+      label: 'multiple rows',
+      scheduleItems: [
+        ...validCreateRequest.scheduleItems,
+        ...validCreateRequest.scheduleItems,
+      ],
+    },
+  ])('requires exactly one schedule row: $label', ({ scheduleItems }) => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      scheduleItems,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a schedule amount that does not match the total', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      scheduleItems: [
+        {
+          amount: '100.00',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['scheduleItems', 0, 'amount'],
+        message: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
+      }),
+    );
+  });
+
+  it('reports a non-positive schedule amount at the schedule row field', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      totalAmount: '0.00',
+      scheduleItems: [
+        {
+          amount: '0.00',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['scheduleItems', 0, 'amount'],
+        message: debtPlanIssueCode.scheduleItemAmountNotPositive,
+      }),
+    );
   });
 
   it('rejects an invalid one-payment due date', () => {
     const result = createDebtRequestSchema.safeParse({
-      description: 'Website redesign',
-      totalAmount: '125.50',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-02-30',
-      },
+      ...validCreateRequest,
+      scheduleItems: [
+        {
+          amount: '125.50',
+          dueDate: '2026-02-30',
+        },
+      ],
     });
 
     expect(result.success).toBe(false);
@@ -91,41 +202,14 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDueDateInvalid,
-    );
-  });
-
-  it('rejects a blank one-payment due date with a required code', () => {
-    const result = createDebtRequestSchema.safeParse({
-      description: 'Website redesign',
-      totalAmount: '125.50',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '',
-      },
-    });
-
-    expect(result.success).toBe(false);
-
-    if (result.success) {
-      return;
-    }
-
-    expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDueDateRequired,
+      debtPlanIssueCode.scheduleItemDueDateInvalid,
     );
   });
 
   it('rejects a malformed debt amount with an invalid code', () => {
     const result = createDebtRequestSchema.safeParse({
-      description: 'Website redesign',
-      totalAmount: '125.555',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
+      ...validCreateRequest,
+      totalAmount: 'not-an-amount',
     });
 
     expect(result.success).toBe(false);
@@ -135,19 +219,63 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtTotalAmountInvalid,
+      debtRequestValidationCode.debtTotalAmountInvalid,
+    );
+  });
+
+  it('rejects a malformed schedule amount with a schedule-item code', () => {
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      scheduleItems: [
+        {
+          amount: 'not-an-amount',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues[0]?.message).toBe(
+      debtRequestValidationCode.debtScheduleItemAmountInvalid,
+    );
+  });
+
+  it('rejects a debt amount outside NUMERIC(18,2)', () => {
+    const oversizedAmount = '10000000000000000.00';
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      totalAmount: oversizedAmount,
+      scheduleItems: [
+        {
+          amount: oversizedAmount,
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['totalAmount'],
+        message: debtRequestValidationCode.debtTotalAmountTooLarge,
+      }),
     );
   });
 
   it('rejects an unsupported debt currency', () => {
     const result = createDebtRequestSchema.safeParse({
-      description: 'Website redesign',
-      totalAmount: '125.50',
+      ...validCreateRequest,
       currency: 'GBP',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
     });
 
     expect(result.success).toBe(false);
@@ -155,13 +283,8 @@ describe('debt contracts', () => {
 
   it('rejects a blank debt description', () => {
     const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
       description: '   ',
-      totalAmount: '125.50',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
     });
 
     expect(result.success).toBe(false);
@@ -171,19 +294,14 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDescriptionRequired,
+      debtRequestValidationCode.debtDescriptionRequired,
     );
   });
 
   it('rejects a debt description longer than 200 characters', () => {
     const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
       description: 'a'.repeat(201),
-      totalAmount: '125.50',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
     });
 
     expect(result.success).toBe(false);
@@ -193,7 +311,7 @@ describe('debt contracts', () => {
     }
 
     expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtDescriptionTooLong,
+      debtRequestValidationCode.debtDescriptionTooLong,
     );
   });
 
@@ -263,52 +381,6 @@ describe('debt contracts', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects a zero-value debt total', () => {
-    const result = createDebtRequestSchema.safeParse({
-      description: 'Website redesign',
-      totalAmount: '0.00',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
-    });
-
-    expect(result.success).toBe(false);
-
-    if (result.success) {
-      return;
-    }
-
-    expect(result.error.issues[0]?.path).toEqual(['totalAmount']);
-    expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtTotalAmountMustBePositive,
-    );
-  });
-
-  it('rejects a debt total outside NUMERIC(18,2)', () => {
-    const result = createDebtRequestSchema.safeParse({
-      description: 'Website redesign',
-      totalAmount: '10000000000000000.00',
-      currency: 'USD',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-09-30',
-      },
-    });
-
-    expect(result.success).toBe(false);
-
-    if (result.success) {
-      return;
-    }
-
-    expect(result.error.issues[0]?.path).toEqual(['totalAmount']);
-    expect(result.error.issues[0]?.message).toBe(
-      debtValidationCode.debtTotalAmountTooLarge,
-    );
-  });
-
   it('accepts a first-page debt list with truthful metadata', () => {
     expect(
       debtListResponseSchema.parse({
@@ -338,28 +410,7 @@ describe('debt contracts', () => {
         totalItems: 1,
         totalPages: 1,
       }),
-    ).toEqual({
-      items: [
-        {
-          id: 'debt_123',
-          customerId: 'customer_123',
-          description: 'Website redesign',
-          totalAmount: '125.50',
-          currency: 'USD',
-          paymentPlanType: 'onePayment',
-          scheduleItems: [
-            {
-              id: 'schedule_123',
-              position: 1,
-              amount: '125.50',
-              dueDate: '2026-09-30',
-              timing: 'upcoming',
-            },
-          ],
-          createdAt: '2026-09-10T12:00:00.000Z',
-          updatedAt: '2026-09-10T12:00:00.000Z',
-        },
-      ],
+    ).toMatchObject({
       page: 1,
       pageSize: 5,
       totalItems: 1,

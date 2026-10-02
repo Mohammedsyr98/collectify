@@ -1,31 +1,49 @@
 import { z } from 'zod';
 
+import {
+  validateDebtPlan,
+  type DebtPlanIssue,
+} from '@collectify/domain/debt-plan';
 import { currencySchema } from '../owner-profile/owner-profile.js';
 import { oneBasedPageSchema } from '../pagination.js';
-import { debtValidationCode } from './validation-codes.js';
+import {
+  debtRequestValidationCode,
+  type DebtValidationCode,
+} from './validation-codes.js';
 
-const createDebtAmountSchema = z
-  .string()
-  .trim()
-  .regex(/^\d+(?:\.\d{1,2})?$/, debtValidationCode.debtTotalAmountInvalid)
-  .refine(isPositiveDebtAmount, debtValidationCode.debtTotalAmountMustBePositive)
-  .refine(isWithinNumeric182Precision, debtValidationCode.debtTotalAmountTooLarge)
-  .transform((amount) => {
-    const [wholeAmount, fractionalAmount = ''] = amount.split('.');
-    const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
+function createDebtAmountSchema(invalidCode: string, tooLargeCode: string) {
+  return z
+    .string()
+    .trim()
+    .regex(/^\d+(?:\.\d{1,2})?$/, invalidCode)
+    .refine(isWithinNumeric182Precision, tooLargeCode)
+    .transform((amount) => {
+      const [wholeAmount, fractionalAmount = ''] = amount.split('.');
+      const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
 
-    return `${normalizedWholeAmount}.${fractionalAmount.padEnd(2, '0')}`;
-  });
+      return `${normalizedWholeAmount}.${fractionalAmount.padEnd(2, '0')}`;
+    });
+}
 
+const createDebtTotalAmountSchema = createDebtAmountSchema(
+  debtRequestValidationCode.debtTotalAmountInvalid,
+  debtRequestValidationCode.debtTotalAmountTooLarge,
+);
+const createDebtScheduleAmountSchema = createDebtAmountSchema(
+  debtRequestValidationCode.debtScheduleItemAmountInvalid,
+  debtRequestValidationCode.debtTotalAmountTooLarge,
+);
 const canonicalDebtAmountSchema = z
   .string()
   .regex(/^\d+\.\d{2}$/)
-  .refine(isPositiveDebtAmount)
   .refine(isWithinNumeric182Precision);
+const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
+const dateOnlySyntaxSchema = z.string().regex(dateOnlySyntaxPattern);
 
-function isPositiveDebtAmount(amount: string): boolean {
-  return /[1-9]/.test(amount);
-}
+const debtDueDateSchema = z
+  .string()
+  .min(1, debtRequestValidationCode.debtDueDateRequired)
+  .regex(dateOnlySyntaxPattern, debtRequestValidationCode.debtDueDateInvalid);
 
 function isWithinNumeric182Precision(amount: string): boolean {
   const [wholeAmount] = amount.split('.');
@@ -34,35 +52,108 @@ function isWithinNumeric182Precision(amount: string): boolean {
   return significantWholeAmount.length <= 16;
 }
 
-const onePaymentPlanSchema = z
+const createScheduleItemSchema = z
   .object({
-    type: z.literal('onePayment'),
-    dueDate: z
-      .string()
-      .min(1, debtValidationCode.debtDueDateRequired)
-      .pipe(z.iso.date(debtValidationCode.debtDueDateInvalid)),
+    amount: createDebtScheduleAmountSchema,
+    dueDate: debtDueDateSchema,
   })
   .strict();
 
-const onePaymentDebtRequestSchema = z.object({
+const replaceScheduleItemSchema = z
+  .object({
+    id: z.string().min(1).optional(),
+    amount: createDebtScheduleAmountSchema,
+    dueDate: debtDueDateSchema,
+  })
+  .strict();
+
+const debtRequestFields = {
   description: z
     .string()
     .trim()
-    .min(1, debtValidationCode.debtDescriptionRequired)
-    .max(200, debtValidationCode.debtDescriptionTooLong),
-  totalAmount: createDebtAmountSchema,
+    .min(1, debtRequestValidationCode.debtDescriptionRequired)
+    .max(200, debtRequestValidationCode.debtDescriptionTooLong),
+  totalAmount: createDebtTotalAmountSchema,
   currency: currencySchema,
-  paymentPlan: onePaymentPlanSchema,
-});
+};
 
-export const createDebtRequestSchema = onePaymentDebtRequestSchema;
-export const replaceDebtRequestSchema = onePaymentDebtRequestSchema;
+type RequestScheduleItem = {
+  amount: string;
+  dueDate: string;
+};
+
+function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
+  scheduleItemSchema: T,
+) {
+  const structuralSchema = z
+    .object({
+      ...debtRequestFields,
+      scheduleItems: z.array(scheduleItemSchema),
+    })
+    .strict();
+
+  return structuralSchema
+    .pipe(
+      z
+        .custom<z.output<typeof structuralSchema>>()
+        .superRefine((request, context) => {
+          const validation = validateDebtPlan({
+            totalAmount: request.totalAmount,
+            scheduleItems: request.scheduleItems,
+          });
+
+          if (validation.success) {
+            return;
+          }
+
+          for (const issue of validation.issues) {
+            context.addIssue({
+              code: 'custom',
+              path: debtPlanIssuePath(issue),
+              message: debtPlanIssueMessage(issue),
+            });
+          }
+        }),
+    )
+    .transform((request) => ({
+      ...request,
+      scheduleItems: [request.scheduleItems[0]!] as [z.output<T>],
+    }));
+}
+
+export const createDebtRequestSchema = buildDebtRequestSchema(
+  createScheduleItemSchema,
+);
+export const replaceDebtRequestSchema = buildDebtRequestSchema(
+  replaceScheduleItemSchema,
+);
+
+function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
+  switch (issue.target.kind) {
+    case 'schedule':
+      return ['scheduleItems'];
+    case 'scheduleItemAmount':
+      return ['scheduleItems', issue.target.index, 'amount'];
+    case 'scheduleItemDueDate':
+      return ['scheduleItems', issue.target.index, 'dueDate'];
+    default:
+      return assertNever(issue.target);
+  }
+}
+
+function debtPlanIssueMessage(issue: DebtPlanIssue): DebtValidationCode {
+  return issue.code;
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled debt plan value: ${String(value)}`);
+}
 
 const onePaymentScheduleItemSchema = z.object({
   id: z.string().min(1),
   position: z.literal(1),
   amount: canonicalDebtAmountSchema,
-  dueDate: z.iso.date(),
+  dueDate: dateOnlySyntaxSchema,
   timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
 

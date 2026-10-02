@@ -200,8 +200,29 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@24.13.3)(jiti@2.7.0)(jsdom@26.1.0(supports-color@8.1.1))(lightningcss@1.32.0)(msw@2.15.0(@types/node@24.13.3)(typescript@5.9.3))(supports-color@8.1.1)(terser@5.49.0)(yaml@2.9.0)
 
+  packages/domain:
+    devDependencies:
+      '@collectify/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@collectify/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: ^9.32.0
+        version: 9.39.5(jiti@2.7.0)(supports-color@8.1.1)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.3)(jiti@2.7.0)(jsdom@26.1.0(supports-color@8.1.1))(lightningcss@1.32.0)(msw@2.15.0(@types/node@24.13.3)(typescript@5.9.3))(supports-color@8.1.1)(terser@5.49.0)(yaml@2.9.0)
+
   packages/contracts:
     dependencies:
+      '@collectify/domain':
+        specifier: workspace:*
+        version: link:../domain
       zod:
         specifier: ^4.0.0
         version: 4.4.3

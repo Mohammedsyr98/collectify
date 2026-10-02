@@ -217,7 +217,6 @@ export function CustomerDebtLedger({
       ) : null}
       {activeDebtAction?.kind === 'edit' ? (
         <DebtDrawer
-          defaultCurrency={activeDebtAction.debt.currency}
           debt={activeDebtAction.debt}
           isSubmitting={isReplacing}
           mode="edit"

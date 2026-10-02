@@ -443,10 +443,13 @@ describe('CustomerDetailsPage', () => {
       description: 'Updated website redesign',
       totalAmount: '275.70',
       currency: 'EUR',
-      paymentPlan: {
-        type: 'onePayment',
-        dueDate: '2026-10-15',
-      },
+      scheduleItems: [
+        {
+          id: initialDebt.scheduleItems[0].id,
+          amount: '275.70',
+          dueDate: '2026-10-15',
+        },
+      ],
     });
     expect(
       await screen.findByRole('status', { name: 'Debt updated' }),

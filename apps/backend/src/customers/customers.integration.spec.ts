@@ -96,10 +96,12 @@ describe('customer routes', () => {
           description: 'Website redesign',
           totalAmount: '125.50',
           currency: 'USD',
-          paymentPlan: {
-            type: 'onePayment',
-            dueDate: '2999-01-01',
-          },
+          scheduleItems: [
+            {
+              amount: '125.50',
+              dueDate: '2999-01-01',
+            },
+          ],
         }),
       },
     );
@@ -493,10 +495,12 @@ describe('customer routes', () => {
             description: debt.description,
             totalAmount: debt.totalAmount,
             currency: debt.currency,
-            paymentPlan: {
-              type: 'onePayment',
-              dueDate: debt.dueDate,
-            },
+            scheduleItems: [
+              {
+                amount: debt.totalAmount,
+                dueDate: debt.dueDate,
+              },
+            ],
           }),
         },
       );

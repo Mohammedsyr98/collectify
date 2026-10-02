@@ -1,7 +1,8 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import {
   debtApiErrorCode,
-  debtValidationCode,
+  debtPlanIssueCode,
+  debtRequestValidationCode,
   isDebtValidationCode,
   type DebtValidationCode,
 } from '@collectify/contracts';
@@ -17,15 +18,23 @@ const debtApiErrors = {
 } as const;
 
 const debtValidationMessages = {
-  [debtValidationCode.debtDescriptionRequired]: 'Description is required.',
-  [debtValidationCode.debtDescriptionTooLong]:
+  [debtRequestValidationCode.debtDescriptionRequired]: 'Description is required.',
+  [debtRequestValidationCode.debtDescriptionTooLong]:
     'Description must be 200 characters or fewer.',
-  [debtValidationCode.debtDueDateInvalid]: 'Enter a valid due date.',
-  [debtValidationCode.debtDueDateRequired]: 'Due date is required.',
-  [debtValidationCode.debtTotalAmountInvalid]: 'Enter a valid amount.',
-  [debtValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
-  [debtValidationCode.debtTotalAmountMustBePositive]:
-    'Amount must be greater than zero.',
+  [debtRequestValidationCode.debtDueDateInvalid]: 'Enter a valid due date.',
+  [debtRequestValidationCode.debtDueDateRequired]: 'Due date is required.',
+  [debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal]:
+    'Payment amount must match the debt total.',
+  [debtRequestValidationCode.debtScheduleItemAmountInvalid]:
+    'Enter a valid payment amount.',
+  [debtPlanIssueCode.scheduleItemAmountNotPositive]:
+    'Payment amount must be greater than zero.',
+  [debtPlanIssueCode.scheduleItemCountInvalid]:
+    'A one-payment debt must contain exactly one payment.',
+  [debtPlanIssueCode.scheduleItemDueDateInvalid]:
+    'Enter a valid due date.',
+  [debtRequestValidationCode.debtTotalAmountInvalid]: 'Enter a valid amount.',
+  [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
 } satisfies Record<DebtValidationCode, string>;
 
 export function resolveDebtValidationMessage(message: string): string {
