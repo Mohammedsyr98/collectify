@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  debtPlanIssueCode,
   validateDebtPlan,
   type DebtPlanIssue,
 } from '@collectify/domain/debt-plan';
@@ -84,11 +85,19 @@ type RequestScheduleItem = {
 
 function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
   scheduleItemSchema: T,
+  options: { readonly onePaymentOnly?: boolean } = {},
 ) {
+  const scheduleItemsSchema = z
+    .array(scheduleItemSchema)
+    .refine(
+      (scheduleItems) =>
+        !options.onePaymentOnly || scheduleItems.length === 1,
+      debtPlanIssueCode.scheduleItemCountInvalid,
+    );
   const structuralSchema = z
     .object({
       ...debtRequestFields,
-      scheduleItems: z.array(scheduleItemSchema),
+      scheduleItems: scheduleItemsSchema,
     })
     .strict();
 
@@ -117,7 +126,7 @@ function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
     )
     .transform((request) => ({
       ...request,
-      scheduleItems: [request.scheduleItems[0]!] as [z.output<T>],
+      scheduleItems: request.scheduleItems,
     }));
 }
 
@@ -126,6 +135,7 @@ export const createDebtRequestSchema = buildDebtRequestSchema(
 );
 export const replaceDebtRequestSchema = buildDebtRequestSchema(
   replaceScheduleItemSchema,
+  { onePaymentOnly: true },
 );
 
 function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
@@ -157,17 +167,56 @@ const onePaymentScheduleItemSchema = z.object({
   timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
 
-export const debtResponseSchema = z.object({
+const installmentScheduleItemSchema = z.object({
+  id: z.string().min(1),
+  position: z.number().int().min(1),
+  amount: canonicalDebtAmountSchema,
+  dueDate: dateOnlySyntaxSchema,
+  timing: z.enum(['upcoming', 'dueToday', 'overdue']),
+});
+
+const installmentScheduleItemsSchema = z
+  .array(installmentScheduleItemSchema)
+  .min(2)
+  .max(60)
+  .superRefine((scheduleItems, context) => {
+    for (const [index, scheduleItem] of scheduleItems.entries()) {
+      if (scheduleItem.position !== index + 1) {
+        context.addIssue({
+          code: 'custom',
+          path: [index, 'position'],
+          message: 'Schedule item positions must be contiguous',
+        });
+      }
+    }
+  });
+
+const debtResponseFields = {
   id: z.string().min(1),
   customerId: z.string().min(1),
   description: z.string().min(1).max(200),
   totalAmount: canonicalDebtAmountSchema,
   currency: currencySchema,
-  paymentPlanType: z.literal('onePayment'),
-  scheduleItems: z.tuple([onePaymentScheduleItemSchema]),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+};
+
+const onePaymentDebtResponseSchema = z.object({
+  ...debtResponseFields,
+  paymentPlanType: z.literal('onePayment'),
+  scheduleItems: z.tuple([onePaymentScheduleItemSchema]),
 });
+
+const installmentDebtResponseSchema = z.object({
+  ...debtResponseFields,
+  paymentPlanType: z.literal('installment'),
+  scheduleItems: installmentScheduleItemsSchema,
+});
+
+export const debtResponseSchema = z.discriminatedUnion('paymentPlanType', [
+  onePaymentDebtResponseSchema,
+  installmentDebtResponseSchema,
+]);
 
 export const debtListPageSize = 5;
 

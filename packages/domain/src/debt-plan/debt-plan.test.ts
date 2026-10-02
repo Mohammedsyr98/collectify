@@ -22,6 +22,84 @@ describe('validateDebtPlan', () => {
     ).toEqual({ success: true });
   });
 
+  it('accepts a canonical two-row installment plan with an exact minor-unit sum', () => {
+    expect(
+      validateDebtPlan({
+        totalAmount: '125.50',
+        scheduleItems: [
+          { amount: '0.30', dueDate: '2026-09-30' },
+          { amount: '125.20', dueDate: '2026-10-30' },
+        ],
+      }),
+    ).toEqual({ success: true });
+  });
+
+  it('accepts the maximum 60-row installment plan', () => {
+    expect(
+      validateDebtPlan({
+        totalAmount: '60.00',
+        scheduleItems: scheduleItemsFor(60),
+      }),
+    ).toEqual({ success: true });
+  });
+
+  it('rejects an installment plan with more than 60 rows', () => {
+    const issues = issuesFor({
+      totalAmount: '61.00',
+      scheduleItems: scheduleItemsFor(61),
+    });
+
+    expect(issues).toContainEqual({
+      code: debtPlanIssueCode.scheduleItemCountInvalid,
+      target: { kind: 'schedule' },
+    });
+  });
+
+  it('rejects a multi-row plan whose aggregate amount differs from the total', () => {
+    const issues = issuesFor({
+      totalAmount: '125.50',
+      scheduleItems: [
+        { amount: '0.30', dueDate: '2026-09-30' },
+        { amount: '125.19', dueDate: '2026-10-30' },
+      ],
+    });
+
+    expect(issues).toContainEqual({
+      code: debtPlanIssueCode.scheduleTotalAmountMismatch,
+      target: { kind: 'schedule' },
+    });
+  });
+
+  it('rejects installment rows with duplicate due dates', () => {
+    const issues = issuesFor({
+      totalAmount: '125.50',
+      scheduleItems: [
+        { amount: '0.30', dueDate: '2026-09-30' },
+        { amount: '125.20', dueDate: '2026-09-30' },
+      ],
+    });
+
+    expect(issues).toContainEqual({
+      code: debtPlanIssueCode.scheduleItemDueDateNotAfterPrevious,
+      target: { kind: 'scheduleItemDueDate', index: 1 },
+    });
+  });
+
+  it('rejects installment rows with decreasing due dates', () => {
+    const issues = issuesFor({
+      totalAmount: '125.50',
+      scheduleItems: [
+        { amount: '0.30', dueDate: '2026-10-30' },
+        { amount: '125.20', dueDate: '2026-09-30' },
+      ],
+    });
+
+    expect(issues).toContainEqual({
+      code: debtPlanIssueCode.scheduleItemDueDateNotAfterPrevious,
+      target: { kind: 'scheduleItemDueDate', index: 1 },
+    });
+  });
+
   it('requires exactly one schedule item', () => {
     const issues = issuesFor({
       totalAmount: '125.50',
@@ -86,12 +164,10 @@ describe('validateDebtPlan', () => {
     });
 
     expect(issues.map(({ code }) => code)).toEqual([
-      debtPlanIssueCode.scheduleItemCountInvalid,
       debtPlanIssueCode.scheduleItemAmountNotPositive,
-      debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
       debtPlanIssueCode.scheduleItemDueDateInvalid,
-      debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
       debtPlanIssueCode.scheduleItemDueDateInvalid,
+      debtPlanIssueCode.scheduleTotalAmountMismatch,
     ]);
   });
 });
@@ -106,4 +182,13 @@ function issuesFor(plan: DebtPlan): readonly DebtPlanIssue[] {
   }
 
   return result.issues;
+}
+
+function scheduleItemsFor(count: number): DebtPlan['scheduleItems'] {
+  return Array.from({ length: count }, (_, index) => ({
+    amount: '1.00',
+    dueDate: new Date(Date.UTC(2026, 0, index + 1))
+      .toISOString()
+      .slice(0, 10),
+  }));
 }
