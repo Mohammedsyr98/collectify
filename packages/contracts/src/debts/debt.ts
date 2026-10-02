@@ -11,11 +11,12 @@ import {
   type DebtValidationCode,
 } from './validation-codes.js';
 
-function createDebtAmountSchema(invalidCode: string) {
+function createDebtAmountSchema(invalidCode: string, tooLargeCode: string) {
   return z
     .string()
     .trim()
     .regex(/^\d+(?:\.\d{1,2})?$/, invalidCode)
+    .refine(isWithinNumeric182Precision, tooLargeCode)
     .transform((amount) => {
       const [wholeAmount, fractionalAmount = ''] = amount.split('.');
       const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
@@ -26,11 +27,16 @@ function createDebtAmountSchema(invalidCode: string) {
 
 const createDebtTotalAmountSchema = createDebtAmountSchema(
   debtRequestValidationCode.debtTotalAmountInvalid,
+  debtRequestValidationCode.debtTotalAmountTooLarge,
 );
 const createDebtScheduleAmountSchema = createDebtAmountSchema(
   debtRequestValidationCode.debtScheduleItemAmountInvalid,
+  debtRequestValidationCode.debtTotalAmountTooLarge,
 );
-const canonicalDebtAmountSchema = z.string().regex(/^\d+\.\d{2}$/);
+const canonicalDebtAmountSchema = z
+  .string()
+  .regex(/^\d+\.\d{2}$/)
+  .refine(isWithinNumeric182Precision);
 const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
 const dateOnlySyntaxSchema = z.string().regex(dateOnlySyntaxPattern);
 
@@ -38,6 +44,13 @@ const debtDueDateSchema = z
   .string()
   .min(1, debtRequestValidationCode.debtDueDateRequired)
   .regex(dateOnlySyntaxPattern, debtRequestValidationCode.debtDueDateInvalid);
+
+function isWithinNumeric182Precision(amount: string): boolean {
+  const [wholeAmount] = amount.split('.');
+  const significantWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
+
+  return significantWholeAmount.length <= 16;
+}
 
 const createScheduleItemSchema = z
   .object({
@@ -82,28 +95,25 @@ function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
   return structuralSchema
     .pipe(
       z
-        .any()
-        .superRefine(
-          (request: z.output<typeof structuralSchema>, context) => {
-            const validation = validateDebtPlan({
-              totalAmount: request.totalAmount,
-              scheduleItems: request.scheduleItems,
+        .custom<z.output<typeof structuralSchema>>()
+        .superRefine((request, context) => {
+          const validation = validateDebtPlan({
+            totalAmount: request.totalAmount,
+            scheduleItems: request.scheduleItems,
+          });
+
+          if (validation.success) {
+            return;
+          }
+
+          for (const issue of validation.issues) {
+            context.addIssue({
+              code: 'custom',
+              path: debtPlanIssuePath(issue),
+              message: debtPlanIssueMessage(issue),
             });
-
-            if (validation.success) {
-              return;
-            }
-
-            for (const issue of validation.issues) {
-              context.addIssue({
-                code: 'custom',
-                path: debtPlanIssuePath(issue),
-                message: debtPlanIssueMessage(issue),
-              });
-            }
-          },
-        )
-        .transform((request) => request as z.output<typeof structuralSchema>),
+          }
+        }),
     )
     .transform((request) => ({
       ...request,

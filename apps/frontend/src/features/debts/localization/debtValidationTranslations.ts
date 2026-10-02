@@ -17,6 +17,7 @@ export const debtValidationTranslations = {
     [debtPlanIssueCode.scheduleItemCountInvalid]: 'A one-payment debt must contain exactly one payment.',
     [debtPlanIssueCode.scheduleItemDueDateInvalid]: 'Enter a valid due date.',
     [debtRequestValidationCode.debtTotalAmountInvalid]: 'Enter a valid amount.',
+    [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
   },
   tr: {
     [debtRequestValidationCode.debtDescriptionRequired]: 'Açıklama zorunludur.',
@@ -29,6 +30,7 @@ export const debtValidationTranslations = {
     [debtPlanIssueCode.scheduleItemCountInvalid]: 'Tek ödemeli borç tam olarak bir ödeme içermelidir.',
     [debtPlanIssueCode.scheduleItemDueDateInvalid]: 'Geçerli bir vade tarihi girin.',
     [debtRequestValidationCode.debtTotalAmountInvalid]: 'Geçerli bir tutar girin.',
+    [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Tutar çok büyük.',
   },
   ar: {
     [debtRequestValidationCode.debtDescriptionRequired]: 'الوصف مطلوب.',
@@ -41,5 +43,6 @@ export const debtValidationTranslations = {
     [debtPlanIssueCode.scheduleItemCountInvalid]: 'يجب أن يحتوي الدين ذو الدفعة الواحدة على دفعة واحدة تمامًا.',
     [debtPlanIssueCode.scheduleItemDueDateInvalid]: 'أدخل تاريخ استحقاق صالحًا.',
     [debtRequestValidationCode.debtTotalAmountInvalid]: 'أدخل مبلغًا صالحًا.',
+    [debtRequestValidationCode.debtTotalAmountTooLarge]: 'المبلغ كبير جدًا.',
   },
 } satisfies Record<SupportedLocale, DebtValidationTranslationMessages>;

@@ -245,6 +245,33 @@ describe('debt contracts', () => {
     );
   });
 
+  it('rejects a debt amount outside NUMERIC(18,2)', () => {
+    const oversizedAmount = '10000000000000000.00';
+    const result = createDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      totalAmount: oversizedAmount,
+      scheduleItems: [
+        {
+          amount: oversizedAmount,
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['totalAmount'],
+        message: debtRequestValidationCode.debtTotalAmountTooLarge,
+      }),
+    );
+  });
+
   it('rejects an unsupported debt currency', () => {
     const result = createDebtRequestSchema.safeParse({
       ...validCreateRequest,

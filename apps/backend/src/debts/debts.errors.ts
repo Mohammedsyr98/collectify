@@ -34,6 +34,7 @@ const debtValidationMessages = {
   [debtPlanIssueCode.scheduleItemDueDateInvalid]:
     'Enter a valid due date.',
   [debtRequestValidationCode.debtTotalAmountInvalid]: 'Enter a valid amount.',
+  [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
 } satisfies Record<DebtValidationCode, string>;
 
 export function resolveDebtValidationMessage(message: string): string {
