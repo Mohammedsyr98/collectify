@@ -89,6 +89,52 @@ describe('CustomerDebtLedger', () => {
     expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
   });
 
+  it('renders an installment count without offering one-payment editing', async () => {
+    const installmentDebt: DebtResponse = {
+      ...createdDebt,
+      description: 'Website redesign installments',
+      paymentPlanType: 'installment',
+      scheduleItems: [
+        {
+          id: 'schedule_installment_1',
+          position: 1,
+          amount: '60.00',
+          dueDate: '2026-09-30',
+          timing: 'upcoming',
+        },
+        {
+          id: 'schedule_installment_2',
+          position: 2,
+          amount: '65.50',
+          dueDate: '2026-10-30',
+          timing: 'upcoming',
+        },
+      ],
+    };
+
+    const user = userEvent.setup();
+    renderLedger([installmentDebt]);
+
+    const debtCard = await getDebtCard('Website redesign installments');
+    expect(within(debtCard).getByText('2 installments')).toBeInTheDocument();
+
+    await user.click(
+      within(debtCard).getByRole('button', {
+        name: 'Open actions for Website redesign installments',
+      }),
+    );
+
+    const actionsMenu = await screen.findByRole('menu', {
+      name: 'Actions for Website redesign installments',
+    });
+    expect(
+      within(actionsMenu).queryByRole('menuitem', { name: 'Edit debt' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+    ).toBeInTheDocument();
+  });
+
   it('opens the debt actions menu with Enter', async () => {
     const user = userEvent.setup();
 
