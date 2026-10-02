@@ -24,6 +24,33 @@ const validCreateRequest = {
   ],
 };
 
+const validInstallmentDebtResponse = {
+  id: 'debt_123',
+  customerId: 'customer_123',
+  description: 'Website redesign',
+  totalAmount: '125.50',
+  currency: 'USD',
+  paymentPlanType: 'installment',
+  scheduleItems: [
+    {
+      id: 'schedule_123',
+      position: 1,
+      amount: '0.30',
+      dueDate: '2026-09-30',
+      timing: 'upcoming',
+    },
+    {
+      id: 'schedule_456',
+      position: 2,
+      amount: '125.20',
+      dueDate: '2026-10-30',
+      timing: 'upcoming',
+    },
+  ],
+  createdAt: '2026-09-10T12:00:00.000Z',
+  updatedAt: '2026-09-10T12:00:00.000Z',
+};
+
 describe('debt contracts', () => {
   it('normalizes a one-payment create request to an id-less schedule row', () => {
     expect(createDebtRequestSchema.parse(validCreateRequest)).toEqual({
@@ -35,6 +62,27 @@ describe('debt contracts', () => {
           amount: '125.50',
           dueDate: '2026-09-30',
         },
+      ],
+    });
+  });
+
+  it('normalizes and preserves every row in an installment create request', () => {
+    expect(
+      createDebtRequestSchema.parse({
+        ...validCreateRequest,
+        totalAmount: '125.50',
+        scheduleItems: [
+          { amount: '0.30', dueDate: '2026-09-30' },
+          { amount: '125.20', dueDate: '2026-10-30' },
+        ],
+      }),
+    ).toEqual({
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+      scheduleItems: [
+        { amount: '0.30', dueDate: '2026-09-30' },
+        { amount: '125.20', dueDate: '2026-10-30' },
       ],
     });
   });
@@ -76,6 +124,30 @@ describe('debt contracts', () => {
         },
       ],
     });
+  });
+
+  it('keeps replacement requests one-payment-only', () => {
+    const result = replaceDebtRequestSchema.safeParse({
+      ...validCreateRequest,
+      totalAmount: '125.50',
+      scheduleItems: [
+        { amount: '0.30', dueDate: '2026-09-30' },
+        { amount: '125.20', dueDate: '2026-10-30' },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['scheduleItems'],
+        message: debtPlanIssueCode.scheduleItemCountInvalid,
+      }),
+    );
   });
 
   it('rejects ids on create schedule items', () => {
@@ -355,6 +427,33 @@ describe('debt contracts', () => {
       createdAt: '2026-09-10T12:00:00.000Z',
       updatedAt: '2026-09-10T12:00:00.000Z',
     });
+  });
+
+  it('accepts a canonical installment debt response', () => {
+    expect(debtResponseSchema.parse(validInstallmentDebtResponse)).toEqual(
+      validInstallmentDebtResponse,
+    );
+  });
+
+  it('rejects a one-payment response with multiple schedule rows', () => {
+    const result = debtResponseSchema.safeParse({
+      ...validInstallmentDebtResponse,
+      paymentPlanType: 'onePayment',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects installment responses with non-contiguous positions', () => {
+    const result = debtResponseSchema.safeParse({
+      ...validInstallmentDebtResponse,
+      scheduleItems: validInstallmentDebtResponse.scheduleItems.map(
+        (scheduleItem, index) =>
+          index === 1 ? { ...scheduleItem, position: 3 } : scheduleItem,
+      ),
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it('rejects a non-canonical amount in a debt response', () => {

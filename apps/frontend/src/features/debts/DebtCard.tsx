@@ -20,6 +20,26 @@ export function DebtCard({
 }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
+  const actionItems = [
+    ...(debt.paymentPlanType === 'onePayment'
+      ? [
+          {
+            icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
+            id: 'edit-debt',
+            label: t('debts.card.actions.edit'),
+            onSelect: (trigger: HTMLButtonElement | null) =>
+              onEdit?.(debt, trigger),
+          },
+        ]
+      : []),
+    {
+      icon: <Trash2 aria-hidden="true" size={15} strokeWidth={2.5} />,
+      id: 'delete-debt',
+      label: t('debts.card.actions.delete'),
+      onSelect: (trigger: HTMLButtonElement | null) =>
+        onDelete?.(debt, trigger),
+    },
+  ];
 
   return (
     <article className="relative grid gap-3 rounded-[5px] border border-border bg-background p-3">
@@ -31,20 +51,7 @@ export function DebtCard({
               {formatCurrencyAmount(debt.totalAmount, debt.currency, locale)}
             </bdi>
             <AnchoredMenu
-              items={[
-                {
-                  icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
-                  id: 'edit-debt',
-                  label: t('debts.card.actions.edit'),
-                  onSelect: (trigger) => onEdit?.(debt, trigger),
-                },
-                {
-                  icon: <Trash2 aria-hidden="true" size={15} strokeWidth={2.5} />,
-                  id: 'delete-debt',
-                  label: t('debts.card.actions.delete'),
-                  onSelect: (trigger) => onDelete?.(debt, trigger),
-                },
-              ]}
+              items={actionItems}
               menuLabel={t('debts.card.actions.menuLabel', {
                 description: debt.description,
               })}
@@ -56,8 +63,22 @@ export function DebtCard({
         </div>
       </header>
 
-      <OnePaymentSummary debt={debt} locale={locale} />
+      {debt.paymentPlanType === 'onePayment' ? (
+        <OnePaymentSummary debt={debt} locale={locale} />
+      ) : (
+        <InstallmentSummary count={debt.scheduleItems.length} />
+      )}
     </article>
+  );
+}
+
+function InstallmentSummary({ count }: { count: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex items-center border-t border-border pt-3 text-[0.8rem] font-bold text-muted-foreground">
+      <span>{t('debts.card.installmentCount', { count })}</span>
+    </div>
   );
 }
 
@@ -65,7 +86,7 @@ function OnePaymentSummary({
   debt,
   locale,
 }: {
-  debt: DebtResponse;
+  debt: Extract<DebtResponse, { paymentPlanType: 'onePayment' }>;
   locale: string;
 }) {
   const { t } = useTranslation();

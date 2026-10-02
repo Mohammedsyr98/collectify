@@ -9,7 +9,10 @@ export const debtPlanIssueCode = {
   scheduleItemCountInvalid: 'SCHEDULE_ITEM_COUNT_INVALID',
   scheduleItemAmountNotPositive: 'SCHEDULE_ITEM_AMOUNT_NOT_POSITIVE',
   scheduleItemAmountDoesNotMatchTotal: 'SCHEDULE_ITEM_AMOUNT_DOES_NOT_MATCH_TOTAL',
+  scheduleTotalAmountMismatch: 'SCHEDULE_TOTAL_AMOUNT_MISMATCH',
   scheduleItemDueDateInvalid: 'SCHEDULE_ITEM_DUE_DATE_INVALID',
+  scheduleItemDueDateNotAfterPrevious:
+    'SCHEDULE_ITEM_DUE_DATE_NOT_AFTER_PREVIOUS',
 } as const;
 
 export type DebtPlanIssueCode = (typeof debtPlanIssueCode)[keyof typeof debtPlanIssueCode];
@@ -31,7 +34,11 @@ export type DebtPlanValidationResult =
 export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   const issues: DebtPlanIssue[] = [];
 
-  if (plan.scheduleItems.length !== 1) {
+  const scheduleItemCount = plan.scheduleItems.length;
+  const isOnePayment = scheduleItemCount === 1;
+  const isInstallment = scheduleItemCount >= 2 && scheduleItemCount <= 60;
+
+  if (!isOnePayment && !isInstallment) {
     issues.push({
       code: debtPlanIssueCode.scheduleItemCountInvalid,
       target: { kind: 'schedule' },
@@ -39,9 +46,12 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   }
 
   const totalMinorUnits = parseMinorUnits(plan.totalAmount);
+  let scheduleTotalMinorUnits = 0n;
+  let previousValidDueDate: string | undefined;
 
   for (const [index, scheduleItem] of plan.scheduleItems.entries()) {
     const scheduleItemMinorUnits = parseMinorUnits(scheduleItem.amount);
+    scheduleTotalMinorUnits += scheduleItemMinorUnits;
 
     if (scheduleItemMinorUnits === 0n) {
       issues.push({
@@ -50,19 +60,43 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
       });
     }
 
-    if (scheduleItemMinorUnits !== totalMinorUnits) {
+    if (isOnePayment && scheduleItemMinorUnits !== totalMinorUnits) {
       issues.push({
         code: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
         target: { kind: 'scheduleItemAmount', index },
       });
     }
 
-    if (!isValidDateOnly(scheduleItem.dueDate)) {
+    const dueDateIsValid = isValidDateOnly(scheduleItem.dueDate);
+
+    if (!dueDateIsValid) {
       issues.push({
         code: debtPlanIssueCode.scheduleItemDueDateInvalid,
         target: { kind: 'scheduleItemDueDate', index },
       });
+
+      continue;
     }
+
+    if (
+      isInstallment &&
+      previousValidDueDate !== undefined &&
+      compareDateOnly(scheduleItem.dueDate, previousValidDueDate) <= 0
+    ) {
+      issues.push({
+        code: debtPlanIssueCode.scheduleItemDueDateNotAfterPrevious,
+        target: { kind: 'scheduleItemDueDate', index },
+      });
+    }
+
+    previousValidDueDate = scheduleItem.dueDate;
+  }
+
+  if (isInstallment && scheduleTotalMinorUnits !== totalMinorUnits) {
+    issues.push({
+      code: debtPlanIssueCode.scheduleTotalAmountMismatch,
+      target: { kind: 'schedule' },
+    });
   }
 
   return issues.length === 0 ? { success: true } : { success: false, issues };
@@ -89,6 +123,15 @@ function isValidDateOnly(value: string): boolean {
   }
 
   return day <= daysInMonth(year, month);
+}
+
+function compareDateOnly(left: string, right: string): number {
+  const [leftYear, leftMonth, leftDay] = left.split('-').map(Number);
+  const [rightYear, rightMonth, rightDay] = right.split('-').map(Number);
+
+  return (
+    leftYear - rightYear || leftMonth - rightMonth || leftDay - rightDay
+  );
 }
 
 function daysInMonth(year: number, month: number): number {

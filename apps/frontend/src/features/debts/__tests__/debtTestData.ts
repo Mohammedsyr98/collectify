@@ -1,5 +1,10 @@
 import type { DebtListResponse, DebtResponse } from '@collectify/contracts';
 
+type OnePaymentDebtResponse = Extract<
+  DebtResponse,
+  { paymentPlanType: 'onePayment' }
+>;
+
 export const emptyDebtList: DebtListResponse = {
   items: [],
   page: 1,
@@ -10,8 +15,8 @@ export const emptyDebtList: DebtListResponse = {
 
 export function createDebtFixture(
   customerId: string,
-  overrides: Omit<Partial<DebtResponse>, 'customerId'> = {},
-): DebtResponse {
+  overrides: Omit<Partial<OnePaymentDebtResponse>, 'customerId'> = {},
+): OnePaymentDebtResponse {
   return {
     id: 'debt_123',
     customerId,
