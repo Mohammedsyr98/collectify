@@ -5,14 +5,50 @@ export type DebtPlan = {
     readonly dueDate: string;
   }[];
 };
+
+const maximumInstallmentCount = 60;
+
+export function getMaximumInstallmentCount(totalAmount: string): number {
+  const totalMinorUnits = parseMinorUnits(totalAmount);
+
+  return totalMinorUnits < BigInt(maximumInstallmentCount)
+    ? Number(totalMinorUnits)
+    : maximumInstallmentCount;
+}
+
+export function allocateInstallmentAmounts(
+  totalAmount: string,
+  installmentCount: number,
+): readonly string[] {
+  if (!Number.isInteger(installmentCount) || installmentCount < 1) {
+    throw new Error('Installment count must be a positive integer');
+  }
+
+  if (installmentCount > getMaximumInstallmentCount(totalAmount)) {
+    throw new Error('Installment count exceeds the maximum for this total');
+  }
+
+  const totalMinorUnits = parseMinorUnits(totalAmount);
+  const installmentMinorUnits = totalMinorUnits / BigInt(installmentCount);
+  const remainderMinorUnits = totalMinorUnits % BigInt(installmentCount);
+
+  return Array.from({ length: installmentCount }, (_, index) => {
+    const amount =
+      index === installmentCount - 1
+        ? installmentMinorUnits + remainderMinorUnits
+        : installmentMinorUnits;
+
+    return formatMinorUnits(amount);
+  });
+}
+
 export const debtPlanIssueCode = {
   scheduleItemCountInvalid: 'SCHEDULE_ITEM_COUNT_INVALID',
   scheduleItemAmountNotPositive: 'SCHEDULE_ITEM_AMOUNT_NOT_POSITIVE',
   scheduleItemAmountDoesNotMatchTotal: 'SCHEDULE_ITEM_AMOUNT_DOES_NOT_MATCH_TOTAL',
   scheduleTotalAmountMismatch: 'SCHEDULE_TOTAL_AMOUNT_MISMATCH',
   scheduleItemDueDateInvalid: 'SCHEDULE_ITEM_DUE_DATE_INVALID',
-  scheduleItemDueDateNotAfterPrevious:
-    'SCHEDULE_ITEM_DUE_DATE_NOT_AFTER_PREVIOUS',
+  scheduleItemDueDateNotAfterPrevious: 'SCHEDULE_ITEM_DUE_DATE_NOT_AFTER_PREVIOUS',
 } as const;
 
 export type DebtPlanIssueCode = (typeof debtPlanIssueCode)[keyof typeof debtPlanIssueCode];
@@ -35,8 +71,10 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   const issues: DebtPlanIssue[] = [];
 
   const scheduleItemCount = plan.scheduleItems.length;
+  const totalMinorUnits = parseMinorUnits(plan.totalAmount);
+  const maximumInstallmentCount = getMaximumInstallmentCount(plan.totalAmount);
   const isOnePayment = scheduleItemCount === 1;
-  const isInstallment = scheduleItemCount >= 2 && scheduleItemCount <= 60;
+  const isInstallment = scheduleItemCount >= 2 && scheduleItemCount <= maximumInstallmentCount;
 
   if (!isOnePayment && !isInstallment) {
     issues.push({
@@ -45,7 +83,6 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
     });
   }
 
-  const totalMinorUnits = parseMinorUnits(plan.totalAmount);
   let scheduleTotalMinorUnits = 0n;
   let previousValidDueDate: string | undefined;
 
@@ -103,8 +140,15 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
 }
 
 function parseMinorUnits(amount: string): bigint {
-  const [wholeAmount, fractionalAmount] = amount.split('.');
-  return BigInt(`${wholeAmount}${fractionalAmount}`);
+  const [wholeAmount, fractionalAmount = ''] = amount.split('.');
+  return BigInt(`${wholeAmount}${fractionalAmount.padEnd(2, '0')}`);
+}
+
+function formatMinorUnits(amount: bigint): string {
+  const wholeAmount = amount / 100n;
+  const fractionalAmount = (amount % 100n).toString().padStart(2, '0');
+
+  return `${wholeAmount}.${fractionalAmount}`;
 }
 
 function isValidDateOnly(value: string): boolean {
@@ -129,9 +173,7 @@ function compareDateOnly(left: string, right: string): number {
   const [leftYear, leftMonth, leftDay] = left.split('-').map(Number);
   const [rightYear, rightMonth, rightDay] = right.split('-').map(Number);
 
-  return (
-    leftYear - rightYear || leftMonth - rightMonth || leftDay - rightDay
-  );
+  return leftYear - rightYear || leftMonth - rightMonth || leftDay - rightDay;
 }
 
 function daysInMonth(year: number, month: number): number {

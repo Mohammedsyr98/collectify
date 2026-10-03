@@ -1,11 +1,55 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  allocateInstallmentAmounts,
   debtPlanIssueCode,
+  getMaximumInstallmentCount,
   type DebtPlan,
   type DebtPlanIssue,
   validateDebtPlan,
 } from './index.js';
+
+describe('getMaximumInstallmentCount', () => {
+  it.each([
+    ['100.00', 60],
+    ['0.02', 2],
+    ['0.01', 1],
+  ])('limits %s to %s positive installments', (totalAmount, expected) => {
+    expect(getMaximumInstallmentCount(totalAmount)).toBe(expected);
+  });
+});
+
+describe('allocateInstallmentAmounts', () => {
+  it('allocates the remainder to the final installment in minor units', () => {
+    expect(allocateInstallmentAmounts('100.01', 3)).toEqual(['33.33', '33.33', '33.35']);
+  });
+
+  it('treats a whole-unit amount as two decimal minor units', () => {
+    expect(allocateInstallmentAmounts('128', 3)).toEqual(['42.66', '42.66', '42.68']);
+  });
+
+  it('rejects more installments than the total can support positively', () => {
+    expect(() => allocateInstallmentAmounts('0.02', 3)).toThrow(
+      'Installment count exceeds the maximum for this total',
+    );
+  });
+
+  it.each([0, -1, 2.5])('rejects an invalid installment count: %s', (installmentCount) => {
+    expect(() => allocateInstallmentAmounts('100.00', installmentCount)).toThrow(
+      'Installment count must be a positive integer',
+    );
+  });
+
+  it.each([
+    ['0.01', 1, ['0.01']],
+    ['0.02', 2, ['0.01', '0.01']],
+  ])(
+    'allocates the smallest valid total %s across %s installment(s)',
+    (totalAmount, installmentCount, expected) => {
+      expect(allocateInstallmentAmounts(totalAmount, installmentCount)).toEqual(expected);
+    },
+  );
+});
 
 describe('validateDebtPlan', () => {
   it('accepts a canonical one-payment plan', () => {
@@ -115,20 +159,17 @@ describe('validateDebtPlan', () => {
   it.each([
     ['under-total', '0.10'],
     ['over-total', '0.50'],
-  ])(
-    'rejects a schedule amount that is %s without floating-point arithmetic',
-    (_label, amount) => {
-      const issues = issuesFor({
-        totalAmount: '0.30',
-        scheduleItems: [{ amount, dueDate: '2026-09-30' }],
-      });
+  ])('rejects a schedule amount that is %s without floating-point arithmetic', (_label, amount) => {
+    const issues = issuesFor({
+      totalAmount: '0.30',
+      scheduleItems: [{ amount, dueDate: '2026-09-30' }],
+    });
 
-      expect(issues).toContainEqual({
-        code: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
-        target: { kind: 'scheduleItemAmount', index: 0 },
-      });
-    },
-  );
+    expect(issues).toContainEqual({
+      code: debtPlanIssueCode.scheduleItemAmountDoesNotMatchTotal,
+      target: { kind: 'scheduleItemAmount', index: 0 },
+    });
+  });
 
   it('rejects a non-positive schedule amount', () => {
     const issues = issuesFor({
@@ -187,8 +228,6 @@ function issuesFor(plan: DebtPlan): readonly DebtPlanIssue[] {
 function scheduleItemsFor(count: number): DebtPlan['scheduleItems'] {
   return Array.from({ length: count }, (_, index) => ({
     amount: '1.00',
-    dueDate: new Date(Date.UTC(2026, 0, index + 1))
-      .toISOString()
-      .slice(0, 10),
+    dueDate: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
   }));
 }
