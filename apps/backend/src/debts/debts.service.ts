@@ -40,8 +40,6 @@ export class DebtsService {
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
     const debtId = randomUUID();
-    const scheduleItemId = randomUUID();
-    const submittedScheduleItem = request.scheduleItems[0];
 
     const created = await this.databaseService.db.transaction(async (tx) => {
       await this.requireOwnedCustomer(
@@ -63,25 +61,27 @@ export class DebtsService {
         })
         .returning();
 
-      const [createdScheduleItem] = await tx
+      const createdScheduleItems = await tx
         .insert(debtScheduleItems)
-        .values({
-          id: scheduleItemId,
-          debtId,
-          position: 1,
-          amount: submittedScheduleItem.amount,
-          dueDate: submittedScheduleItem.dueDate,
-          createdAt: operationInstant,
-          updatedAt: operationInstant,
-        })
+        .values(
+          request.scheduleItems.map((scheduleItem, index) => ({
+            id: randomUUID(),
+            debtId,
+            position: index + 1,
+            amount: scheduleItem.amount,
+            dueDate: scheduleItem.dueDate,
+            createdAt: operationInstant,
+            updatedAt: operationInstant,
+          })),
+        )
         .returning();
 
-      return { debt: debt!, scheduleItem: createdScheduleItem! };
+      return { debt: debt!, scheduleItems: createdScheduleItems };
     });
 
     return toDebtResponse(
       created.debt,
-      [created.scheduleItem],
+      created.scheduleItems,
       businessDate,
     );
   }
@@ -338,36 +338,39 @@ function toDebtResponse(
   scheduleRows: DebtScheduleItemRow[],
   businessDate: string,
 ): DebtResponse {
-  if (scheduleRows.length !== 1) {
-    throw new Error(
-      'A one-payment debt must have exactly one schedule item.',
-    );
-  }
-
-  const scheduleItem = scheduleRows[0];
-  const position = scheduleItem?.position;
-
-  if (!scheduleItem || position !== 1) {
-    throw new Error(
-      'A one-payment debt schedule item must have position 1.',
-    );
-  }
-
-  return {
+  const responseScheduleItems = scheduleRows.map((scheduleItem) => ({
+    id: scheduleItem.id,
+    position: scheduleItem.position,
+    amount: scheduleItem.amount,
+    dueDate: scheduleItem.dueDate,
+    timing: getScheduleItemTiming(scheduleItem.dueDate, businessDate),
+  }));
+  const debtResponseFields = {
     id: debt.id,
     customerId: debt.customerId,
     description: debt.description,
     totalAmount: debt.totalAmount,
     currency: debt.currency,
-    paymentPlanType: 'onePayment',
-    scheduleItems: [{
-      id: scheduleItem.id,
-      position,
-      amount: scheduleItem.amount,
-      dueDate: scheduleItem.dueDate,
-      timing: getScheduleItemTiming(scheduleItem.dueDate, businessDate),
-    }],
     createdAt: debt.createdAt.toISOString(),
     updatedAt: debt.updatedAt.toISOString(),
+  };
+
+  if (responseScheduleItems.length === 1) {
+    const scheduleItem = responseScheduleItems[0]!;
+
+    return {
+      ...debtResponseFields,
+      paymentPlanType: 'onePayment',
+      scheduleItems: [{
+        ...scheduleItem,
+        position: 1,
+      }],
+    };
+  }
+
+  return {
+    ...debtResponseFields,
+    paymentPlanType: 'installment',
+    scheduleItems: responseScheduleItems,
   };
 }
