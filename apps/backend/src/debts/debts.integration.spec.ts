@@ -136,6 +136,72 @@ describe('debt routes', () => {
     ]);
   });
 
+  it('creates and retrieves a durable installment debt with every schedule item', async () => {
+    const owner = await signUpOwner('debt-installment-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+
+    const createResponse = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Website redesign installments',
+          totalAmount: '125.50',
+          currency: 'USD',
+          scheduleItems: [
+            {
+              amount: '60.00',
+              dueDate: '2026-10-30',
+            },
+            {
+              amount: '65.50',
+              dueDate: '2026-11-30',
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(createResponse.status).toBe(201);
+    const created = debtResponseSchema.parse(await createResponse.json());
+    expect(created).toMatchObject({
+      customerId: 'customer_debt',
+      description: 'Website redesign installments',
+      totalAmount: '125.50',
+      currency: 'USD',
+      paymentPlanType: 'installment',
+      scheduleItems: [
+        {
+          position: 1,
+          amount: '60.00',
+          dueDate: '2026-10-30',
+        },
+        {
+          position: 2,
+          amount: '65.50',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+
+    const listResponse = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(listResponse.status).toBe(200);
+    const list = debtListResponseSchema.parse(await listResponse.json());
+    expect(list.items).toEqual([created]);
+  });
+
   it('replaces a durable one-payment debt while preserving its identities', async () => {
     const owner = await signUpOwner('debt-replace-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
