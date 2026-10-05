@@ -218,4 +218,50 @@ describe('DebtDrawer payment plans', () => {
       ],
     });
   });
+
+  it('submits only the active plan while preserving the inactive draft', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.clear(within(drawer).getByLabelText('Installment count'));
+    await user.type(within(drawer).getByLabelText('Installment count'), '3');
+    await user.click(within(drawer).getByRole('button', { name: 'One payment' }));
+    await user.clear(within(drawer).getByLabelText('Due date'));
+    await user.type(within(drawer).getByLabelText('Due date'), '2026-11-05');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+
+    expect(within(drawer).getByLabelText('First installment due date')).toHaveValue('2026-10-01');
+
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      description: 'Website redesign',
+      totalAmount: '100.01',
+      currency: 'USD',
+      scheduleItems: [
+        { amount: '33.33', dueDate: '2026-10-01' },
+        { amount: '33.33', dueDate: '2026-11-01' },
+        { amount: '33.35', dueDate: '2026-12-01' },
+      ],
+    });
+
+    await user.click(within(drawer).getByRole('button', { name: 'One payment' }));
+    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-11-05');
+  });
 });
