@@ -4,10 +4,132 @@ import {
   allocateInstallmentAmounts,
   debtPlanIssueCode,
   getMaximumInstallmentCount,
+  generateInstallmentSchedule,
   type DebtPlan,
   type DebtPlanIssue,
   validateDebtPlan,
 } from './index.js';
+
+describe('generateInstallmentSchedule', () => {
+  it('anchors monthly dates to the original day across a short month', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '100.01',
+        installmentCount: 3,
+        frequency: 'monthly',
+        firstDueDate: '2026-01-31',
+      }),
+    ).toEqual([
+      { amount: '33.33', dueDate: '2026-01-31' },
+      { amount: '33.33', dueDate: '2026-02-28' },
+      { amount: '33.35', dueDate: '2026-03-31' },
+    ]);
+  });
+
+  it('adds seven calendar days for weekly schedules across a year boundary', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '30.00',
+        installmentCount: 3,
+        frequency: 'weekly',
+        firstDueDate: '2026-12-29',
+      }).map(({ dueDate }) => dueDate),
+    ).toEqual(['2026-12-29', '2027-01-05', '2027-01-12']);
+  });
+
+  it('adds seven calendar days across a leap-day boundary', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '20.00',
+        installmentCount: 2,
+        frequency: 'weekly',
+        firstDueDate: '2028-02-26',
+      }).map(({ dueDate }) => dueDate),
+    ).toEqual(['2028-02-26', '2028-03-04']);
+  });
+
+  it('preserves the monthly anchor across a year boundary and short February', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '30.00',
+        installmentCount: 4,
+        frequency: 'monthly',
+        firstDueDate: '2028-11-30',
+      }).map(({ dueDate }) => dueDate),
+    ).toEqual(['2028-11-30', '2028-12-30', '2029-01-30', '2029-02-28']);
+  });
+
+  it('restores a December month-end anchor after February clamping', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '40.00',
+        installmentCount: 4,
+        frequency: 'monthly',
+        firstDueDate: '2028-12-31',
+      }).map(({ dueDate }) => dueDate),
+    ).toEqual(['2028-12-31', '2029-01-31', '2029-02-28', '2029-03-31']);
+  });
+
+  it('uses February 29 when the anchored month has a leap day', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '30.00',
+        installmentCount: 3,
+        frequency: 'monthly',
+        firstDueDate: '2028-01-31',
+      }).map(({ dueDate }) => dueDate),
+    ).toEqual(['2028-01-31', '2028-02-29', '2028-03-31']);
+  });
+
+  it('preserves a February 29 anchor when the next year is not a leap year', () => {
+    const schedule = generateInstallmentSchedule({
+      totalAmount: '13.00',
+      installmentCount: 13,
+      frequency: 'monthly',
+      firstDueDate: '2028-02-29',
+    });
+
+    expect(schedule[0]?.dueDate).toBe('2028-02-29');
+    expect(schedule[1]?.dueDate).toBe('2028-03-29');
+    expect(schedule[12]?.dueDate).toBe('2029-02-28');
+  });
+
+  it.each(['2026-02-29', '2026-2-3', '2026-02-03-extra'])(
+    'rejects an invalid first due date: %s',
+    (firstDueDate) => {
+      expect(() =>
+        generateInstallmentSchedule({
+          totalAmount: '30.00',
+          installmentCount: 2,
+          frequency: 'monthly',
+          firstDueDate,
+        }),
+      ).toThrow('First due date must be a valid calendar date');
+    },
+  );
+
+  it('keeps generated dates in four-digit year format', () => {
+    expect(
+      generateInstallmentSchedule({
+        totalAmount: '2.00',
+        installmentCount: 2,
+        frequency: 'monthly',
+        firstDueDate: '0004-02-29',
+      }).map(({ dueDate }) => dueDate),
+    ).toEqual(['0004-02-29', '0004-03-29']);
+  });
+
+  it.each(['1.999', '1.2.3'])('rejects a malformed amount: %s', (totalAmount) => {
+    expect(() =>
+      generateInstallmentSchedule({
+        totalAmount,
+        installmentCount: 1,
+        frequency: 'monthly',
+        firstDueDate: '2026-01-01',
+      }),
+    ).toThrow('Amount must contain only digits and at most two decimal places');
+  });
+});
 
 describe('getMaximumInstallmentCount', () => {
   it.each([
