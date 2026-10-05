@@ -1,13 +1,8 @@
-export {
-  useLocalization,
-  type LocalizationContextValue,
-} from './useLocalization';
-export {
-  LocalizationProvider,
-  type CreateI18nInstance,
-} from './LocalizationProvider';
+export { useLocalization, type LocalizationContextValue } from './useLocalization';
+export { LocalizationProvider, type CreateI18nInstance } from './LocalizationProvider';
 export { createI18nInstance } from './i18n';
 export { formatCurrencyAmount } from './formatCurrencyAmount';
+export { formatDateOnly } from './formatDateOnly';
 export { sharedLocalizationResources } from './resources';
 export {
   defaultLocale,

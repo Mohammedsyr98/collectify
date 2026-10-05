@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { FormInput } from '../../shared/ui/form/FormInput';
 import { SegmentedControl } from '../../shared/ui/segmented-control/SegmentedControl';
 import { type DebtDraft, type InstallmentFrequency, type PaymentPlan } from './debt-draft';
+import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
 
 export function DebtPlanFields({
   disabled,
@@ -117,6 +118,7 @@ export function DebtPlanFields({
             name="installmentPlan.firstDueDate"
             type="date"
           />
+          <InstallmentSchedulePreview />
         </>
       )}
     </div>

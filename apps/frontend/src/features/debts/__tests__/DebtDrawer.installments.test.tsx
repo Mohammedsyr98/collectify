@@ -107,6 +107,81 @@ describe('DebtDrawer payment plans', () => {
     expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-11-05');
   });
 
+  it('shows the generated schedule and updates it when installment settings change', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+
+    const table = within(drawer).getByRole('table', {
+      name: 'Generated installment schedule',
+    });
+    let rows = within(table).getAllByRole('row');
+
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toHaveTextContent('1');
+    expect(rows[1]).toHaveTextContent('$50.00');
+    expect(rows[1].querySelector('bdi[dir="ltr"]')).toHaveTextContent('$50.00');
+    expect(rows[1].querySelector('time')).toHaveAttribute('datetime', '2026-10-01');
+    expect(rows[2]).toHaveTextContent('$50.01');
+    expect(rows[2].querySelector('time')).toHaveAttribute('datetime', '2026-11-01');
+
+    await user.click(within(drawer).getByRole('button', { name: 'Weekly' }));
+    rows = within(table).getAllByRole('row');
+    expect(rows[2].querySelector('time')).toHaveAttribute('datetime', '2026-10-08');
+
+    await user.clear(within(drawer).getByLabelText('Installment count'));
+    await user.type(within(drawer).getByLabelText('Installment count'), '4');
+
+    const updatedTable = within(drawer).getByRole('table', {
+      name: 'Generated installment schedule',
+    });
+    rows = within(updatedTable).getAllByRole('row');
+    expect(rows).toHaveLength(5);
+    expect(rows[1]).toHaveTextContent('$25.00');
+    expect(rows[4]).toHaveTextContent('$25.01');
+    expect(rows[4].querySelector('time')).toHaveAttribute('datetime', '2026-10-22');
+  });
+
+  it('does not show a preview until the installment settings are complete', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+
+    expect(
+      within(drawer).queryByRole('table', { name: 'Generated installment schedule' }),
+    ).not.toBeInTheDocument();
+
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+
+    expect(within(drawer).getByText('Choose between 2 and 60 installments.')).toBeInTheDocument();
+    expect(
+      within(drawer).queryByRole('table', { name: 'Generated installment schedule' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('submits the generated request for the selected installment plan', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);

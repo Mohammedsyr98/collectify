@@ -7,13 +7,16 @@ import {
   type Currency,
   type DebtResponse,
 } from '@collectify/contracts';
+import type { InstallmentFrequency } from '@collectify/domain/debt-plan';
+
 import {
-  generateInstallmentSchedule,
-  getMaximumInstallmentCount,
-  type InstallmentFrequency,
-} from '@collectify/domain/debt-plan';
+  buildInstallmentScheduleFromDraft,
+  type InstallmentPlanDraft,
+  type InstallmentScheduleResult,
+} from './installment-schedule-draft';
 
 export type { InstallmentFrequency };
+export type { InstallmentPlanDraft } from './installment-schedule-draft';
 
 export type PaymentPlan = 'onePayment' | 'installment';
 
@@ -25,11 +28,7 @@ export type DebtDraft = {
   onePayment: {
     dueDate: string;
   };
-  installmentPlan: {
-    installmentCount: string;
-    frequency: InstallmentFrequency;
-    firstDueDate: string;
-  };
+  installmentPlan: InstallmentPlanDraft;
 };
 
 type DraftField =
@@ -94,61 +93,22 @@ function resolveInstallments(draft: DebtDraft) {
     addRequestErrors(errors, firstScheduleRequestResult.error.issues, draft.paymentPlan);
   }
 
-  const installmentCount = parseInstallmentCount(draft.installmentPlan.installmentCount);
+  const scheduleResult = buildInstallmentScheduleFromDraft({
+    totalAmount: firstScheduleRequestResult.success
+      ? firstScheduleRequestResult.data.totalAmount
+      : draft.totalAmount,
+    installmentPlan: draft.installmentPlan,
+  });
 
-  if (installmentCount === undefined) {
-    setFirstError(
-      errors,
-      'installmentPlan.installmentCount',
-      debtPlanIssueCode.scheduleItemCountInvalid,
-    );
-  }
+  addScheduleBuildErrors(errors, scheduleResult);
 
-  if (!isInstallmentFrequency(draft.installmentPlan.frequency)) {
-    setFirstError(errors, 'installmentPlan.frequency', debtPlanIssueCode.scheduleItemCountInvalid);
-
-    return { values: {}, errors };
-  }
-
-  if (!firstScheduleRequestResult.success || installmentCount === undefined) {
-    return { values: {}, errors };
-  }
-
-  const maximumInstallmentCount = getMaximumInstallmentCount(
-    firstScheduleRequestResult.data.totalAmount,
-  );
-
-  if (installmentCount > maximumInstallmentCount) {
-    setFirstError(
-      errors,
-      'installmentPlan.installmentCount',
-      debtPlanIssueCode.scheduleItemCountInvalid,
-    );
-
-    return { values: {}, errors };
-  }
-
-  let scheduleItems: readonly {
-    amount: string;
-    dueDate: string;
-  }[];
-
-  try {
-    scheduleItems = generateInstallmentSchedule({
-      totalAmount: firstScheduleRequestResult.data.totalAmount,
-      installmentCount,
-      frequency: draft.installmentPlan.frequency,
-      firstDueDate: firstScheduleRequestResult.data.scheduleItems[0].dueDate,
-    });
-  } catch {
-    setFirstError(errors, 'root', debtPlanIssueCode.scheduleItemDueDateInvalid);
-
+  if (!firstScheduleRequestResult.success || scheduleResult.status !== 'ready') {
     return { values: {}, errors };
   }
 
   const result = createDebtRequestSchema.safeParse({
     ...firstScheduleRequestResult.data,
-    scheduleItems: [...scheduleItems],
+    scheduleItems: [...scheduleResult.scheduleItems],
   });
 
   if (result.success) {
@@ -157,6 +117,34 @@ function resolveInstallments(draft: DebtDraft) {
 
   addRequestErrors(errors, result.error.issues, draft.paymentPlan);
   return { values: {}, errors };
+}
+
+function addScheduleBuildErrors(errors: FieldErrors<DebtDraft>, result: InstallmentScheduleResult) {
+  if (result.status === 'ready') {
+    return;
+  }
+
+  for (const issue of result.issues) {
+    switch (issue.field) {
+      case 'installmentCount':
+        setFirstError(
+          errors,
+          'installmentPlan.installmentCount',
+          debtPlanIssueCode.scheduleItemCountInvalid,
+        );
+        break;
+      case 'firstDueDate':
+        setFirstError(
+          errors,
+          'installmentPlan.firstDueDate',
+          debtPlanIssueCode.scheduleItemDueDateInvalid,
+        );
+        break;
+      case 'totalAmount':
+        // The base request schema already maps this error to the total amount field.
+        break;
+    }
+  }
 }
 
 function parseFirstScheduleRequest(draft: DebtDraft, firstDueDate: string) {
@@ -171,20 +159,6 @@ function parseFirstScheduleRequest(draft: DebtDraft, firstDueDate: string) {
       },
     ],
   });
-}
-
-function parseInstallmentCount(value: string): number | undefined {
-  if (!/^\d+$/.test(value)) {
-    return undefined;
-  }
-
-  const count = Number(value);
-
-  return Number.isSafeInteger(count) && count >= 2 ? count : undefined;
-}
-
-function isInstallmentFrequency(value: string): value is InstallmentFrequency {
-  return value === 'weekly' || value === 'monthly';
 }
 
 function addRequestErrors(

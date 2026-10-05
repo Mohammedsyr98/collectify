@@ -6,7 +6,7 @@ export const debtResources = {
   en: {
     common: {
       debts: {
-          card: {
+        card: {
           actions: {
             delete: 'Delete debt',
             edit: 'Edit debt',
@@ -48,7 +48,14 @@ export const debtResources = {
           dueDateLabel: 'Due date',
           firstInstallmentDueDateLabel: 'First installment due date',
           frequencyLabel: 'Frequency',
+          installmentAmountLabel: 'Amount',
           installmentCountLabel: 'Installment count',
+          installmentCountGuidance: 'Choose between {{minimum}} and {{maximum}} installments.',
+          installmentDueDateLabel: 'Due date',
+          installmentNumberLabel: 'Installment',
+          installmentPreviewCaption: 'Generated installment schedule',
+          installmentPreviewLabel: 'Installment preview',
+          installmentsUnavailable: 'This amount cannot be split into installments.',
           installmentsOption: 'Installments',
           monthlyOption: 'Monthly',
           onePaymentOption: 'One payment',
@@ -102,7 +109,7 @@ export const debtResources = {
   tr: {
     common: {
       debts: {
-          card: {
+        card: {
           actions: {
             delete: 'Borcu sil',
             edit: 'Borcu düzenle',
@@ -143,7 +150,14 @@ export const debtResources = {
           dueDateLabel: 'Vade tarihi',
           firstInstallmentDueDateLabel: 'İlk taksit vade tarihi',
           frequencyLabel: 'Sıklık',
+          installmentAmountLabel: 'Tutar',
           installmentCountLabel: 'Taksit sayısı',
+          installmentCountGuidance: '{{minimum}} ile {{maximum}} arasında taksit seçin.',
+          installmentDueDateLabel: 'Vade tarihi',
+          installmentNumberLabel: 'Taksit',
+          installmentPreviewCaption: 'Oluşturulan taksit planı',
+          installmentPreviewLabel: 'Taksit önizlemesi',
+          installmentsUnavailable: 'Bu tutar taksitlere bölünemez.',
           installmentsOption: 'Taksitler',
           monthlyOption: 'Aylık',
           onePaymentOption: 'Tek ödeme',
@@ -198,7 +212,7 @@ export const debtResources = {
   ar: {
     common: {
       debts: {
-          card: {
+        card: {
           actions: {
             delete: 'حذف الدين',
             edit: 'تحرير الدين',
@@ -239,7 +253,14 @@ export const debtResources = {
           dueDateLabel: 'تاريخ الاستحقاق',
           firstInstallmentDueDateLabel: 'تاريخ استحقاق القسط الأول',
           frequencyLabel: 'التكرار',
+          installmentAmountLabel: 'المبلغ',
           installmentCountLabel: 'عدد الأقساط',
+          installmentCountGuidance: 'اختر بين {{minimum}} و{{maximum}} أقساط.',
+          installmentDueDateLabel: 'تاريخ الاستحقاق',
+          installmentNumberLabel: 'القسط',
+          installmentPreviewCaption: 'جدول الأقساط المُنشأ',
+          installmentPreviewLabel: 'معاينة الأقساط',
+          installmentsUnavailable: 'لا يمكن تقسيم هذا المبلغ إلى أقساط.',
           installmentsOption: 'أقساط',
           monthlyOption: 'شهريًا',
           onePaymentOption: 'دفعة واحدة',

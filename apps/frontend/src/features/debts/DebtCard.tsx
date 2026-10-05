@@ -3,10 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
 
-import {
-  formatCurrencyAmount,
-  useLocalization,
-} from '../../shared/localization';
+import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../shared/localization';
 import { AnchoredMenu } from '../../shared/ui/anchored-menu/AnchoredMenu';
 
 export function DebtCard({
@@ -27,8 +24,7 @@ export function DebtCard({
             icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
             id: 'edit-debt',
             label: t('debts.card.actions.edit'),
-            onSelect: (trigger: HTMLButtonElement | null) =>
-              onEdit?.(debt, trigger),
+            onSelect: (trigger: HTMLButtonElement | null) => onEdit?.(debt, trigger),
           },
         ]
       : []),
@@ -36,8 +32,7 @@ export function DebtCard({
       icon: <Trash2 aria-hidden="true" size={15} strokeWidth={2.5} />,
       id: 'delete-debt',
       label: t('debts.card.actions.delete'),
-      onSelect: (trigger: HTMLButtonElement | null) =>
-        onDelete?.(debt, trigger),
+      onSelect: (trigger: HTMLButtonElement | null) => onDelete?.(debt, trigger),
     },
   ];
 
@@ -133,9 +128,7 @@ function OnePaymentSummary({
               style={{ width: `${paidPercentage}%` }}
             />
           </div>
-          <span className="text-[0.72rem] font-black text-muted-foreground">
-            {paidPercentage}%
-          </span>
+          <span className="text-[0.72rem] font-black text-muted-foreground">{paidPercentage}%</span>
         </div>
       </div>
 
@@ -143,7 +136,7 @@ function OnePaymentSummary({
         <CalendarDays aria-hidden="true" size={16} strokeWidth={2.4} />
         <span>{t('debts.card.dueDate')}</span>
         <time dateTime={scheduleItem?.dueDate}>
-          {formatDebtDueDate(scheduleItem?.dueDate, locale)}
+          {formatDateOnly(scheduleItem?.dueDate, locale)}
         </time>
       </div>
     </>
@@ -163,9 +156,7 @@ function FinancialMetric({
 }) {
   return (
     <div className="grid gap-1">
-      <span className="text-[0.68rem] font-black text-muted-foreground">
-        {label}
-      </span>
+      <span className="text-[0.68rem] font-black text-muted-foreground">{label}</span>
       <bdi className="text-[0.9rem] font-black" dir="ltr">
         {formatCurrencyAmount(value, currency, locale)}
       </bdi>
@@ -173,7 +164,11 @@ function FinancialMetric({
   );
 }
 
-function TimingBadge({ timing }: { timing: DebtResponse['scheduleItems'][number]['timing'] | undefined }) {
+function TimingBadge({
+  timing,
+}: {
+  timing: DebtResponse['scheduleItems'][number]['timing'] | undefined;
+}) {
   const { t } = useTranslation();
 
   if (timing === 'dueToday') {
@@ -197,15 +192,4 @@ function TimingBadge({ timing }: { timing: DebtResponse['scheduleItems'][number]
       {t('debts.card.upcoming')}
     </span>
   );
-}
-
-function formatDebtDueDate(dueDate: string | undefined, locale: string): string {
-  if (!dueDate) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'long',
-    timeZone: 'UTC',
-  }).format(new Date(`${dueDate}T00:00:00.000Z`));
 }
