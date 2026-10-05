@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
+import { CircleDollarSign, FileText, X } from 'lucide-react';
 import { type RefObject } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -14,10 +14,12 @@ import type {
 import { FormInput } from '../../shared/ui/form/FormInput';
 import { FormSelect } from '../../shared/ui/form/FormSelect';
 import { useDebtValidationErrorFormatter } from './localization/useDebtValidationErrorFormatter';
+import { DebtPlanFields } from './DebtPlanFields';
 import {
+  createDebtDraft,
   debtDraftResolver,
   type DebtDraft,
-} from './debt-draft-resolver';
+} from './debt-draft';
 
 type DebtDrawerProps = {
   isSubmitting: boolean;
@@ -43,21 +45,13 @@ export function DebtDrawer(props: DebtDrawerProps) {
   const { t } = useTranslation();
   const formatValidationError = useDebtValidationErrorFormatter();
   const form = useForm<DebtDraft, unknown, CreateDebtRequest>({
-    defaultValues:
+    defaultValues: createDebtDraft(
       props.mode === 'edit'
-        ? {
-            description: props.debt.description,
-            totalAmount: props.debt.totalAmount,
-            currency: props.debt.currency,
-            dueDate: props.debt.scheduleItems[0].dueDate,
-          }
-        : {
-            description: '',
-            totalAmount: '',
-            currency: props.defaultCurrency,
-            dueDate: '',
-          },
+        ? { debt: props.debt, mode: 'edit' }
+        : { defaultCurrency: props.defaultCurrency, mode: 'create' },
+    ),
     resolver: debtDraftResolver,
+    shouldUnregister: false,
   });
 
   return (
@@ -175,13 +169,10 @@ export function DebtDrawer(props: DebtDrawerProps) {
                 ]}
                 formatError={formatValidationError}
               />
-              <FormInput<DebtDraft>
-                autoComplete="off"
-                icon={<CalendarDays aria-hidden="true" size={16} strokeWidth={2.2} />}
-                label={t('debts.form.dueDateLabel')}
-                name="dueDate"
-                type="date"
+              <DebtPlanFields
+                disabled={isSubmitting}
                 formatError={formatValidationError}
+                mode={mode}
               />
               {form.formState.errors.root?.message ? (
                 <p

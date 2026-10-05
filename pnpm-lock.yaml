@@ -111,6 +111,9 @@ importers:
       '@collectify/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@collectify/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@collectify/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens

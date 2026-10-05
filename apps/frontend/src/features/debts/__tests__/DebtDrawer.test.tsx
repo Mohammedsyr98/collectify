@@ -263,7 +263,7 @@ describe('DebtDrawer', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Add debt' });
     expect(dialog).toHaveAccessibleDescription(
-      'Create a one-payment debt for this customer.',
+      'Create a debt for this customer.',
     );
     const closeButton = within(dialog).getByRole('button', {
       name: 'Close debt form',
