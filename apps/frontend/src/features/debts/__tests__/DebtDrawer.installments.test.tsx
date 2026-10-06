@@ -276,6 +276,39 @@ describe('DebtDrawer payment plans', () => {
     );
   });
 
+  it('shows a manual row amount error on the matching row', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.clear(within(drawer).getByLabelText('Installment count'));
+    await user.type(within(drawer).getByLabelText('Installment count'), '3');
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+
+    const secondAmount = within(drawer).getByLabelText('Installment 2 amount');
+    await user.clear(secondAmount);
+    await user.type(secondAmount, '0');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    expect(secondAmount).toHaveAccessibleDescription('Payment amount must be greater than zero.');
+    expect(within(drawer).getByLabelText('Total amount')).not.toHaveAccessibleDescription();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('submits only the active plan while preserving the inactive draft', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
