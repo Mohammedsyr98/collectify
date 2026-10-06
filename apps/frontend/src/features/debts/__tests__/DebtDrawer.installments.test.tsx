@@ -276,6 +276,184 @@ describe('DebtDrawer payment plans', () => {
     );
   });
 
+  it('appends a blank row and removes only the selected row', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.clear(within(drawer).getByLabelText('Installment count'));
+    await user.type(within(drawer).getByLabelText('Installment count'), '2');
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+
+    await user.click(within(drawer).getByRole('button', { name: 'Add installment' }));
+
+    expect(within(drawer).getByLabelText('Installment 3 amount')).toHaveValue('');
+    expect(within(drawer).getByLabelText('Installment 3 due date')).toHaveValue('');
+
+    await user.type(within(drawer).getByLabelText('Installment 3 amount'), '12.34');
+    await user.type(within(drawer).getByLabelText('Installment 3 due date'), '2026-12-01');
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Remove installment 2' }),
+    );
+
+    expect(within(drawer).getByLabelText('Installment 1 amount')).toHaveValue('50.00');
+    expect(within(drawer).getByLabelText('Installment 2 amount')).toHaveValue('12.34');
+    expect(within(drawer).getByLabelText('Installment 2 due date')).toHaveValue('2026-12-01');
+  });
+
+  it('keeps Remove visible at the minimum and disables Add at the dynamic maximum', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Total amount'), '0.03');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+
+    const addButton = within(drawer).getByRole('button', { name: 'Add installment' });
+    const removeButtons = within(drawer).getAllByRole('button', {
+      name: /Remove installment/,
+    });
+
+    expect(removeButtons).toHaveLength(2);
+    expect(removeButtons[0]).toBeDisabled();
+    expect(removeButtons[1]).toBeDisabled();
+    expect(addButton).toBeEnabled();
+
+    await user.click(addButton);
+
+    expect(
+      within(drawer).getAllByRole('button', { name: /Remove installment/ }),
+    ).toHaveLength(3);
+    expect(
+      within(drawer).getAllByRole('button', { name: /Remove installment/ }).every(
+        (button) => !button.hasAttribute('disabled'),
+      ),
+    ).toBe(true);
+    expect(addButton).toBeDisabled();
+  });
+
+  it('disables Add when the total cannot provide a truthful maximum', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    const totalAmount = within(drawer).getByLabelText('Total amount');
+    await user.type(totalAmount, '100.01');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+
+    const addButton = within(drawer).getByRole('button', { name: 'Add installment' });
+    expect(addButton).toBeEnabled();
+
+    await user.clear(totalAmount);
+    await user.type(totalAmount, 'not-a-number');
+
+    expect(addButton).toBeDisabled();
+  });
+
+  it('keeps manual values and rows when a total change lowers the maximum', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    const totalAmount = within(drawer).getByLabelText('Total amount');
+    await user.type(totalAmount, '0.03');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+    await user.click(within(drawer).getByRole('button', { name: 'Add installment' }));
+
+    const firstAmount = within(drawer).getByLabelText('Installment 1 amount');
+    await user.clear(within(drawer).getByLabelText('Installment 3 amount'));
+    await user.type(within(drawer).getByLabelText('Installment 3 amount'), '0.01');
+    await user.type(within(drawer).getByLabelText('Installment 3 due date'), '2026-12-01');
+
+    await user.clear(totalAmount);
+    await user.type(totalAmount, '0.02');
+
+    expect(within(drawer).getByLabelText('Installment 1 amount')).toBe(firstAmount);
+    expect(within(drawer).getByLabelText('Installment 1 amount')).toHaveValue('0.01');
+    expect(within(drawer).getByLabelText('Installment 2 amount')).toHaveValue('0.02');
+    expect(within(drawer).getByLabelText('Installment 3 amount')).toHaveValue('0.01');
+    expect(within(drawer).getByLabelText('Installment 3 due date')).toHaveValue('2026-12-01');
+    expect(within(drawer).getByRole('button', { name: 'Add installment' })).toBeDisabled();
+    expect(within(drawer).getByRole('button', { name: 'Remove installment 3' })).toBeEnabled();
+  });
+
+  it('preserves the manual schedule through a one-payment round trip', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+    await user.clear(within(drawer).getByLabelText('Installment 1 amount'));
+    await user.type(within(drawer).getByLabelText('Installment 1 amount'), '20');
+
+    await user.click(within(drawer).getByRole('button', { name: 'One payment' }));
+    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-09-30');
+
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+
+    expect(
+      within(drawer).getByRole('button', { name: 'Reset to automatic schedule' }),
+    ).toBeInTheDocument();
+    expect(within(drawer).getByLabelText('Installment 1 amount')).toHaveValue('20');
+    expect(within(drawer).getByLabelText('Installment 2 amount')).toHaveValue('50.01');
+  });
+
   it('shows a manual row amount error on the matching row', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);

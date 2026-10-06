@@ -30,7 +30,7 @@ export function InstallmentPlanFields({
     control,
     name: 'installmentPlan.automatic.frequency',
   }).field;
-  const { fields, replace } = useFieldArray({
+  const { append, fields, remove, replace } = useFieldArray({
     control,
     name: 'installmentPlan.manual.scheduleItems',
   });
@@ -57,6 +57,18 @@ export function InstallmentPlanFields({
     replace([]);
     setValue('installmentPlan.mode', 'automatic');
   };
+
+  const maximum = scheduleResult.maximumInstallmentCount;
+  const minimumInstallmentCount = 2;
+  const isAddDisabled =
+    disabled || maximum === undefined || fields.length >= maximum;
+  const manualCountGuidance =
+    maximum === undefined || maximum < minimumInstallmentCount
+      ? t('debts.form.installmentsUnavailable')
+      : t('debts.form.installmentCountGuidance', {
+          maximum,
+          minimum: minimumInstallmentCount,
+        });
 
   return (
     <div className="grid gap-[13px]">
@@ -115,6 +127,12 @@ export function InstallmentPlanFields({
           >
             {t('debts.form.resetToAutomaticSchedule')}
           </button>
+          <p
+            className="m-0 text-[0.72rem] leading-[1.35] text-muted-foreground"
+            id="manual-installment-count-guidance"
+          >
+            {manualCountGuidance}
+          </p>
           <div className="grid gap-3">
             {fields.map((field, index) => (
               <div className="grid gap-2" key={field.id}>
@@ -133,9 +151,28 @@ export function InstallmentPlanFields({
                   name={`installmentPlan.manual.scheduleItems.${index}.dueDate`}
                   type="date"
                 />
+                <button
+                  aria-describedby="manual-installment-count-guidance"
+                  aria-label={t('debts.form.removeInstallment', { number: index + 1 })}
+                  className="min-h-9 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.75rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={disabled || fields.length <= 2}
+                  onClick={() => remove(index)}
+                  type="button"
+                >
+                  {t('debts.form.removeInstallment', { number: index + 1 })}
+                </button>
               </div>
             ))}
           </div>
+          <button
+            aria-describedby="manual-installment-count-guidance"
+            className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isAddDisabled}
+            onClick={() => append({ amount: '', dueDate: '' })}
+            type="button"
+          >
+            {t('debts.form.addInstallment')}
+          </button>
         </section>
       )}
     </div>

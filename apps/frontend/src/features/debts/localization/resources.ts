@@ -42,6 +42,7 @@ export const debtResources = {
         errors: debtApiErrorTranslations.en,
         form: {
           cancel: 'Cancel',
+          addInstallment: 'Add installment',
           customizeInstallments: 'Customize installments',
           currencyLabel: 'Currency',
           descriptionLabel: 'Description',
@@ -63,6 +64,7 @@ export const debtResources = {
           monthlyOption: 'Monthly',
           onePaymentOption: 'One payment',
           paymentPlanLabel: 'Payment plan',
+          removeInstallment: 'Remove installment {{number}}',
           resetToAutomaticSchedule: 'Reset to automatic schedule',
           save: 'Save debt',
           saving: 'Saving',
@@ -148,6 +150,7 @@ export const debtResources = {
         },
         form: {
           cancel: 'İptal',
+          addInstallment: 'Taksit ekle',
           customizeInstallments: 'Taksitleri özelleştir',
           currencyLabel: 'Para birimi',
           descriptionLabel: 'Açıklama',
@@ -169,6 +172,7 @@ export const debtResources = {
           monthlyOption: 'Aylık',
           onePaymentOption: 'Tek ödeme',
           paymentPlanLabel: 'Ödeme planı',
+          removeInstallment: '{{number}}. taksiti kaldır',
           resetToAutomaticSchedule: 'Otomatik plana dön',
           save: 'Borcu kaydet',
           saving: 'Kaydediliyor',
@@ -255,6 +259,7 @@ export const debtResources = {
         },
         form: {
           cancel: 'إلغاء',
+          addInstallment: 'إضافة قسط',
           customizeInstallments: 'تخصيص الأقساط',
           currencyLabel: 'العملة',
           descriptionLabel: 'الوصف',
@@ -276,6 +281,7 @@ export const debtResources = {
           monthlyOption: 'شهريًا',
           onePaymentOption: 'دفعة واحدة',
           paymentPlanLabel: 'خطة الدفع',
+          removeInstallment: 'إزالة القسط {{number}}',
           resetToAutomaticSchedule: 'إعادة الجدول التلقائي',
           save: 'حفظ الدين',
           saving: 'جارٍ الحفظ',
