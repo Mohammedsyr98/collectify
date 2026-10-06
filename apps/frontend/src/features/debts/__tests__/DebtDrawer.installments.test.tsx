@@ -229,6 +229,110 @@ describe('DebtDrawer payment plans', () => {
       );
     });
 
+    it('shows an exact live summary without changing manual row values', async () => {
+      const { drawer, user } = renderDebtDrawer();
+      const totalAmount = drawer.getByLabelText('Total amount');
+
+      await user.type(totalAmount, '100.01');
+      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+      await user.clear(drawer.getByLabelText('First installment due date'));
+      await user.type(drawer.getByLabelText('First installment due date'), '2026-10-01');
+      await user.clear(drawer.getByLabelText('Installment count'));
+      await user.type(drawer.getByLabelText('Installment count'), '3');
+      await user.click(drawer.getByRole('button', { name: 'Customize installments' }));
+
+      const initialSummary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(initialSummary).getByText('$0.00')).toBeInTheDocument();
+      expect(within(initialSummary).getByText('Remaining')).toBeInTheDocument();
+
+      const firstAmount = drawer.getByLabelText('Installment 1 amount');
+      const secondAmount = drawer.getByLabelText('Installment 2 amount');
+      const thirdAmount = drawer.getByLabelText('Installment 3 amount');
+      await user.clear(firstAmount);
+      await user.type(firstAmount, '20');
+      await user.clear(secondAmount);
+      await user.type(secondAmount, '30.0');
+      await user.clear(thirdAmount);
+      await user.type(thirdAmount, '40');
+
+      let summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('$100.01')).toBeInTheDocument();
+      expect(within(summary).getByText('$90.00')).toBeInTheDocument();
+      expect(within(summary).getByText('$10.01')).toBeInTheDocument();
+      expect(within(summary).getByText('Remaining')).toBeInTheDocument();
+
+      await user.selectOptions(drawer.getByLabelText('Currency'), 'EUR');
+      summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('€100.01')).toBeInTheDocument();
+      await user.selectOptions(drawer.getByLabelText('Currency'), 'USD');
+
+      await user.clear(totalAmount);
+
+      summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('Debt total').parentElement).toHaveTextContent('$0.00');
+      expect(within(summary).getByText('Schedule total').parentElement).toHaveTextContent('$90.00');
+      expect(within(summary).getByText('Excess').parentElement).toHaveTextContent('$90.00');
+
+      await user.type(totalAmount, '95');
+
+      summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('$95.00')).toBeInTheDocument();
+      expect(within(summary).getByText('$5.00')).toBeInTheDocument();
+      expect(firstAmount).toHaveValue('20');
+      expect(secondAmount).toHaveValue('30.0');
+      expect(thirdAmount).toHaveValue('40');
+
+      await user.clear(thirdAmount);
+      summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('$50.00')).toBeInTheDocument();
+      expect(within(summary).getByText('$45.00')).toBeInTheDocument();
+      expect(within(summary).getByText('Remaining')).toBeInTheDocument();
+
+      await user.type(thirdAmount, '60.');
+      summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('$110.00')).toBeInTheDocument();
+      expect(within(summary).getByText('$15.00')).toBeInTheDocument();
+      expect(within(summary).getByText('Excess')).toBeInTheDocument();
+
+      await user.type(thirdAmount, '01');
+      summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(within(summary).getByText('$110.01')).toBeInTheDocument();
+      expect(within(summary).getByText('$15.01')).toBeInTheDocument();
+      expect(within(summary).getByText('Excess')).toBeInTheDocument();
+      expect(firstAmount).toHaveValue('20');
+      expect(secondAmount).toHaveValue('30.0');
+      expect(thirdAmount).toHaveValue('60.01');
+    });
+
+    it('sets date bounds from neighboring rows without blocking a past first date', async () => {
+      const { drawer, user } = renderDebtDrawer();
+      await user.type(drawer.getByLabelText('Total amount'), '100.01');
+      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+      await user.clear(drawer.getByLabelText('First installment due date'));
+      await user.type(drawer.getByLabelText('First installment due date'), '2026-01-31');
+      await user.clear(drawer.getByLabelText('Installment count'));
+      await user.type(drawer.getByLabelText('Installment count'), '3');
+      await user.click(drawer.getByRole('button', { name: 'Customize installments' }));
+
+      const firstDueDate = drawer.getByLabelText('Installment 1 due date');
+      const secondDueDate = drawer.getByLabelText('Installment 2 due date');
+      const thirdDueDate = drawer.getByLabelText('Installment 3 due date');
+
+      expect(firstDueDate).not.toHaveAttribute('min');
+      expect(firstDueDate).toHaveAttribute('max', '2026-02-27');
+      expect(secondDueDate).toHaveAttribute('min', '2026-02-01');
+      expect(secondDueDate).toHaveAttribute('max', '2026-03-30');
+      expect(thirdDueDate).toHaveAttribute('min', '2026-03-01');
+      expect(thirdDueDate).not.toHaveAttribute('max');
+
+      await user.clear(secondDueDate);
+
+      expect(firstDueDate).not.toHaveAttribute('max');
+      expect(thirdDueDate).not.toHaveAttribute('min');
+      expect(secondDueDate).toHaveAttribute('min', '2026-02-01');
+      expect(secondDueDate).toHaveAttribute('max', '2026-03-30');
+    });
+
     it('appends a blank row and removes only the selected row', async () => {
       const { drawer, user } = renderDebtDrawer();
       await user.type(drawer.getByLabelText('Total amount'), '100.01');

@@ -7,10 +7,15 @@ import {
   type Currency,
   type DebtResponse,
 } from '@collectify/contracts';
-import type { InstallmentFrequency } from '@collectify/domain/debt-plan';
+import {
+  summarizeDebtPlanAmounts,
+  type DebtPlanAmountSummary,
+  type InstallmentFrequency,
+} from '@collectify/domain/debt-plan';
 
 import {
   buildInstallmentScheduleFromDraft,
+  type ManualScheduleItemDraft,
   type InstallmentPlanDraft,
   type InstallmentScheduleResult,
 } from './installment-schedule-draft';
@@ -30,6 +35,10 @@ export type DebtDraft = {
   };
   installmentPlan: InstallmentPlanDraft;
 };
+
+export type ManualInstallmentSummary =
+  | { readonly status: 'ready'; readonly summary: DebtPlanAmountSummary }
+  | { readonly status: 'invalid' };
 
 type DraftField =
   | keyof Pick<DebtDraft, 'description' | 'totalAmount' | 'currency'>
@@ -73,6 +82,30 @@ export const debtDraftResolver: Resolver<DebtDraft, unknown, CreateDebtRequest> 
       return resolveInstallments(draft);
   }
 };
+
+export function buildManualInstallmentSummary(input: {
+  readonly totalAmount: string;
+  readonly scheduleItems: readonly ManualScheduleItemDraft[];
+}): ManualInstallmentSummary {
+  const totalAmount = normalizeAmountForSummary(input.totalAmount);
+  const scheduleAmounts = input.scheduleItems.map(({ amount }) => normalizeAmountForSummary(amount));
+
+  if (
+    totalAmount === undefined ||
+    scheduleAmounts.length === 0 ||
+    scheduleAmounts.some((amount) => amount === undefined)
+  ) {
+    return { status: 'invalid' };
+  }
+
+  return {
+    status: 'ready',
+    summary: summarizeDebtPlanAmounts({
+      scheduleAmounts: scheduleAmounts.filter(isDefined),
+      totalAmount,
+    }),
+  };
+}
 
 function resolveOnePayment(draft: DebtDraft) {
   const requestResult = parseDraftPlanBase(draft, draft.onePayment.dueDate);
@@ -252,4 +285,29 @@ function setFirstError(
       type: 'validate',
     });
   }
+}
+
+function normalizeAmountForSummary(value: string): string | undefined {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue === '') {
+    return '0.00';
+  }
+
+  if (!/^\d+(?:\.\d{0,2})?$/.test(trimmedValue)) {
+    return undefined;
+  }
+
+  const [wholeAmount, fractionalAmount = ''] = trimmedValue.split('.');
+  const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
+
+  if (normalizedWholeAmount.length > 16) {
+    return undefined;
+  }
+
+  return `${normalizedWholeAmount}.${fractionalAmount.padEnd(2, '0')}`;
+}
+
+function isDefined<T>(value: T | undefined): value is T {
+  return value !== undefined;
 }

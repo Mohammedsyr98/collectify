@@ -7,9 +7,15 @@ import {
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import {
+  getInstallmentDueDateRange,
+  type InstallmentDueDateRange,
+} from '@collectify/domain/debt-plan';
+
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { SegmentedControl } from '../../../shared/ui/segmented-control/SegmentedControl';
-import { type DebtDraft } from './debt-draft';
+import { formatCurrencyAmount, useLocalization } from '../../../shared/localization';
+import { buildManualInstallmentSummary, type DebtDraft } from './debt-draft';
 import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
 import { buildInstallmentScheduleFromDraft } from './installment-schedule-draft';
 
@@ -21,11 +27,16 @@ export function InstallmentPlanFields({
   formatError: (error: string) => string;
 }) {
   const { t } = useTranslation();
+  const { locale } = useLocalization();
   const { control, setValue } = useFormContext<DebtDraft>();
   const mode = useWatch({ control, name: 'installmentPlan.mode' });
   const totalAmount = useWatch({ control, name: 'totalAmount' });
   const currency = useWatch({ control, name: 'currency' });
   const automatic = useWatch({ control, name: 'installmentPlan.automatic' });
+  const manualScheduleItems = useWatch({
+    control,
+    name: 'installmentPlan.manual.scheduleItems',
+  });
   const frequencyField = useController({
     control,
     name: 'installmentPlan.automatic.frequency',
@@ -37,6 +48,10 @@ export function InstallmentPlanFields({
   const scheduleResult = buildInstallmentScheduleFromDraft({
     totalAmount,
     installmentPlan: automatic,
+  });
+  const manualSummary = buildManualInstallmentSummary({
+    scheduleItems: manualScheduleItems,
+    totalAmount,
   });
 
   const customize = () => {
@@ -134,36 +149,79 @@ export function InstallmentPlanFields({
             {manualCountGuidance}
           </p>
           <div className="grid gap-3">
-            {fields.map((field, index) => (
-              <div className="grid gap-2" key={field.id}>
-                <FormInput<DebtDraft>
-                  disabled={disabled}
-                  formatError={formatError}
-                  inputMode="decimal"
-                  label={t('debts.form.installmentAmountFieldLabel', { number: index + 1 })}
-                  name={`installmentPlan.manual.scheduleItems.${index}.amount`}
-                  type="text"
-                />
-                <FormInput<DebtDraft>
-                  disabled={disabled}
-                  formatError={formatError}
-                  label={t('debts.form.installmentDueDateFieldLabel', { number: index + 1 })}
-                  name={`installmentPlan.manual.scheduleItems.${index}.dueDate`}
-                  type="date"
-                />
-                <button
-                  aria-describedby="manual-installment-count-guidance"
-                  aria-label={t('debts.form.removeInstallment', { number: index + 1 })}
-                  className="min-h-9 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.75rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={disabled || fields.length <= 2}
-                  onClick={() => remove(index)}
-                  type="button"
-                >
-                  {t('debts.form.removeInstallment', { number: index + 1 })}
-                </button>
-              </div>
-            ))}
+            {fields.map((field, index) => {
+              const dateBounds = getManualDateBounds(manualScheduleItems, index);
+
+              return (
+                <div className="grid gap-2" key={field.id}>
+                  <FormInput<DebtDraft>
+                    disabled={disabled}
+                    formatError={formatError}
+                    inputMode="decimal"
+                    label={t('debts.form.installmentAmountFieldLabel', { number: index + 1 })}
+                    name={`installmentPlan.manual.scheduleItems.${index}.amount`}
+                    type="text"
+                  />
+                  <FormInput<DebtDraft>
+                    disabled={disabled}
+                    formatError={formatError}
+                    label={t('debts.form.installmentDueDateFieldLabel', { number: index + 1 })}
+                    max={dateBounds.latestDueDate}
+                    min={dateBounds.earliestDueDate}
+                    name={`installmentPlan.manual.scheduleItems.${index}.dueDate`}
+                    type="date"
+                  />
+                  <button
+                    aria-describedby="manual-installment-count-guidance"
+                    aria-label={t('debts.form.removeInstallment', { number: index + 1 })}
+                    className="min-h-9 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.75rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={disabled || fields.length <= 2}
+                    onClick={() => remove(index)}
+                    type="button"
+                  >
+                    {t('debts.form.removeInstallment', { number: index + 1 })}
+                  </button>
+                </div>
+              );
+            })}
           </div>
+          {manualSummary.status === 'ready' ? (
+            <section
+              aria-label={t('debts.form.installmentSummaryLabel')}
+              aria-live="polite"
+              className="grid gap-2 rounded-[5px] border border-border bg-background p-3"
+            >
+              <h3 className="m-0 text-[0.78rem] font-black text-foreground">
+                {t('debts.form.installmentSummaryLabel')}
+              </h3>
+              <dl className="m-0 grid gap-1 text-[0.75rem]">
+                <SummaryRow
+                  label={t('debts.form.debtTotalLabel')}
+                  value={formatCurrencyAmount(manualSummary.summary.debtTotal, currency, locale)}
+                />
+                <SummaryRow
+                  label={t('debts.form.scheduleTotalLabel')}
+                  value={formatCurrencyAmount(
+                    manualSummary.summary.scheduleTotal,
+                    currency,
+                    locale,
+                  )}
+                />
+                <SummaryRow
+                  label={
+                    manualSummary.summary.difference.kind === 'remaining'
+                      ? t('debts.form.remainingAmountLabel')
+                      : t('debts.form.excessAmountLabel')
+                  }
+                  value={formatCurrencyAmount(
+                    manualSummary.summary.difference.amount,
+                    currency,
+                    locale,
+                  )}
+                />
+              </dl>
+            </section>
+          ) : null}
           <button
             aria-describedby="manual-installment-count-guidance"
             className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
@@ -177,4 +235,25 @@ export function InstallmentPlanFields({
       )}
     </div>
   );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="m-0 font-bold text-foreground">
+        <bdi dir="ltr">{value}</bdi>
+      </dd>
+    </div>
+  );
+}
+
+function getManualDateBounds(
+  scheduleItems: readonly { dueDate: string }[],
+  index: number,
+): InstallmentDueDateRange {
+  return getInstallmentDueDateRange({
+    nextDueDate: scheduleItems[index + 1]?.dueDate,
+    previousDueDate: scheduleItems[index - 1]?.dueDate,
+  });
 }
