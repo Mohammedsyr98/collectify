@@ -51,6 +51,57 @@ export function allocateInstallmentAmounts(
   });
 }
 
+export type DebtPlanAmountSummary = {
+  readonly debtTotal: string;
+  readonly scheduleTotal: string;
+  readonly difference: {
+    readonly kind: 'remaining' | 'excess';
+    readonly amount: string;
+  };
+};
+
+export function summarizeDebtPlanAmounts(input: {
+  readonly totalAmount: string;
+  readonly scheduleAmounts: readonly string[];
+}): DebtPlanAmountSummary {
+  const debtTotal = parseMinorUnits(input.totalAmount);
+  const scheduleTotal = input.scheduleAmounts.reduce(
+    (total, amount) => total + parseMinorUnits(amount),
+    0n,
+  );
+  const difference = debtTotal - scheduleTotal;
+
+  return {
+    debtTotal: formatMinorUnits(debtTotal),
+    scheduleTotal: formatMinorUnits(scheduleTotal),
+    difference: {
+      kind: difference < 0n ? 'excess' : 'remaining',
+      amount: formatMinorUnits(
+        difference < 0n ? -difference : difference,
+      ),
+    },
+  };
+}
+
+export type InstallmentDueDateRange = {
+  readonly earliestDueDate?: string;
+  readonly latestDueDate?: string;
+};
+
+export function getInstallmentDueDateRange(input: {
+  readonly previousDueDate?: string;
+  readonly nextDueDate?: string;
+}): InstallmentDueDateRange {
+  return {
+    ...(input.previousDueDate !== undefined && isValidDateOnly(input.previousDueDate)
+      ? { earliestDueDate: addDays(input.previousDueDate, 1) }
+      : {}),
+    ...(input.nextDueDate !== undefined && isValidDateOnly(input.nextDueDate)
+      ? { latestDueDate: subtractDay(input.nextDueDate) }
+      : {}),
+  };
+}
+
 export function generateInstallmentSchedule(
   options: InstallmentScheduleOptions,
 ): DebtPlan['scheduleItems'] {
@@ -98,9 +149,11 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   const totalMinorUnits = parseMinorUnits(plan.totalAmount);
   const maximumInstallmentCount = getMaximumInstallmentCount(plan.totalAmount);
   const isOnePayment = scheduleItemCount === 1;
-  const isInstallment = scheduleItemCount >= 2 && scheduleItemCount <= maximumInstallmentCount;
+  const isMultiRowPlan = scheduleItemCount >= 2;
+  const hasValidInstallmentCount =
+    isMultiRowPlan && scheduleItemCount <= maximumInstallmentCount;
 
-  if (!isOnePayment && !isInstallment) {
+  if (!isOnePayment && !hasValidInstallmentCount) {
     issues.push({
       code: debtPlanIssueCode.scheduleItemCountInvalid,
       target: { kind: 'schedule' },
@@ -140,7 +193,7 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
     }
 
     if (
-      isInstallment &&
+      isMultiRowPlan &&
       previousValidDueDate !== undefined &&
       compareDateOnly(scheduleItem.dueDate, previousValidDueDate) <= 0
     ) {
@@ -153,7 +206,7 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
     previousValidDueDate = scheduleItem.dueDate;
   }
 
-  if (isInstallment && scheduleTotalMinorUnits !== totalMinorUnits) {
+  if (isMultiRowPlan && scheduleTotalMinorUnits !== totalMinorUnits) {
     issues.push({
       code: debtPlanIssueCode.scheduleTotalAmountMismatch,
       target: { kind: 'schedule' },
@@ -232,6 +285,25 @@ function addDays(value: string, dayCount: number): string {
         year += 1;
       }
     }
+  }
+
+  return formatDateOnly(year, month, day);
+}
+
+function subtractDay(value: string): string {
+  let { year, month, day } = dateOnlyParts(value);
+
+  if (day === 1) {
+    month -= 1;
+
+    if (month === 0) {
+      month = 12;
+      year -= 1;
+    }
+
+    day = daysInMonth(year, month);
+  } else {
+    day -= 1;
   }
 
   return formatDateOnly(year, month, day);
