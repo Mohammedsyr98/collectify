@@ -34,9 +34,8 @@ export type DebtDraft = {
 type DraftField =
   | keyof Pick<DebtDraft, 'description' | 'totalAmount' | 'currency'>
   | 'onePayment.dueDate'
-  | 'installmentPlan.installmentCount'
-  | 'installmentPlan.frequency'
-  | 'installmentPlan.firstDueDate'
+  | 'installmentPlan.automatic.installmentCount'
+  | 'installmentPlan.automatic.firstDueDate'
   | 'root';
 
 export function createDebtDraft(
@@ -53,9 +52,15 @@ export function createDebtDraft(
       dueDate: source.mode === 'edit' ? (source.debt.scheduleItems[0]?.dueDate ?? '') : '',
     },
     installmentPlan: {
-      installmentCount: '2',
-      frequency: 'monthly',
-      firstDueDate: '',
+      mode: 'automatic',
+      automatic: {
+        installmentCount: '2',
+        frequency: 'monthly',
+        firstDueDate: '',
+      },
+      manual: {
+        scheduleItems: [],
+      },
     },
   };
 }
@@ -70,44 +75,52 @@ export const debtDraftResolver: Resolver<DebtDraft, unknown, CreateDebtRequest> 
 };
 
 function resolveOnePayment(draft: DebtDraft) {
-  const firstScheduleRequestResult = parseFirstScheduleRequest(draft, draft.onePayment.dueDate);
+  const requestResult = parseDraftPlanBase(draft, draft.onePayment.dueDate);
 
-  if (firstScheduleRequestResult.success) {
-    return { values: firstScheduleRequestResult.data, errors: {} };
+  if (requestResult.success) {
+    return { values: requestResult.data, errors: {} };
   }
 
   const errors: FieldErrors<DebtDraft> = {};
-  addRequestErrors(errors, firstScheduleRequestResult.error.issues, draft.paymentPlan);
+  addRequestErrors(errors, requestResult.error.issues, draft.paymentPlan);
 
   return { values: {}, errors };
 }
 
 function resolveInstallments(draft: DebtDraft) {
-  const firstScheduleRequestResult = parseFirstScheduleRequest(
+  if (draft.installmentPlan.mode === 'manual') {
+    return resolveManualInstallments(draft);
+  }
+
+  return resolveAutomaticInstallments(draft);
+}
+
+function resolveAutomaticInstallments(draft: DebtDraft) {
+  const baseRequestResult = parseDraftPlanBase(
     draft,
-    draft.installmentPlan.firstDueDate,
+    draft.installmentPlan.automatic.firstDueDate,
   );
   const errors: FieldErrors<DebtDraft> = {};
 
-  if (!firstScheduleRequestResult.success) {
-    addRequestErrors(errors, firstScheduleRequestResult.error.issues, draft.paymentPlan);
+  if (!baseRequestResult.success) {
+    addRequestErrors(errors, baseRequestResult.error.issues, draft.paymentPlan);
   }
 
   const scheduleResult = buildInstallmentScheduleFromDraft({
-    totalAmount: firstScheduleRequestResult.success
-      ? firstScheduleRequestResult.data.totalAmount
+    totalAmount: baseRequestResult.success
+      ? baseRequestResult.data.totalAmount
       : draft.totalAmount,
-    installmentPlan: draft.installmentPlan,
+    installmentPlan: draft.installmentPlan.automatic,
   });
 
   addScheduleBuildErrors(errors, scheduleResult);
 
-  if (!firstScheduleRequestResult.success || scheduleResult.status !== 'ready') {
+  if (!baseRequestResult.success || scheduleResult.status !== 'ready') {
     return { values: {}, errors };
   }
 
   const result = createDebtRequestSchema.safeParse({
-    ...firstScheduleRequestResult.data,
+    ...baseRequestResult.data,
     scheduleItems: [...scheduleResult.scheduleItems],
   });
 
@@ -115,7 +128,27 @@ function resolveInstallments(draft: DebtDraft) {
     return { values: result.data, errors: {} };
   }
 
-  addRequestErrors(errors, result.error.issues, draft.paymentPlan);
+  addRequestErrors(errors, result.error.issues, draft.paymentPlan, 'automatic');
+  return { values: {}, errors };
+}
+
+function resolveManualInstallments(draft: DebtDraft) {
+  const result = createDebtRequestSchema.safeParse({
+    description: draft.description,
+    totalAmount: draft.totalAmount,
+    currency: draft.currency,
+    scheduleItems: draft.installmentPlan.manual.scheduleItems.map(
+      ({ amount, dueDate }) => ({ amount, dueDate }),
+    ),
+  });
+
+  if (result.success) {
+    return { values: result.data, errors: {} };
+  }
+
+  const errors: FieldErrors<DebtDraft> = {};
+  addRequestErrors(errors, result.error.issues, draft.paymentPlan, 'manual');
+
   return { values: {}, errors };
 }
 
@@ -129,14 +162,14 @@ function addScheduleBuildErrors(errors: FieldErrors<DebtDraft>, result: Installm
       case 'installmentCount':
         setFirstError(
           errors,
-          'installmentPlan.installmentCount',
+          'installmentPlan.automatic.installmentCount',
           debtPlanIssueCode.scheduleItemCountInvalid,
         );
         break;
       case 'firstDueDate':
         setFirstError(
           errors,
-          'installmentPlan.firstDueDate',
+          'installmentPlan.automatic.firstDueDate',
           debtPlanIssueCode.scheduleItemDueDateInvalid,
         );
         break;
@@ -147,7 +180,7 @@ function addScheduleBuildErrors(errors: FieldErrors<DebtDraft>, result: Installm
   }
 }
 
-function parseFirstScheduleRequest(draft: DebtDraft, firstDueDate: string) {
+function parseDraftPlanBase(draft: DebtDraft, dueDate: string) {
   return createDebtRequestSchema.safeParse({
     description: draft.description,
     totalAmount: draft.totalAmount,
@@ -155,7 +188,7 @@ function parseFirstScheduleRequest(draft: DebtDraft, firstDueDate: string) {
     scheduleItems: [
       {
         amount: draft.totalAmount,
-        dueDate: firstDueDate,
+        dueDate,
       },
     ],
   });
@@ -165,34 +198,54 @@ function addRequestErrors(
   errors: FieldErrors<DebtDraft>,
   issues: readonly { path: readonly PropertyKey[]; message: string }[],
   paymentPlan: PaymentPlan,
+  installmentMode: 'automatic' | 'manual' = 'automatic',
 ) {
   for (const issue of issues) {
-    setFirstError(errors, draftFieldFromRequestIssue(issue.path, paymentPlan), issue.message);
+    setFirstError(
+      errors,
+      draftFieldFromRequestIssue(issue.path, paymentPlan, installmentMode),
+      issue.message,
+    );
   }
 }
 
 function draftFieldFromRequestIssue(
-  [field, , nestedField]: readonly PropertyKey[],
+  [field, index, nestedField]: readonly PropertyKey[],
   paymentPlan: PaymentPlan,
-): DraftField {
+  installmentMode: 'automatic' | 'manual',
+): DraftField | `installmentPlan.manual.scheduleItems.${number}.${'amount' | 'dueDate'}` {
   if (field === 'description' || field === 'totalAmount' || field === 'currency') {
     return field;
   }
 
   if (field === 'scheduleItems') {
     if (nestedField === 'amount') {
+      if (paymentPlan === 'installment' && installmentMode === 'manual' && typeof index === 'number') {
+        return `installmentPlan.manual.scheduleItems.${index}.amount`;
+      }
+
       return 'totalAmount';
     }
 
     if (nestedField === 'dueDate') {
-      return paymentPlan === 'onePayment' ? 'onePayment.dueDate' : 'installmentPlan.firstDueDate';
+      if (paymentPlan === 'installment' && installmentMode === 'manual' && typeof index === 'number') {
+        return `installmentPlan.manual.scheduleItems.${index}.dueDate`;
+      }
+
+      return paymentPlan === 'onePayment'
+        ? 'onePayment.dueDate'
+        : 'installmentPlan.automatic.firstDueDate';
     }
   }
 
   return 'root';
 }
 
-function setFirstError(errors: FieldErrors<DebtDraft>, field: DraftField, message: string) {
+function setFirstError(
+  errors: FieldErrors<DebtDraft>,
+  field: DraftField | `installmentPlan.manual.scheduleItems.${number}.${'amount' | 'dueDate'}`,
+  message: string,
+) {
   if (!get(errors, field)) {
     set(errors, field, {
       message,

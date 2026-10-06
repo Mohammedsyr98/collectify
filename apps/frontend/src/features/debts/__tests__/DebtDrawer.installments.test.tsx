@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -217,6 +217,63 @@ describe('DebtDrawer payment plans', () => {
         { amount: '33.35', dueDate: '2026-10-15' },
       ],
     });
+  });
+
+  it('customizes the visible preview into editable rows and saves the edited schedule', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.clear(within(drawer).getByLabelText('Installment count'));
+    await user.type(within(drawer).getByLabelText('Installment count'), '3');
+
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+
+    expect(within(drawer).getByRole('button', { name: 'Reset to automatic schedule' })).toBeInTheDocument();
+    expect(within(drawer).queryByLabelText('Installment count')).not.toBeInTheDocument();
+    expect(within(drawer).getByLabelText('Installment 1 amount')).toHaveValue('33.33');
+    expect(within(drawer).getByLabelText('Installment 2 amount')).toHaveValue('33.33');
+    expect(within(drawer).getByLabelText('Installment 3 amount')).toHaveValue('33.35');
+    expect(within(drawer).getByLabelText('Installment 1 due date')).toHaveValue('2026-10-01');
+    expect(within(drawer).getByLabelText('Installment 2 due date')).toHaveValue('2026-11-01');
+    expect(within(drawer).getByLabelText('Installment 3 due date')).toHaveValue('2026-12-01');
+
+    await user.clear(within(drawer).getByLabelText('Installment 1 amount'));
+    await user.type(within(drawer).getByLabelText('Installment 1 amount'), '20');
+    await user.clear(within(drawer).getByLabelText('Installment 2 amount'));
+    await user.type(within(drawer).getByLabelText('Installment 2 amount'), '30.0');
+    await user.clear(within(drawer).getByLabelText('Installment 3 amount'));
+    await user.type(within(drawer).getByLabelText('Installment 3 amount'), '50.01');
+    await user.clear(within(drawer).getByLabelText('Installment 2 due date'));
+    await user.type(within(drawer).getByLabelText('Installment 2 due date'), '2026-11-05');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        description: 'Website redesign',
+        totalAmount: '100.01',
+        currency: 'USD',
+        scheduleItems: [
+          { amount: '20.00', dueDate: '2026-10-01' },
+          { amount: '30.00', dueDate: '2026-11-05' },
+          { amount: '50.01', dueDate: '2026-12-01' },
+        ],
+      }),
+    );
   });
 
   it('submits only the active plan while preserving the inactive draft', async () => {
