@@ -5,8 +5,8 @@ import {
   type DebtListQuery,
 } from '@collectify/contracts';
 
-import { usePageQueryParam } from '../../shared/usePageQueryParam';
-import { useDebouncedSearchQuery } from '../../shared/useDebouncedSearchQuery';
+import { usePageQueryParam } from '../../../shared/usePageQueryParam';
+import { useDebouncedSearchQuery } from '../../../shared/useDebouncedSearchQuery';
 import { useDebtListQuery } from './debtQueries';
 
 type DebtListViewStatus =

@@ -6,7 +6,7 @@ export const debtResources = {
   en: {
     common: {
       debts: {
-          card: {
+        card: {
           actions: {
             delete: 'Delete debt',
             edit: 'Edit debt',
@@ -34,7 +34,7 @@ export const debtResources = {
         },
         drawer: {
           close: 'Close debt form',
-          description: 'Create a one-payment debt for this customer.',
+          description: 'Create a debt for this customer.',
           editDescription: 'Edit this one-payment debt for this customer.',
           editTitle: 'Edit debt',
           createTitle: 'Add debt',
@@ -46,10 +46,25 @@ export const debtResources = {
           descriptionLabel: 'Description',
           descriptionPlaceholder: 'Website redesign',
           dueDateLabel: 'Due date',
+          firstInstallmentDueDateLabel: 'First installment due date',
+          frequencyLabel: 'Frequency',
+          installmentAmountLabel: 'Amount',
+          installmentCountLabel: 'Installment count',
+          installmentCountGuidance: 'Choose between {{minimum}} and {{maximum}} installments.',
+          installmentDueDateLabel: 'Due date',
+          installmentNumberLabel: 'Installment',
+          installmentPreviewCaption: 'Generated installment schedule',
+          installmentPreviewLabel: 'Installment preview',
+          installmentsUnavailable: 'This amount cannot be split into installments.',
+          installmentsOption: 'Installments',
+          monthlyOption: 'Monthly',
+          onePaymentOption: 'One payment',
+          paymentPlanLabel: 'Payment plan',
           save: 'Save debt',
           saving: 'Saving',
           totalAmountLabel: 'Total amount',
           totalAmountPlaceholder: '125.50',
+          weeklyOption: 'Weekly',
         },
         section: {
           empty: 'No debts yet.',
@@ -94,7 +109,7 @@ export const debtResources = {
   tr: {
     common: {
       debts: {
-          card: {
+        card: {
           actions: {
             delete: 'Borcu sil',
             edit: 'Borcu düzenle',
@@ -122,7 +137,7 @@ export const debtResources = {
         },
         drawer: {
           close: 'Borç formunu kapat',
-          description: 'Bu müşteri için tek ödemeli bir borç oluşturun.',
+          description: 'Bu müşteri için bir borç oluşturun.',
           editDescription: 'Bu müşterinin tek ödemeli borcunu düzenleyin.',
           editTitle: 'Borcu düzenle',
           createTitle: 'Borç ekle',
@@ -133,10 +148,25 @@ export const debtResources = {
           descriptionLabel: 'Açıklama',
           descriptionPlaceholder: 'Web sitesi yeniden tasarımı',
           dueDateLabel: 'Vade tarihi',
+          firstInstallmentDueDateLabel: 'İlk taksit vade tarihi',
+          frequencyLabel: 'Sıklık',
+          installmentAmountLabel: 'Tutar',
+          installmentCountLabel: 'Taksit sayısı',
+          installmentCountGuidance: '{{minimum}} ile {{maximum}} arasında taksit seçin.',
+          installmentDueDateLabel: 'Vade tarihi',
+          installmentNumberLabel: 'Taksit',
+          installmentPreviewCaption: 'Oluşturulan taksit planı',
+          installmentPreviewLabel: 'Taksit önizlemesi',
+          installmentsUnavailable: 'Bu tutar taksitlere bölünemez.',
+          installmentsOption: 'Taksitler',
+          monthlyOption: 'Aylık',
+          onePaymentOption: 'Tek ödeme',
+          paymentPlanLabel: 'Ödeme planı',
           save: 'Borcu kaydet',
           saving: 'Kaydediliyor',
           totalAmountLabel: 'Toplam tutar',
           totalAmountPlaceholder: '125.50',
+          weeklyOption: 'Haftalık',
         },
         section: {
           empty: 'Henüz borç yok.',
@@ -182,7 +212,7 @@ export const debtResources = {
   ar: {
     common: {
       debts: {
-          card: {
+        card: {
           actions: {
             delete: 'حذف الدين',
             edit: 'تحرير الدين',
@@ -210,7 +240,7 @@ export const debtResources = {
         },
         drawer: {
           close: 'إغلاق نموذج الدين',
-          description: 'أنشئ دينًا بدفعة واحدة لهذا العميل.',
+          description: 'أنشئ دينًا لهذا العميل.',
           editDescription: 'حرّر الدين ذي الدفعة الواحدة لهذا العميل.',
           editTitle: 'تحرير الدين',
           createTitle: 'إضافة دين',
@@ -221,10 +251,25 @@ export const debtResources = {
           descriptionLabel: 'الوصف',
           descriptionPlaceholder: 'إعادة تصميم الموقع الإلكتروني',
           dueDateLabel: 'تاريخ الاستحقاق',
+          firstInstallmentDueDateLabel: 'تاريخ استحقاق القسط الأول',
+          frequencyLabel: 'التكرار',
+          installmentAmountLabel: 'المبلغ',
+          installmentCountLabel: 'عدد الأقساط',
+          installmentCountGuidance: 'اختر بين {{minimum}} و{{maximum}} أقساط.',
+          installmentDueDateLabel: 'تاريخ الاستحقاق',
+          installmentNumberLabel: 'القسط',
+          installmentPreviewCaption: 'جدول الأقساط المُنشأ',
+          installmentPreviewLabel: 'معاينة الأقساط',
+          installmentsUnavailable: 'لا يمكن تقسيم هذا المبلغ إلى أقساط.',
+          installmentsOption: 'أقساط',
+          monthlyOption: 'شهريًا',
+          onePaymentOption: 'دفعة واحدة',
+          paymentPlanLabel: 'خطة الدفع',
           save: 'حفظ الدين',
           saving: 'جارٍ الحفظ',
           totalAmountLabel: 'المبلغ الإجمالي',
           totalAmountPlaceholder: '125.50',
+          weeklyOption: 'أسبوعيًا',
         },
         section: {
           empty: 'لا توجد ديون بعد.',
