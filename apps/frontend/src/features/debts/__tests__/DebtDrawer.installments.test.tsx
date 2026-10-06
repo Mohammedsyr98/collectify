@@ -309,6 +309,52 @@ describe('DebtDrawer payment plans', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('resets manual edits to the current automatic preview and preserves its settings', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        defaultCurrency="USD"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
+    await user.type(within(drawer).getByLabelText('Total amount'), '100.01');
+    await user.click(within(drawer).getByRole('button', { name: 'Installments' }));
+    await user.clear(within(drawer).getByLabelText('First installment due date'));
+    await user.type(within(drawer).getByLabelText('First installment due date'), '2026-10-01');
+    await user.clear(within(drawer).getByLabelText('Installment count'));
+    await user.type(within(drawer).getByLabelText('Installment count'), '3');
+    await user.click(within(drawer).getByRole('button', { name: 'Customize installments' }));
+
+    const firstAmount = within(drawer).getByLabelText('Installment 1 amount');
+    await user.clear(firstAmount);
+    await user.type(firstAmount, '20');
+    await user.click(within(drawer).getByRole('button', { name: 'Reset to automatic schedule' }));
+
+    expect(within(drawer).getByLabelText('Installment count')).toHaveValue('3');
+    expect(within(drawer).getByLabelText('First installment due date')).toHaveValue('2026-10-01');
+    expect(within(drawer).getByRole('button', { name: 'Monthly' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(drawer).queryByLabelText('Installment 1 amount')).not.toBeInTheDocument();
+    expect(
+      within(drawer).getByRole('button', { name: 'Customize installments' }),
+    ).toBeInTheDocument();
+
+    const table = within(drawer).getByRole('table', {
+      name: 'Generated installment schedule',
+    });
+    const rows = within(table).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('$33.33');
+    expect(rows[2]).toHaveTextContent('$33.33');
+    expect(rows[3]).toHaveTextContent('$33.35');
+  });
+
   it('submits only the active plan while preserving the inactive draft', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
