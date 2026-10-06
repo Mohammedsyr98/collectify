@@ -8,16 +8,16 @@ import {
   type ReplaceDebtRequest,
 } from '@collectify/contracts';
 
-import { resolveApiErrorDescription } from '../../shared/api/http';
-import { useToast } from '../../shared/ui/toast/toastContext';
+import { resolveApiErrorDescription } from '../../../shared/api/http';
+import { useToast } from '../../../shared/ui/toast/toastContext';
 import {
   customerDetailsQueryKey,
   customerListQueryKey,
-} from '../customers/customerQueries';
-import { createDebt } from './api/create-debt';
-import { deleteDebt } from './api/delete-debt';
-import { listDebts } from './api/list-debts';
-import { replaceDebt } from './api/replace-debt';
+} from '../../customers/customerQueries';
+import { createDebt } from '../api/create-debt';
+import { deleteDebt } from '../api/delete-debt';
+import { listDebts } from '../api/list-debts';
+import { replaceDebt } from '../api/replace-debt';
 
 export const debtListQueryKey = (customerId: string) =>
   ['customers', customerId, 'debts'] as const;

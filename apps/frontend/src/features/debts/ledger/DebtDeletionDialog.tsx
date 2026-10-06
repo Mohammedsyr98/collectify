@@ -7,7 +7,7 @@ import type { DebtResponse } from '@collectify/contracts';
 import {
   formatCurrencyAmount,
   useLocalization,
-} from '../../shared/localization';
+} from '../../../shared/localization';
 
 type DebtDeletionDialogProps = {
   debt: DebtResponse;

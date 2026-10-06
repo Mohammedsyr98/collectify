@@ -6,15 +6,15 @@ import type { Currency, DebtResponse } from '@collectify/contracts';
 
 import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
 import { SearchField } from '../../shared/ui/search/SearchField';
-import { DebtCard } from './DebtCard';
-import { DebtDeletionDialog } from './DebtDeletionDialog';
-import { DebtDrawer } from './DebtDrawer';
+import { DebtDrawer } from './editor/DebtDrawer';
+import { DebtCard } from './ledger/DebtCard';
+import { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
 import {
   useCreateDebtMutation,
   useDeleteDebtMutation,
   useReplaceDebtMutation,
-} from './debtQueries';
-import { useDebtListView } from './useDebtListView';
+} from './ledger/debtQueries';
+import { useDebtListView } from './ledger/useDebtListView';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 

@@ -3,8 +3,12 @@ import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
 
-import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../shared/localization';
-import { AnchoredMenu } from '../../shared/ui/anchored-menu/AnchoredMenu';
+import {
+  formatCurrencyAmount,
+  formatDateOnly,
+  useLocalization,
+} from '../../../shared/localization';
+import { AnchoredMenu } from '../../../shared/ui/anchored-menu/AnchoredMenu';
 
 export function DebtCard({
   debt,

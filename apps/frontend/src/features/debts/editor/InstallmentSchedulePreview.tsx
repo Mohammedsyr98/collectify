@@ -1,7 +1,11 @@
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../shared/localization';
+import {
+  formatCurrencyAmount,
+  formatDateOnly,
+  useLocalization,
+} from '../../../shared/localization';
 import { type DebtDraft } from './debt-draft';
 import { buildInstallmentScheduleFromDraft } from './installment-schedule-draft';
 

@@ -3,8 +3,8 @@ import { useRef } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { FormInput } from '../../shared/ui/form/FormInput';
-import { SegmentedControl } from '../../shared/ui/segmented-control/SegmentedControl';
+import { FormInput } from '../../../shared/ui/form/FormInput';
+import { SegmentedControl } from '../../../shared/ui/segmented-control/SegmentedControl';
 import { type DebtDraft, type InstallmentFrequency, type PaymentPlan } from './debt-draft';
 import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
 

@@ -7,7 +7,7 @@ import type { CreateDebtRequest, ReplaceDebtRequest } from '@collectify/contract
 
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { DebtDrawer } from '../DebtDrawer';
+import { DebtDrawer } from '../editor/DebtDrawer';
 import { createDebtFixture } from './debtTestData';
 
 describe('DebtDrawer', () => {

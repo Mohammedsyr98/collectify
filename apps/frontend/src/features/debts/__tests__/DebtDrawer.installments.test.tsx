@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CreateDebtRequest } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { DebtDrawer } from '../DebtDrawer';
+import { DebtDrawer } from '../editor/DebtDrawer';
 
 describe('DebtDrawer payment plans', () => {
   beforeEach(() => {
