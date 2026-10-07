@@ -5,15 +5,28 @@ import {
   type InstallmentFrequency,
 } from '@collectify/domain/debt-plan';
 
-export type InstallmentPlanDraft = {
+export type AutomaticInstallmentDraft = {
   installmentCount: string;
   frequency: InstallmentFrequency;
   firstDueDate: string;
 };
 
+export type ManualScheduleItemDraft = {
+  amount: string;
+  dueDate: string;
+};
+
+export type InstallmentPlanDraft = {
+  mode: 'automatic' | 'manual';
+  automatic: AutomaticInstallmentDraft;
+  manual: {
+    scheduleItems: ManualScheduleItemDraft[];
+  };
+};
+
 export type InstallmentScheduleDraft = {
   totalAmount: string;
-  installmentPlan: InstallmentPlanDraft;
+  installmentPlan: AutomaticInstallmentDraft;
 };
 
 export type InstallmentScheduleIssue = {

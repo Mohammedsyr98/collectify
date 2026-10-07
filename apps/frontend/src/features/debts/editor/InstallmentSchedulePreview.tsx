@@ -1,37 +1,27 @@
-import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+
+import type { Currency } from '@collectify/contracts';
 
 import {
   formatCurrencyAmount,
   formatDateOnly,
   useLocalization,
 } from '../../../shared/localization';
-import { type DebtDraft } from './debt-draft';
-import { buildInstallmentScheduleFromDraft } from './installment-schedule-draft';
+import type { InstallmentScheduleResult } from './installment-schedule-draft';
 
-export function InstallmentSchedulePreview() {
+export function InstallmentSchedulePreview({
+  currency,
+  disabled,
+  onCustomize,
+  scheduleResult,
+}: {
+  currency: Currency;
+  disabled: boolean;
+  onCustomize: () => void;
+  scheduleResult: InstallmentScheduleResult;
+}) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
-  const { control } = useFormContext<DebtDraft>();
-  const totalAmount = useWatch({ control, name: 'totalAmount' });
-  const currency = useWatch({ control, name: 'currency' });
-  const installmentCount = useWatch({
-    control,
-    name: 'installmentPlan.installmentCount',
-  });
-  const frequency = useWatch({ control, name: 'installmentPlan.frequency' });
-  const firstDueDate = useWatch({
-    control,
-    name: 'installmentPlan.firstDueDate',
-  });
-  const scheduleResult = buildInstallmentScheduleFromDraft({
-    totalAmount,
-    installmentPlan: {
-      installmentCount,
-      frequency,
-      firstDueDate,
-    },
-  });
 
   return (
     <div className="grid gap-2">
@@ -95,6 +85,14 @@ export function InstallmentSchedulePreview() {
               </tbody>
             </table>
           </div>
+          <button
+            className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+            disabled={disabled}
+            onClick={onCustomize}
+            type="button"
+          >
+            {t('debts.form.customizeInstallments')}
+          </button>
         </section>
       ) : null}
     </div>

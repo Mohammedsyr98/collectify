@@ -4,7 +4,9 @@ import {
   allocateInstallmentAmounts,
   debtPlanIssueCode,
   getMaximumInstallmentCount,
+  getInstallmentDueDateRange,
   generateInstallmentSchedule,
+  summarizeDebtPlanAmounts,
   type DebtPlan,
   type DebtPlanIssue,
   validateDebtPlan,
@@ -173,6 +175,80 @@ describe('allocateInstallmentAmounts', () => {
   );
 });
 
+describe('summarizeDebtPlanAmounts', () => {
+  it('reports the exact remaining amount in minor units', () => {
+    expect(
+      summarizeDebtPlanAmounts({
+        totalAmount: '100.00',
+        scheduleAmounts: ['25.10', '64.90'],
+      }),
+    ).toEqual({
+      debtTotal: '100.00',
+      scheduleTotal: '90.00',
+      difference: { kind: 'remaining', amount: '10.00' },
+    });
+  });
+
+  it('reports a balanced schedule as zero remaining', () => {
+    expect(
+      summarizeDebtPlanAmounts({
+        totalAmount: '100.00',
+        scheduleAmounts: ['25.10', '74.90'],
+      }),
+    ).toEqual({
+      debtTotal: '100.00',
+      scheduleTotal: '100.00',
+      difference: { kind: 'remaining', amount: '0.00' },
+    });
+  });
+
+  it('reports the exact excess amount in minor units', () => {
+    expect(
+      summarizeDebtPlanAmounts({
+        totalAmount: '100.00',
+        scheduleAmounts: ['60.01', '40.02'],
+      }),
+    ).toEqual({
+      debtTotal: '100.00',
+      scheduleTotal: '100.03',
+      difference: { kind: 'excess', amount: '0.03' },
+    });
+  });
+});
+
+describe('getInstallmentDueDateRange', () => {
+  it('returns date-only bounds across month, year, and leap-day boundaries', () => {
+    expect(
+      getInstallmentDueDateRange({
+        previousDueDate: '2028-02-28',
+        nextDueDate: '2028-03-01',
+      }),
+    ).toEqual({
+      earliestDueDate: '2028-02-29',
+      latestDueDate: '2028-02-29',
+    });
+
+    expect(
+      getInstallmentDueDateRange({
+        previousDueDate: '2026-12-31',
+        nextDueDate: '2027-01-02',
+      }),
+    ).toEqual({
+      earliestDueDate: '2027-01-01',
+      latestDueDate: '2027-01-01',
+    });
+  });
+
+  it('computes only the bound whose adjacent date is present', () => {
+    expect(getInstallmentDueDateRange({ previousDueDate: '2026-05-01' })).toEqual({
+      earliestDueDate: '2026-05-02',
+    });
+    expect(getInstallmentDueDateRange({ nextDueDate: '2026-05-01' })).toEqual({
+      latestDueDate: '2026-04-30',
+    });
+  });
+});
+
 describe('validateDebtPlan', () => {
   it('accepts a canonical one-payment plan', () => {
     expect(
@@ -219,6 +295,25 @@ describe('validateDebtPlan', () => {
       code: debtPlanIssueCode.scheduleItemCountInvalid,
       target: { kind: 'schedule' },
     });
+  });
+
+  it('reports count, amount, and ordering issues together for an oversized multi-row plan', () => {
+    const scheduleItems = scheduleItemsFor(61).map((scheduleItem, index) =>
+      index === 1
+        ? { amount: '2.00', dueDate: '2026-01-01' }
+        : scheduleItem,
+    );
+
+    const issues = issuesFor({
+      totalAmount: '61.00',
+      scheduleItems,
+    });
+
+    expect(issues.map(({ code }) => code)).toEqual([
+      debtPlanIssueCode.scheduleItemCountInvalid,
+      debtPlanIssueCode.scheduleItemDueDateNotAfterPrevious,
+      debtPlanIssueCode.scheduleTotalAmountMismatch,
+    ]);
   });
 
   it('rejects a multi-row plan whose aggregate amount differs from the total', () => {
