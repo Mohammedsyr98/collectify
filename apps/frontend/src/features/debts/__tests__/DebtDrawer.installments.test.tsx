@@ -474,6 +474,74 @@ describe('DebtDrawer payment plans', () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
+    it('shows and updates all actionable manual errors after the first failed save', async () => {
+      const { drawer, onSubmit, user } = renderDebtDrawer();
+      const totalAmount = drawer.getByLabelText('Total amount');
+      await user.type(totalAmount, '100.01');
+      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+      await user.clear(drawer.getByLabelText('First installment due date'));
+      await user.type(drawer.getByLabelText('First installment due date'), '2026-10-01');
+      await user.clear(drawer.getByLabelText('Installment count'));
+      await user.type(drawer.getByLabelText('Installment count'), '3');
+      await user.click(drawer.getByRole('button', { name: 'Customize installments' }));
+
+      await user.clear(totalAmount);
+      await user.type(totalAmount, '0.02');
+
+      const secondAmount = drawer.getByLabelText('Installment 2 amount');
+      await user.clear(secondAmount);
+      await user.type(secondAmount, '0');
+
+      const secondDueDate = drawer.getByLabelText('Installment 2 due date');
+      await user.clear(secondDueDate);
+      await user.type(secondDueDate, '2026-10-01');
+
+      await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+
+      const description = drawer.getByLabelText('Description');
+      expect(description).toHaveFocus();
+      expect(description).toHaveAccessibleDescription(
+        'Description is required.',
+      );
+      expect(secondAmount).toHaveAccessibleDescription(
+        'Payment amount must be greater than zero.',
+      );
+      expect(secondDueDate).toHaveAccessibleDescription(
+        'Payment dates must be in increasing order.',
+      );
+      expect(
+        drawer.getByText('The payment plan has an invalid number of payments.'),
+      ).toBeInTheDocument();
+      expect(
+        drawer.getByText('Payment amounts must match the debt total.'),
+      ).toBeInTheDocument();
+
+      await user.clear(totalAmount);
+      await user.type(totalAmount, '66.68');
+
+      await waitFor(() => {
+        expect(
+          drawer.queryByText('The payment plan has an invalid number of payments.'),
+        ).not.toBeInTheDocument();
+        expect(
+          drawer.queryByText('Payment amounts must match the debt total.'),
+        ).not.toBeInTheDocument();
+      });
+      expect(description).toHaveAccessibleDescription(
+        'Description is required.',
+      );
+      expect(secondAmount).toHaveAccessibleDescription(
+        'Payment amount must be greater than zero.',
+      );
+      expect(secondDueDate).toHaveAccessibleDescription(
+        'Payment dates must be in increasing order.',
+      );
+      expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('33.33');
+      expect(secondAmount).toHaveValue('0');
+      expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('33.35');
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it('resets manual edits to the current automatic preview and preserves its settings', async () => {
       const { drawer, user } = renderDebtDrawer();
       await user.type(drawer.getByLabelText('Total amount'), '100.01');

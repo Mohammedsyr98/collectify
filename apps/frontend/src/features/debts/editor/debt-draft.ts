@@ -1,15 +1,20 @@
 import { get, set, type FieldErrors, type Resolver } from 'react-hook-form';
+import { z } from 'zod';
 
 import {
   createDebtRequestSchema,
+  currencySchema,
   debtPlanIssueCode,
+  debtRequestValidationCode,
   type CreateDebtRequest,
   type Currency,
   type DebtResponse,
 } from '@collectify/contracts';
 import {
   summarizeDebtPlanAmounts,
+  validateDebtPlan,
   type DebtPlanAmountSummary,
+  type DebtPlanIssue,
   type InstallmentFrequency,
 } from '@collectify/domain/debt-plan';
 
@@ -46,6 +51,46 @@ type DraftField =
   | 'installmentPlan.automatic.installmentCount'
   | 'installmentPlan.automatic.firstDueDate'
   | 'root';
+
+type DraftErrorField =
+  | DraftField
+  | `installmentPlan.manual.scheduleItems.${number}.${'amount' | 'dueDate'}`;
+
+const amountPattern = /^\d+(?:\.\d{1,2})?$/;
+
+function createDraftAmountSchema(invalidMessage: string) {
+  return z
+    .string()
+    .trim()
+    .regex(amountPattern, invalidMessage)
+    .refine(isWithinNumeric182Precision, debtRequestValidationCode.debtTotalAmountTooLarge)
+    .transform(normalizeParsedAmount);
+}
+
+const commonDebtDraftSchema = z.object({
+  description: z
+    .string()
+    .trim()
+    .min(1, debtRequestValidationCode.debtDescriptionRequired)
+    .max(200, debtRequestValidationCode.debtDescriptionTooLong),
+  totalAmount: createDraftAmountSchema(debtRequestValidationCode.debtTotalAmountInvalid),
+  currency: currencySchema,
+});
+
+const manualInstallmentPlanSchema = z.object({
+  totalAmount: createDraftAmountSchema(debtRequestValidationCode.debtTotalAmountInvalid),
+  scheduleItems: z.array(
+    z.object({
+      amount: createDraftAmountSchema(
+        debtRequestValidationCode.debtScheduleItemAmountInvalid,
+      ),
+      dueDate: z
+        .string()
+        .min(1, debtRequestValidationCode.debtDueDateRequired)
+        .regex(/^\d{4}-\d{2}-\d{2}$/, debtRequestValidationCode.debtDueDateInvalid),
+    }),
+  ),
+});
 
 export function createDebtDraft(
   source:
@@ -166,23 +211,87 @@ function resolveAutomaticInstallments(draft: DebtDraft) {
 }
 
 function resolveManualInstallments(draft: DebtDraft) {
-  const result = createDebtRequestSchema.safeParse({
-    description: draft.description,
+  const commonResult = commonDebtDraftSchema.safeParse(draft);
+  const planResult = manualInstallmentPlanSchema.safeParse({
     totalAmount: draft.totalAmount,
-    currency: draft.currency,
     scheduleItems: draft.installmentPlan.manual.scheduleItems.map(
       ({ amount, dueDate }) => ({ amount, dueDate }),
     ),
   });
+  const errors: FieldErrors<DebtDraft> = {};
 
-  if (result.success) {
-    return { values: result.data, errors: {} };
+  if (!commonResult.success) {
+    addRequestErrors(errors, commonResult.error.issues, draft.paymentPlan, 'manual');
   }
 
-  const errors: FieldErrors<DebtDraft> = {};
-  addRequestErrors(errors, result.error.issues, draft.paymentPlan, 'manual');
+  if (!planResult.success) {
+    addRequestErrors(errors, planResult.error.issues, draft.paymentPlan, 'manual');
+    return { values: {}, errors };
+  }
 
-  return { values: {}, errors };
+  const validation = validateDebtPlan(planResult.data);
+
+  if (!validation.success) {
+    addManualPlanErrors(errors, validation.issues);
+  }
+
+  if (!commonResult.success || !validation.success) {
+    return { values: {}, errors };
+  }
+
+  return {
+    values: {
+      ...commonResult.data,
+      scheduleItems: planResult.data.scheduleItems,
+    },
+    errors: {},
+  };
+}
+
+function addManualPlanErrors(
+  errors: FieldErrors<DebtDraft>,
+  issues: readonly DebtPlanIssue[],
+) {
+  for (const issue of issues) {
+    switch (issue.target.kind) {
+      case 'schedule':
+        addManualScheduleError(errors, issue.code);
+        break;
+      case 'scheduleItemAmount':
+        setFirstError(
+          errors,
+          `installmentPlan.manual.scheduleItems.${issue.target.index}.amount`,
+          issue.code,
+        );
+        break;
+      case 'scheduleItemDueDate':
+        setFirstError(
+          errors,
+          `installmentPlan.manual.scheduleItems.${issue.target.index}.dueDate`,
+          issue.code,
+        );
+        break;
+    }
+  }
+}
+
+function addManualScheduleError(
+  errors: FieldErrors<DebtDraft>,
+  message: string,
+) {
+  const field = 'installmentPlan.manual.scheduleItems.root';
+  const existingError = get(errors, field) as
+    | { message?: string; types?: Record<string, string> }
+    | undefined;
+
+  set(errors, field, {
+    message: existingError?.message ?? message,
+    type: 'validate',
+    types: {
+      ...existingError?.types,
+      [message]: message,
+    },
+  });
 }
 
 function addScheduleBuildErrors(errors: FieldErrors<DebtDraft>, result: InstallmentScheduleResult) {
@@ -276,7 +385,7 @@ function draftFieldFromRequestIssue(
 
 function setFirstError(
   errors: FieldErrors<DebtDraft>,
-  field: DraftField | `installmentPlan.manual.scheduleItems.${number}.${'amount' | 'dueDate'}`,
+  field: DraftErrorField,
   message: string,
 ) {
   if (!get(errors, field)) {
@@ -298,12 +407,23 @@ function normalizeAmountForSummary(value: string): string | undefined {
     return undefined;
   }
 
-  const [wholeAmount, fractionalAmount = ''] = trimmedValue.split('.');
-  const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
-
-  if (normalizedWholeAmount.length > 16) {
+  if (!isWithinNumeric182Precision(trimmedValue)) {
     return undefined;
   }
+
+  return normalizeParsedAmount(trimmedValue);
+}
+
+function isWithinNumeric182Precision(amount: string): boolean {
+  const [wholeAmount] = amount.split('.');
+  const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
+
+  return normalizedWholeAmount.length <= 16;
+}
+
+function normalizeParsedAmount(amount: string): string {
+  const [wholeAmount, fractionalAmount = ''] = amount.split('.');
+  const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
 
   return `${normalizedWholeAmount}.${fractionalAmount.padEnd(2, '0')}`;
 }

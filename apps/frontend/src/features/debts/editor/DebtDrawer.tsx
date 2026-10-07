@@ -50,6 +50,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
         ? { debt: props.debt, mode: 'edit' }
         : { defaultCurrency: props.defaultCurrency, mode: 'create' },
     ),
+    criteriaMode: 'all',
     resolver: debtDraftResolver,
     shouldUnregister: false,
   });

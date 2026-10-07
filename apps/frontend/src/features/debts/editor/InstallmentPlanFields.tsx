@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { CalendarDays } from 'lucide-react';
 import {
   useController,
@@ -28,7 +29,12 @@ export function InstallmentPlanFields({
 }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
-  const { control, setValue } = useFormContext<DebtDraft>();
+  const {
+    control,
+    formState: { errors, isSubmitted },
+    setValue,
+    trigger,
+  } = useFormContext<DebtDraft>();
   const mode = useWatch({ control, name: 'installmentPlan.mode' });
   const totalAmount = useWatch({ control, name: 'totalAmount' });
   const currency = useWatch({ control, name: 'currency' });
@@ -53,6 +59,19 @@ export function InstallmentPlanFields({
     scheduleItems: manualScheduleItems,
     totalAmount,
   });
+  const manualPlanErrors = Object.values(
+    errors.installmentPlan?.manual?.scheduleItems?.root?.types ?? {},
+  )
+    .flat()
+    .filter((message): message is string => typeof message === 'string');
+
+  useEffect(() => {
+    if (!isSubmitted || mode !== 'manual') {
+      return;
+    }
+
+    void trigger('installmentPlan.manual.scheduleItems');
+  }, [isSubmitted, manualScheduleItems, mode, totalAmount, trigger]);
 
   const customize = () => {
     if (scheduleResult.status !== 'ready') {
@@ -220,6 +239,15 @@ export function InstallmentPlanFields({
                   )}
                 />
               </dl>
+              {manualPlanErrors.map((message) => (
+                <p
+                  className="m-0 text-[0.72rem] font-bold leading-[1.35] text-status-overdue-foreground"
+                  key={message}
+                  role="alert"
+                >
+                  {formatError(message)}
+                </p>
+              ))}
             </section>
           ) : null}
           <button

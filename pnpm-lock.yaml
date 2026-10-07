@@ -150,6 +150,9 @@ importers:
       react-router:
         specifier: ^7.18.3
         version: 7.18.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
     devDependencies:
       '@collectify/eslint-config':
         specifier: workspace:*
