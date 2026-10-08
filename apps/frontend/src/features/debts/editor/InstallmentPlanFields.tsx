@@ -1,24 +1,19 @@
 import { useEffect } from 'react';
 import { CalendarDays } from 'lucide-react';
-import {
-  useController,
-  useFieldArray,
-  useFormContext,
-  useWatch,
-} from 'react-hook-form';
+import { useController, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import {
   getInstallmentDueDateRange,
+  summarizeDebtPlanAmounts,
   type InstallmentDueDateRange,
 } from '@collectify/domain/debt-plan';
 
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { SegmentedControl } from '../../../shared/ui/segmented-control/SegmentedControl';
 import { formatCurrencyAmount, useLocalization } from '../../../shared/localization';
-import { buildManualInstallmentSummary, type DebtDraft } from './debt-draft';
+import { buildAutomaticSchedulePreview, type DebtDraft } from './debt-draft';
 import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
-import { buildInstallmentScheduleFromDraft } from './installment-schedule-draft';
 
 export function InstallmentPlanFields({
   disabled,
@@ -28,7 +23,6 @@ export function InstallmentPlanFields({
   formatError: (error: string) => string;
 }) {
   const { t } = useTranslation();
-  const { locale } = useLocalization();
   const {
     control,
     formState: { errors, isSubmitted },
@@ -51,12 +45,8 @@ export function InstallmentPlanFields({
     control,
     name: 'installmentPlan.manual.scheduleItems',
   });
-  const scheduleResult = buildInstallmentScheduleFromDraft({
-    totalAmount,
-    installmentPlan: automatic,
-  });
-  const manualSummary = buildManualInstallmentSummary({
-    scheduleItems: manualScheduleItems,
+  const schedulePreview = buildAutomaticSchedulePreview({
+    automatic,
     totalAmount,
   });
   const manualPlanErrors = Object.values(
@@ -74,12 +64,12 @@ export function InstallmentPlanFields({
   }, [isSubmitted, manualScheduleItems, mode, totalAmount, trigger]);
 
   const customize = () => {
-    if (scheduleResult.status !== 'ready') {
+    if (schedulePreview === undefined) {
       return;
     }
 
     replace(
-      scheduleResult.scheduleItems.map(({ amount, dueDate }) => ({
+      schedulePreview.scheduleItems.map(({ amount, dueDate }) => ({
         amount,
         dueDate,
       })),
@@ -92,10 +82,9 @@ export function InstallmentPlanFields({
     setValue('installmentPlan.mode', 'automatic');
   };
 
-  const maximum = scheduleResult.maximumInstallmentCount;
+  const maximum = schedulePreview?.maximumInstallmentCount;
   const minimumInstallmentCount = 2;
-  const isAddDisabled =
-    disabled || maximum === undefined || fields.length >= maximum;
+  const isAddDisabled = disabled || maximum === undefined || fields.length >= maximum;
   const manualCountGuidance =
     maximum === undefined || maximum < minimumInstallmentCount
       ? t('debts.form.installmentsUnavailable')
@@ -141,14 +130,14 @@ export function InstallmentPlanFields({
             formatError={formatError}
             icon={<CalendarDays aria-hidden="true" size={16} strokeWidth={2.2} />}
             label={t('debts.form.firstInstallmentDueDateLabel')}
-            name="installmentPlan.automatic.firstDueDate"
+            name="installmentPlan.automatic.firstInstallmentDueDate"
             type="date"
           />
           <InstallmentSchedulePreview
             currency={currency}
             disabled={disabled}
             onCustomize={customize}
-            scheduleResult={scheduleResult}
+            schedulePreview={schedulePreview}
           />
         </>
       ) : (
@@ -204,52 +193,13 @@ export function InstallmentPlanFields({
               );
             })}
           </div>
-          {manualSummary.status === 'ready' ? (
-            <section
-              aria-label={t('debts.form.installmentSummaryLabel')}
-              aria-live="polite"
-              className="grid gap-2 rounded-[5px] border border-border bg-background p-3"
-            >
-              <h3 className="m-0 text-[0.78rem] font-black text-foreground">
-                {t('debts.form.installmentSummaryLabel')}
-              </h3>
-              <dl className="m-0 grid gap-1 text-[0.75rem]">
-                <SummaryRow
-                  label={t('debts.form.debtTotalLabel')}
-                  value={formatCurrencyAmount(manualSummary.summary.debtTotal, currency, locale)}
-                />
-                <SummaryRow
-                  label={t('debts.form.scheduleTotalLabel')}
-                  value={formatCurrencyAmount(
-                    manualSummary.summary.scheduleTotal,
-                    currency,
-                    locale,
-                  )}
-                />
-                <SummaryRow
-                  label={
-                    manualSummary.summary.difference.kind === 'remaining'
-                      ? t('debts.form.remainingAmountLabel')
-                      : t('debts.form.excessAmountLabel')
-                  }
-                  value={formatCurrencyAmount(
-                    manualSummary.summary.difference.amount,
-                    currency,
-                    locale,
-                  )}
-                />
-              </dl>
-              {manualPlanErrors.map((message) => (
-                <p
-                  className="m-0 text-[0.72rem] font-bold leading-[1.35] text-status-overdue-foreground"
-                  key={message}
-                  role="alert"
-                >
-                  {formatError(message)}
-                </p>
-              ))}
-            </section>
-          ) : null}
+          <ManualInstallmentSummary
+            currency={currency}
+            formatError={formatError}
+            planErrors={manualPlanErrors}
+            scheduleItems={manualScheduleItems}
+            totalAmount={totalAmount}
+          />
           <button
             aria-describedby="manual-installment-count-guidance"
             className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
@@ -263,6 +213,87 @@ export function InstallmentPlanFields({
       )}
     </div>
   );
+}
+
+function ManualInstallmentSummary({
+  currency,
+  formatError,
+  planErrors,
+  scheduleItems,
+  totalAmount,
+}: {
+  currency: DebtDraft['currency'];
+  formatError: (error: string) => string;
+  planErrors: readonly string[];
+  scheduleItems: DebtDraft['installmentPlan']['manual']['scheduleItems'];
+  totalAmount: string;
+}) {
+  const { t } = useTranslation();
+  const { locale } = useLocalization();
+  const parsedTotalAmount = parseSummaryAmount(totalAmount);
+  const parsedScheduleAmounts = scheduleItems.flatMap(({ amount }) => {
+    const parsedAmount = parseSummaryAmount(amount);
+    return parsedAmount === undefined ? [] : [parsedAmount];
+  });
+  const summary =
+    parsedTotalAmount !== undefined &&
+    scheduleItems.length > 0 &&
+    parsedScheduleAmounts.length === scheduleItems.length
+      ? summarizeDebtPlanAmounts({
+          scheduleAmounts: parsedScheduleAmounts,
+          totalAmount: parsedTotalAmount,
+        })
+      : undefined;
+
+  return (
+    <section
+      aria-label={t('debts.form.installmentSummaryLabel')}
+      aria-live="polite"
+      className="grid gap-2 rounded-[5px] border border-border bg-background p-3"
+    >
+      <h3 className="m-0 text-[0.78rem] font-black text-foreground">
+        {t('debts.form.installmentSummaryLabel')}
+      </h3>
+      {summary === undefined ? (
+        <p className="m-0 text-[0.75rem] leading-[1.4] text-muted-foreground">
+          {t('debts.form.installmentSummaryUnavailable')}
+        </p>
+      ) : (
+        <dl className="m-0 grid gap-1 text-[0.75rem]">
+          <SummaryRow
+            label={t('debts.form.debtTotalLabel')}
+            value={formatCurrencyAmount(summary.debtTotal, currency, locale)}
+          />
+          <SummaryRow
+            label={t('debts.form.scheduleTotalLabel')}
+            value={formatCurrencyAmount(summary.scheduleTotal, currency, locale)}
+          />
+          <SummaryRow
+            label={
+              summary.difference.kind === 'remaining'
+                ? t('debts.form.remainingAmountLabel')
+                : t('debts.form.excessAmountLabel')
+            }
+            value={formatCurrencyAmount(summary.difference.amount, currency, locale)}
+          />
+        </dl>
+      )}
+      {planErrors.map((message) => (
+        <p
+          className="m-0 text-[0.72rem] font-bold leading-[1.35] text-status-overdue-foreground"
+          key={message}
+          role="alert"
+        >
+          {formatError(message)}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+function parseSummaryAmount(value: string): string | undefined {
+  const amount = value.trim() || '0';
+  return /^\d+(?:\.\d{0,2})?$/.test(amount) ? amount : undefined;
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {

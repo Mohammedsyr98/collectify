@@ -1,4 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleDollarSign, FileText, X } from 'lucide-react';
 import { type RefObject } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -17,7 +18,7 @@ import { useDebtValidationErrorFormatter } from '../localization/useDebtValidati
 import { DebtPlanFields } from './DebtPlanFields';
 import {
   createDebtDraft,
-  debtDraftResolver,
+  debtDraftSchema,
   type DebtDraft,
 } from './debt-draft';
 
@@ -51,7 +52,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
         : { defaultCurrency: props.defaultCurrency, mode: 'create' },
     ),
     criteriaMode: 'all',
-    resolver: debtDraftResolver,
+    resolver: zodResolver(debtDraftSchema),
     shouldUnregister: false,
   });
 

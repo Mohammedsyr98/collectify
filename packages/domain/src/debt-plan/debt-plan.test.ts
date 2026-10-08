@@ -19,7 +19,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '100.01',
         installmentCount: 3,
         frequency: 'monthly',
-        firstDueDate: '2026-01-31',
+        firstInstallmentDueDate: '2026-01-31',
       }),
     ).toEqual([
       { amount: '33.33', dueDate: '2026-01-31' },
@@ -34,7 +34,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '30.00',
         installmentCount: 3,
         frequency: 'weekly',
-        firstDueDate: '2026-12-29',
+        firstInstallmentDueDate: '2026-12-29',
       }).map(({ dueDate }) => dueDate),
     ).toEqual(['2026-12-29', '2027-01-05', '2027-01-12']);
   });
@@ -45,7 +45,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '20.00',
         installmentCount: 2,
         frequency: 'weekly',
-        firstDueDate: '2028-02-26',
+        firstInstallmentDueDate: '2028-02-26',
       }).map(({ dueDate }) => dueDate),
     ).toEqual(['2028-02-26', '2028-03-04']);
   });
@@ -56,7 +56,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '30.00',
         installmentCount: 4,
         frequency: 'monthly',
-        firstDueDate: '2028-11-30',
+        firstInstallmentDueDate: '2028-11-30',
       }).map(({ dueDate }) => dueDate),
     ).toEqual(['2028-11-30', '2028-12-30', '2029-01-30', '2029-02-28']);
   });
@@ -67,7 +67,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '40.00',
         installmentCount: 4,
         frequency: 'monthly',
-        firstDueDate: '2028-12-31',
+        firstInstallmentDueDate: '2028-12-31',
       }).map(({ dueDate }) => dueDate),
     ).toEqual(['2028-12-31', '2029-01-31', '2029-02-28', '2029-03-31']);
   });
@@ -78,7 +78,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '30.00',
         installmentCount: 3,
         frequency: 'monthly',
-        firstDueDate: '2028-01-31',
+        firstInstallmentDueDate: '2028-01-31',
       }).map(({ dueDate }) => dueDate),
     ).toEqual(['2028-01-31', '2028-02-29', '2028-03-31']);
   });
@@ -88,7 +88,7 @@ describe('generateInstallmentSchedule', () => {
       totalAmount: '13.00',
       installmentCount: 13,
       frequency: 'monthly',
-      firstDueDate: '2028-02-29',
+      firstInstallmentDueDate: '2028-02-29',
     });
 
     expect(schedule[0]?.dueDate).toBe('2028-02-29');
@@ -97,16 +97,16 @@ describe('generateInstallmentSchedule', () => {
   });
 
   it.each(['2026-02-29', '2026-2-3', '2026-02-03-extra'])(
-    'rejects an invalid first due date: %s',
-    (firstDueDate) => {
+    'rejects an invalid first installment due date: %s',
+    (firstInstallmentDueDate) => {
       expect(() =>
         generateInstallmentSchedule({
           totalAmount: '30.00',
           installmentCount: 2,
           frequency: 'monthly',
-          firstDueDate,
+          firstInstallmentDueDate,
         }),
-      ).toThrow('First due date must be a valid calendar date');
+      ).toThrow('First installment due date must be a valid calendar date');
     },
   );
 
@@ -116,7 +116,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount: '2.00',
         installmentCount: 2,
         frequency: 'monthly',
-        firstDueDate: '0004-02-29',
+        firstInstallmentDueDate: '0004-02-29',
       }).map(({ dueDate }) => dueDate),
     ).toEqual(['0004-02-29', '0004-03-29']);
   });
@@ -127,7 +127,7 @@ describe('generateInstallmentSchedule', () => {
         totalAmount,
         installmentCount: 1,
         frequency: 'monthly',
-        firstDueDate: '2026-01-01',
+        firstInstallmentDueDate: '2026-01-01',
       }),
     ).toThrow('Amount must contain only digits and at most two decimal places');
   });
@@ -299,9 +299,7 @@ describe('validateDebtPlan', () => {
 
   it('reports count, amount, and ordering issues together for an oversized multi-row plan', () => {
     const scheduleItems = scheduleItemsFor(61).map((scheduleItem, index) =>
-      index === 1
-        ? { amount: '2.00', dueDate: '2026-01-01' }
-        : scheduleItem,
+      index === 1 ? { amount: '2.00', dueDate: '2026-01-01' } : scheduleItem,
     );
 
     const issues = issuesFor({

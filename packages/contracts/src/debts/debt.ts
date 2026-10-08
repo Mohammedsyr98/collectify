@@ -26,11 +26,11 @@ function createDebtAmountSchema(invalidCode: string, tooLargeCode: string) {
     });
 }
 
-const createDebtTotalAmountSchema = createDebtAmountSchema(
+export const debtTotalAmountSchema = createDebtAmountSchema(
   debtRequestValidationCode.debtTotalAmountInvalid,
   debtRequestValidationCode.debtTotalAmountTooLarge,
 );
-const createDebtScheduleAmountSchema = createDebtAmountSchema(
+export const debtScheduleItemAmountSchema = createDebtAmountSchema(
   debtRequestValidationCode.debtScheduleItemAmountInvalid,
   debtRequestValidationCode.debtTotalAmountTooLarge,
 );
@@ -41,10 +41,16 @@ const canonicalDebtAmountSchema = z
 const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
 const dateOnlySyntaxSchema = z.string().regex(dateOnlySyntaxPattern);
 
-const debtDueDateSchema = z
+export const debtDueDateSchema = z
   .string()
   .min(1, debtRequestValidationCode.debtDueDateRequired)
   .regex(dateOnlySyntaxPattern, debtRequestValidationCode.debtDueDateInvalid);
+
+export const debtDescriptionSchema = z
+  .string()
+  .trim()
+  .min(1, debtRequestValidationCode.debtDescriptionRequired)
+  .max(200, debtRequestValidationCode.debtDescriptionTooLong);
 
 function isWithinNumeric182Precision(amount: string): boolean {
   const [wholeAmount] = amount.split('.');
@@ -55,7 +61,7 @@ function isWithinNumeric182Precision(amount: string): boolean {
 
 const createScheduleItemSchema = z
   .object({
-    amount: createDebtScheduleAmountSchema,
+    amount: debtScheduleItemAmountSchema,
     dueDate: debtDueDateSchema,
   })
   .strict();
@@ -63,18 +69,14 @@ const createScheduleItemSchema = z
 const replaceScheduleItemSchema = z
   .object({
     id: z.string().min(1).optional(),
-    amount: createDebtScheduleAmountSchema,
+    amount: debtScheduleItemAmountSchema,
     dueDate: debtDueDateSchema,
   })
   .strict();
 
 const debtRequestFields = {
-  description: z
-    .string()
-    .trim()
-    .min(1, debtRequestValidationCode.debtDescriptionRequired)
-    .max(200, debtRequestValidationCode.debtDescriptionTooLong),
-  totalAmount: createDebtTotalAmountSchema,
+  description: debtDescriptionSchema,
+  totalAmount: debtTotalAmountSchema,
   currency: currencySchema,
 };
 

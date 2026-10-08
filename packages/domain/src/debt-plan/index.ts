@@ -12,7 +12,7 @@ export type InstallmentScheduleOptions = {
   readonly totalAmount: string;
   readonly installmentCount: number;
   readonly frequency: InstallmentFrequency;
-  readonly firstDueDate: string;
+  readonly firstInstallmentDueDate: string;
 };
 
 const maximumInstallmentCount = 60;
@@ -76,9 +76,7 @@ export function summarizeDebtPlanAmounts(input: {
     scheduleTotal: formatMinorUnits(scheduleTotal),
     difference: {
       kind: difference < 0n ? 'excess' : 'remaining',
-      amount: formatMinorUnits(
-        difference < 0n ? -difference : difference,
-      ),
+      amount: formatMinorUnits(difference < 0n ? -difference : difference),
     },
   };
 }
@@ -105,15 +103,15 @@ export function getInstallmentDueDateRange(input: {
 export function generateInstallmentSchedule(
   options: InstallmentScheduleOptions,
 ): DebtPlan['scheduleItems'] {
-  if (!isValidDateOnly(options.firstDueDate)) {
-    throw new Error('First due date must be a valid calendar date');
+  if (!isValidDateOnly(options.firstInstallmentDueDate)) {
+    throw new Error('First installment due date must be a valid calendar date');
   }
 
   const amounts = allocateInstallmentAmounts(options.totalAmount, options.installmentCount);
 
   return amounts.map((amount, index) => ({
     amount,
-    dueDate: installmentDueDate(options.firstDueDate, index, options.frequency),
+    dueDate: installmentDueDate(options.firstInstallmentDueDate, index, options.frequency),
   }));
 }
 
@@ -150,8 +148,7 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   const maximumInstallmentCount = getMaximumInstallmentCount(plan.totalAmount);
   const isOnePayment = scheduleItemCount === 1;
   const isMultiRowPlan = scheduleItemCount >= 2;
-  const hasValidInstallmentCount =
-    isMultiRowPlan && scheduleItemCount <= maximumInstallmentCount;
+  const hasValidInstallmentCount = isMultiRowPlan && scheduleItemCount <= maximumInstallmentCount;
 
   if (!isOnePayment && !hasValidInstallmentCount) {
     issues.push({
@@ -233,22 +230,22 @@ function formatMinorUnits(amount: bigint): string {
 }
 
 function installmentDueDate(
-  firstDueDate: string,
+  firstInstallmentDueDate: string,
   index: number,
   frequency: InstallmentFrequency,
 ): string {
   if (frequency === 'weekly') {
-    return addDays(firstDueDate, index * 7);
+    return addDays(firstInstallmentDueDate, index * 7);
   }
 
   if (frequency === 'monthly') {
-    return addMonthsKeepingAnchor(firstDueDate, index);
+    return addMonthsKeepingAnchor(firstInstallmentDueDate, index);
   }
 
   throw new Error('Unsupported installment frequency');
 }
 
-function isValidDateOnly(value: string): boolean {
+export function isValidDateOnly(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
