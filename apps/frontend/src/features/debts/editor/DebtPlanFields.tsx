@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { SegmentedControl } from '../../../shared/ui/segmented-control/SegmentedControl';
-import { type DebtDraft, type PaymentPlan } from './debt-draft';
+import type { DebtDraft } from './debt-draft';
 import { InstallmentPlanFields } from './InstallmentPlanFields';
 
 export function DebtPlanFields({
@@ -26,12 +26,12 @@ export function DebtPlanFields({
   });
   const installmentActivated = useRef(false);
 
-  const selectPaymentPlan = (value: PaymentPlan) => {
+  const selectPaymentPlan = (value: DebtDraft['paymentPlan']) => {
     if (value === 'installment' && !installmentActivated.current) {
       installmentActivated.current = true;
 
       if (onePaymentDueDate) {
-        setValue('installmentPlan.automatic.firstDueDate', onePaymentDueDate);
+        setValue('installmentPlan.automatic.firstInstallmentDueDate', onePaymentDueDate);
       }
     }
 

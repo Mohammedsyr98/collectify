@@ -147,7 +147,7 @@ describe('DebtDrawer payment plans', () => {
 
       await user.type(drawer.getByLabelText('Total amount'), '100.01');
 
-      expect(drawer.getByText('Choose between 2 and 60 installments.')).toBeInTheDocument();
+      expect(drawer.queryByText('Choose between 2 and 60 installments.')).not.toBeInTheDocument();
       expect(
         drawer.queryByRole('table', { name: 'Generated installment schedule' }),
       ).not.toBeInTheDocument();
@@ -302,6 +302,25 @@ describe('DebtDrawer payment plans', () => {
       expect(firstAmount).toHaveValue('20');
       expect(secondAmount).toHaveValue('30.0');
       expect(thirdAmount).toHaveValue('60.01');
+    });
+
+    it('keeps the manual summary visible when an amount is malformed', async () => {
+      const { drawer, user } = renderDebtDrawer();
+
+      await user.type(drawer.getByLabelText('Total amount'), '100');
+      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+      await user.clear(drawer.getByLabelText('First installment due date'));
+      await user.type(drawer.getByLabelText('First installment due date'), '2026-10-01');
+      await user.click(drawer.getByRole('button', { name: 'Customize installments' }));
+
+      const firstAmount = drawer.getByLabelText('Installment 1 amount');
+      await user.clear(firstAmount);
+      await user.type(firstAmount, '1.2.3');
+
+      const summary = drawer.getByRole('region', { name: 'Installment summary' });
+      expect(
+        within(summary).getByText('Enter valid amounts to calculate the summary.'),
+      ).toBeInTheDocument();
     });
 
     it('sets date bounds from neighboring rows without blocking a past first date', async () => {
@@ -500,21 +519,15 @@ describe('DebtDrawer payment plans', () => {
 
       const description = drawer.getByLabelText('Description');
       expect(description).toHaveFocus();
-      expect(description).toHaveAccessibleDescription(
-        'Description is required.',
-      );
-      expect(secondAmount).toHaveAccessibleDescription(
-        'Payment amount must be greater than zero.',
-      );
+      expect(description).toHaveAccessibleDescription('Description is required.');
+      expect(secondAmount).toHaveAccessibleDescription('Payment amount must be greater than zero.');
       expect(secondDueDate).toHaveAccessibleDescription(
         'Payment dates must be in increasing order.',
       );
       expect(
         drawer.getByText('The payment plan has an invalid number of payments.'),
       ).toBeInTheDocument();
-      expect(
-        drawer.getByText('Payment amounts must match the debt total.'),
-      ).toBeInTheDocument();
+      expect(drawer.getByText('Payment amounts must match the debt total.')).toBeInTheDocument();
 
       await user.clear(totalAmount);
       await user.type(totalAmount, '66.68');
@@ -527,12 +540,8 @@ describe('DebtDrawer payment plans', () => {
           drawer.queryByText('Payment amounts must match the debt total.'),
         ).not.toBeInTheDocument();
       });
-      expect(description).toHaveAccessibleDescription(
-        'Description is required.',
-      );
-      expect(secondAmount).toHaveAccessibleDescription(
-        'Payment amount must be greater than zero.',
-      );
+      expect(description).toHaveAccessibleDescription('Description is required.');
+      expect(secondAmount).toHaveAccessibleDescription('Payment amount must be greater than zero.');
       expect(secondDueDate).toHaveAccessibleDescription(
         'Payment dates must be in increasing order.',
       );
