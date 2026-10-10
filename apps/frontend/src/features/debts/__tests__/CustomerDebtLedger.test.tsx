@@ -5,7 +5,12 @@ import { http, HttpResponse } from 'msw';
 import { useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DebtListResponse, DebtResponse, SessionResponse } from '@collectify/contracts';
+import {
+  debtApiErrorCode,
+  type DebtListResponse,
+  type DebtResponse,
+  type SessionResponse,
+} from '@collectify/contracts';
 
 import App from '../../../App';
 import { getBackendUrl } from '../../../shared/api/http';
@@ -435,6 +440,43 @@ describe('CustomerDebtLedger', () => {
     ).toHaveTextContent('Something went wrong. Try again.');
     expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeInTheDocument();
     expect(descriptionInput).toHaveValue('Updated website redesign');
+  });
+
+  it('shows a version conflict and keeps the edited debt draft without resubmitting', async () => {
+    const user = userEvent.setup();
+    let replaceRequestCount = 0;
+
+    server.use(
+      http.put(
+        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+        () => {
+          replaceRequestCount += 1;
+          return HttpResponse.json(
+            {
+              code: debtApiErrorCode.debtVersionConflict,
+              message: 'Debt was changed by another request.',
+            },
+            { status: 409 },
+          );
+        },
+      ),
+    );
+
+    const { drawer } = await openSelectedDebtEditor(user);
+    const descriptionInput = within(drawer).getByLabelText('Description');
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, 'Updated website redesign');
+    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+    const error = await screen.findByRole('alert', {
+      name: 'Could not update debt',
+    });
+    expect(error).toHaveTextContent(
+      'This debt was changed elsewhere. Review it before saving.',
+    );
+    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeInTheDocument();
+    expect(descriptionInput).toHaveValue('Updated website redesign');
+    expect(replaceRequestCount).toBe(1);
   });
 
   });
