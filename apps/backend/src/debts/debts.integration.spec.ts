@@ -391,6 +391,70 @@ describe('debt routes', () => {
     );
   });
 
+  it('reorders retained schedule items according to request order', async () => {
+    const owner = await signUpOwner('debt-reorder-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    const firstId = 'debt_reorder_first';
+    const secondId = 'debt_reorder_second';
+    const thirdId = 'debt_reorder_third';
+
+    await insertDebt({
+      id: 'debt_reorder',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '60.00',
+      scheduleItems: [
+        { id: firstId, amount: '10.00', dueDate: '2026-09-30' },
+        { id: secondId, amount: '20.00', dueDate: '2026-10-30' },
+        { id: thirdId, amount: '30.00', dueDate: '2026-11-30' },
+      ],
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_reorder', {
+      expectedVersion: 1,
+      description: 'Reordered schedule',
+      totalAmount: '60.00',
+      currency: 'USD',
+      scheduleItems: [
+        { id: thirdId, amount: '30.00', dueDate: '2026-09-30' },
+        { id: firstId, amount: '10.00', dueDate: '2026-10-30' },
+        { id: secondId, amount: '20.00', dueDate: '2026-11-30' },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    expect(replaced).toMatchObject({
+      version: 2,
+      paymentPlanType: 'installment',
+      scheduleItems: [
+        { id: thirdId, position: 1, amount: '30.00', dueDate: '2026-09-30' },
+        { id: firstId, position: 2, amount: '10.00', dueDate: '2026-10-30' },
+        { id: secondId, position: 3, amount: '20.00', dueDate: '2026-11-30' },
+      ],
+    });
+
+    expect(await readScheduleItems('debt_reorder')).toEqual([
+      {
+        id: thirdId,
+        position: 1,
+        amount: '30.00',
+        dueDate: '2026-09-30',
+      },
+      {
+        id: firstId,
+        position: 2,
+        amount: '10.00',
+        dueDate: '2026-10-30',
+      },
+      {
+        id: secondId,
+        position: 3,
+        amount: '20.00',
+        dueDate: '2026-11-30',
+      },
+    ]);
+  });
+
   it('converts one payment to installments while retaining its schedule row identity', async () => {
     const owner = await signUpOwner('debt-replace-one-to-many-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
