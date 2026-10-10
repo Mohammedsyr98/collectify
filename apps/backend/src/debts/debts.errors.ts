@@ -36,6 +36,8 @@ const debtValidationMessages = {
     'Payment amounts must match the debt total.',
   [debtRequestValidationCode.debtScheduleItemAmountInvalid]:
     'Enter a valid payment amount.',
+  [debtRequestValidationCode.debtScheduleItemIdDuplicate]:
+    'Schedule items must use distinct saved IDs.',
   [debtPlanIssueCode.scheduleItemAmountNotPositive]:
     'Payment amount must be greater than zero.',
   [debtPlanIssueCode.scheduleItemCountInvalid]:

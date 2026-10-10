@@ -118,8 +118,8 @@ describe('database schema', () => {
       'updated_at',
     ]);
     expect(scheduleConfig.foreignKeys).toHaveLength(1);
-    expect(scheduleConfig.indexes.map((index) => index.config.name)).toContain(
-      debtConstraints.debtPositionUnique,
-    );
+    expect(
+      scheduleConfig.uniqueConstraints.map((constraint) => constraint.name),
+    ).toContain(debtConstraints.debtPositionUnique);
   });
 });

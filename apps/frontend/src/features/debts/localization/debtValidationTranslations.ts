@@ -7,6 +7,7 @@ import type { SupportedLocale } from '../../../shared/localization';
 type DebtValidationTranslationMessages = Record<DebtValidationCode, string>;
 export const debtValidationTranslations = {
   en: {
+    [debtRequestValidationCode.debtScheduleItemIdDuplicate]: 'Saved payment IDs must be unique.',
     [debtRequestValidationCode.debtDescriptionRequired]: 'Description is required.',
     [debtRequestValidationCode.debtDescriptionTooLong]: 'Description must be 200 characters or fewer.',
     [debtRequestValidationCode.debtDueDateInvalid]: 'Enter a valid due date.',
@@ -22,6 +23,7 @@ export const debtValidationTranslations = {
     [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Amount is too large.',
   },
   tr: {
+    [debtRequestValidationCode.debtScheduleItemIdDuplicate]: 'Kayıtlı ödeme kimlikleri benzersiz olmalıdır.',
     [debtRequestValidationCode.debtDescriptionRequired]: 'Açıklama zorunludur.',
     [debtRequestValidationCode.debtDescriptionTooLong]: 'Açıklama en fazla 200 karakter olabilir.',
     [debtRequestValidationCode.debtDueDateInvalid]: 'Geçerli bir vade tarihi girin.',
@@ -37,6 +39,7 @@ export const debtValidationTranslations = {
     [debtRequestValidationCode.debtTotalAmountTooLarge]: 'Tutar çok büyük.',
   },
   ar: {
+    [debtRequestValidationCode.debtScheduleItemIdDuplicate]: 'يجب أن تكون معرّفات الدفعات المحفوظة فريدة.',
     [debtRequestValidationCode.debtDescriptionRequired]: 'الوصف مطلوب.',
     [debtRequestValidationCode.debtDescriptionTooLong]: 'يجب ألا يتجاوز الوصف 200 حرف.',
     [debtRequestValidationCode.debtDueDateInvalid]: 'أدخل تاريخ استحقاق صالحًا.',

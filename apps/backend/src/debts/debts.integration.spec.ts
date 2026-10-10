@@ -31,6 +31,13 @@ type DebtWithScheduleRow = {
   schedule_updated_at: string;
 };
 
+type ScheduleItemRow = {
+  id: string;
+  position: number;
+  amount: string;
+  dueDate: string;
+};
+
 type DebtRouteOperation = (
   customerId: string,
   debtId: string,
@@ -206,41 +213,34 @@ describe('debt routes', () => {
   it('replaces a durable one-payment debt while preserving its identities', async () => {
     const owner = await signUpOwner('debt-replace-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
+    const originalScheduleId = 'debt_replace_schedule';
     await insertDebt({
       id: 'debt_replace',
       createdAt: '2026-09-10 10:00:00',
-      dueDate: '2026-09-30',
       description: 'Original description',
       totalAmount: '125.50',
+      scheduleItems: [
+        {
+          id: originalScheduleId,
+          amount: '125.50',
+          dueDate: '2026-09-30',
+        },
+      ],
     });
 
-    const beforeRows = await readDebtWithScheduleRows('debt_replace');
-    expect(beforeRows).toHaveLength(1);
-    const before = beforeRows[0]!;
-
-    const response = await fetch(
-      `${backend!.baseUrl}/customers/customer_debt/debts/debt_replace`,
-      {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_replace', {
+      expectedVersion: 1,
+      description: 'Updated description',
+      totalAmount: '275.75',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          id: originalScheduleId,
+          amount: '275.75',
+          dueDate: '2026-09-01',
         },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          description: 'Updated description',
-          totalAmount: '275.75',
-          currency: 'EUR',
-          scheduleItems: [
-            {
-              id: 'debt_replace_schedule',
-              amount: '275.75',
-              dueDate: '2026-09-01',
-            },
-          ],
-        }),
-      },
-    );
+      ],
+    });
 
     expect(response.status).toBe(200);
     const replaced = debtResponseSchema.parse(await response.json());
@@ -253,7 +253,7 @@ describe('debt routes', () => {
       paymentPlanType: 'onePayment',
       scheduleItems: [
         {
-          id: 'debt_replace_schedule',
+          id: originalScheduleId,
           position: 1,
           amount: '275.75',
           dueDate: '2026-09-01',
@@ -261,25 +261,260 @@ describe('debt routes', () => {
       ],
     });
 
-    const afterRows = await readDebtWithScheduleRows('debt_replace');
+    expect(await readScheduleItems('debt_replace')).toEqual([
+      {
+        id: originalScheduleId,
+        position: 1,
+        amount: '275.75',
+        dueDate: '2026-09-01',
+      },
+    ]);
+  });
 
-    expect(afterRows).toHaveLength(1);
-    const after = afterRows[0]!;
-    expect(after).toMatchObject({
-      debt_id: before.debt_id,
-      customer_id: before.customer_id,
-      description: 'Updated description',
-      debt_total_amount: '275.75',
-      currency: 'EUR',
-      debt_created_at: before.debt_created_at,
-      schedule_id: before.schedule_id,
-      position: before.position,
-      schedule_amount: '275.75',
-      schedule_due_date: '2026-09-01',
-      schedule_created_at: before.schedule_created_at,
+  it('reconciles retained, omitted, and new schedule rows in request order', async () => {
+    const owner = await signUpOwner('debt-replace-schedule-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    const firstRetainedId = 'debt_replace_schedule_first';
+    const secondRetainedId = 'debt_replace_schedule_second';
+    const omittedId = 'debt_replace_schedule_omitted';
+    const originalCreatedAt = '2026-09-10 10:00:00';
+    const originalSchedule = [
+      {
+        id: firstRetainedId,
+        amount: '40.00',
+        dueDate: '2026-09-30',
+      },
+      {
+        id: secondRetainedId,
+        amount: '30.00',
+        dueDate: '2026-10-30',
+      },
+      {
+        id: omittedId,
+        amount: '30.00',
+        dueDate: '2026-11-30',
+      },
+    ];
+    await insertDebt({
+      id: 'debt_replace_schedule',
+      createdAt: originalCreatedAt,
+      description: 'Original schedule',
+      totalAmount: '100.00',
+      scheduleItems: originalSchedule,
     });
-    expect(after.debt_updated_at).not.toBe(before.debt_updated_at);
-    expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_replace_schedule', {
+      expectedVersion: 1,
+      description: 'Updated schedule',
+      totalAmount: '100.00',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          amount: '20.00',
+          dueDate: '2026-11-30',
+        },
+        {
+          id: firstRetainedId,
+          amount: '40.00',
+          dueDate: '2026-12-30',
+        },
+        {
+          id: secondRetainedId,
+          amount: '40.00',
+          dueDate: '2027-01-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    const generatedScheduleId = replaced.scheduleItems[0]!.id;
+    expect(replaced).toMatchObject({
+      id: 'debt_replace_schedule',
+      totalAmount: '100.00',
+      version: 2,
+      paymentPlanType: 'installment',
+      scheduleItems: [
+        {
+          position: 1,
+          amount: '20.00',
+          dueDate: '2026-11-30',
+        },
+        {
+          id: firstRetainedId,
+          position: 2,
+          amount: '40.00',
+          dueDate: '2026-12-30',
+        },
+        {
+          id: secondRetainedId,
+          position: 3,
+          amount: '40.00',
+          dueDate: '2027-01-30',
+        },
+      ],
+    });
+
+    const after = await readScheduleItems('debt_replace_schedule');
+    expect(after).toEqual([
+      {
+        id: generatedScheduleId,
+        position: 1,
+        amount: '20.00',
+        dueDate: '2026-11-30',
+      },
+      {
+        id: firstRetainedId,
+        position: 2,
+        amount: '40.00',
+        dueDate: '2026-12-30',
+      },
+      {
+        id: secondRetainedId,
+        position: 3,
+        amount: '40.00',
+        dueDate: '2027-01-30',
+      },
+    ]);
+    expect(generatedScheduleId).not.toBe(firstRetainedId);
+    expect(generatedScheduleId).not.toBe(secondRetainedId);
+    expect(generatedScheduleId).not.toBe(omittedId);
+
+    const afterRows = await readDebtWithScheduleRows('debt_replace_schedule');
+    expect(afterRows).toHaveLength(3);
+    expect(afterRows.map(({ debt_version }) => debt_version)).toEqual([2, 2, 2]);
+    expect(afterRows[1]!.schedule_created_at).toBe(originalCreatedAt);
+    expect(afterRows[2]!.schedule_created_at).toBe(originalCreatedAt);
+    expect(afterRows[0]!.schedule_created_at).toBe(afterRows[0]!.schedule_updated_at);
+    expect(new Set(afterRows.map(({ schedule_updated_at }) => schedule_updated_at))).toEqual(
+      new Set([afterRows[0]!.debt_updated_at]),
+    );
+  });
+
+  it('converts one payment to installments while retaining its schedule row identity', async () => {
+    const owner = await signUpOwner('debt-replace-one-to-many-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_replace_one_to_many',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        {
+          id: 'debt_replace_one_to_many_original',
+          amount: '100.00',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_replace_one_to_many', {
+      expectedVersion: 1,
+      description: 'Split payment',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        { amount: '40.00', dueDate: '2026-10-30' },
+        {
+          id: 'debt_replace_one_to_many_original',
+          amount: '60.00',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    expect(replaced).toMatchObject({
+      paymentPlanType: 'installment',
+      version: 2,
+      scheduleItems: [
+        { position: 1, amount: '40.00', dueDate: '2026-10-30' },
+        {
+          id: 'debt_replace_one_to_many_original',
+          position: 2,
+          amount: '60.00',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+
+    const after = await readScheduleItems('debt_replace_one_to_many');
+    const generatedScheduleId = replaced.scheduleItems[0]!.id;
+    expect(after).toEqual([
+      {
+        id: generatedScheduleId,
+        position: 1,
+        amount: '40.00',
+        dueDate: '2026-10-30',
+      },
+      {
+        id: 'debt_replace_one_to_many_original',
+        position: 2,
+        amount: '60.00',
+        dueDate: '2026-11-30',
+      },
+    ]);
+    expect(generatedScheduleId).not.toBe('debt_replace_one_to_many_original');
+  });
+
+  it('converts installments to one payment while retaining the selected schedule row', async () => {
+    const owner = await signUpOwner('debt-replace-many-to-one-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_replace_many_to_one',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        {
+          id: 'debt_replace_many_to_one_omitted',
+          amount: '40.00',
+          dueDate: '2026-09-30',
+        },
+        {
+          id: 'debt_replace_many_to_one_retained',
+          amount: '60.00',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_replace_many_to_one', {
+      expectedVersion: 1,
+      description: 'Combined payment',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: 'debt_replace_many_to_one_retained',
+          amount: '100.00',
+          dueDate: '2026-12-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    const replaced = debtResponseSchema.parse(await response.json());
+    expect(replaced).toMatchObject({
+      paymentPlanType: 'onePayment',
+      version: 2,
+      scheduleItems: [
+        {
+          id: 'debt_replace_many_to_one_retained',
+          position: 1,
+          amount: '100.00',
+          dueDate: '2026-12-30',
+        },
+      ],
+    });
+
+    expect(await readScheduleItems('debt_replace_many_to_one')).toEqual([
+      {
+        id: 'debt_replace_many_to_one_retained',
+        position: 1,
+        amount: '100.00',
+        dueDate: '2026-12-30',
+      },
+    ]);
   });
 
   it('increments the version for a value-equivalent one-payment replacement', async () => {
@@ -308,16 +543,10 @@ describe('debt routes', () => {
       ],
     };
 
-    const response = await fetch(
-      `${backend!.baseUrl}/customers/customer_debt/debts/debt_value_equivalent`,
-      {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
-        },
-        body: JSON.stringify(unchangedRequest),
-      },
+    const response = await replaceDebtRequest(
+      owner.cookieHeader,
+      'debt_value_equivalent',
+      unchangedRequest,
     );
 
     expect(response.status).toBe(200);
@@ -347,29 +576,19 @@ describe('debt routes', () => {
       totalAmount: '125.50',
     });
 
-    const currentReplacement = await fetch(
-      `${backend!.baseUrl}/customers/customer_debt/debts/debt_stale_replacement`,
-      {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
+    const currentReplacement = await replaceDebtRequest(owner.cookieHeader, 'debt_stale_replacement', {
+      expectedVersion: 1,
+      description: 'Current edit',
+      totalAmount: '150.00',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          id: 'debt_stale_replacement_schedule',
+          amount: '150.00',
+          dueDate: '2026-10-01',
         },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          description: 'Current edit',
-          totalAmount: '150.00',
-          currency: 'EUR',
-          scheduleItems: [
-            {
-              id: 'debt_stale_replacement_schedule',
-              amount: '150.00',
-              dueDate: '2026-10-01',
-            },
-          ],
-        }),
-      },
-    );
+      ],
+    });
 
     expect(currentReplacement.status).toBe(200);
     await expect(currentReplacement.json()).resolves.toMatchObject({
@@ -380,29 +599,19 @@ describe('debt routes', () => {
       'debt_stale_replacement',
     );
 
-    const staleReplacement = await fetch(
-      `${backend!.baseUrl}/customers/customer_debt/debts/debt_stale_replacement`,
-      {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
+    const staleReplacement = await replaceDebtRequest(owner.cookieHeader, 'debt_stale_replacement', {
+      expectedVersion: 1,
+      description: 'Stale edit must not win',
+      totalAmount: '175.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: 'debt_stale_replacement_schedule',
+          amount: '175.00',
+          dueDate: '2026-11-01',
         },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          description: 'Stale edit must not win',
-          totalAmount: '175.00',
-          currency: 'USD',
-          scheduleItems: [
-            {
-              id: 'debt_stale_replacement_schedule',
-              amount: '175.00',
-              dueDate: '2026-11-01',
-            },
-          ],
-        }),
-      },
-    );
+      ],
+    });
 
     expect(staleReplacement.status).toBe(409);
     await expect(staleReplacement.json()).resolves.toEqual({
@@ -427,29 +636,19 @@ describe('debt routes', () => {
     });
 
     const before = await readDebtWithScheduleRows('debt_identity_target');
-    const response = await fetch(
-      `${backend!.baseUrl}/customers/customer_debt/debts/debt_identity_target`,
-      {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_identity_target', {
+      expectedVersion: 1,
+      description: 'Should not be saved',
+      totalAmount: '275.75',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          id: 'debt_identity_other_schedule',
+          amount: '275.75',
+          dueDate: '2026-09-01',
         },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          description: 'Should not be saved',
-          totalAmount: '275.75',
-          currency: 'EUR',
-          scheduleItems: [
-            {
-              id: 'debt_identity_other_schedule',
-              amount: '275.75',
-              dueDate: '2026-09-01',
-            },
-          ],
-        }),
-      },
-    );
+      ],
+    });
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({
@@ -461,37 +660,128 @@ describe('debt routes', () => {
     );
   });
 
-  it('generates a new schedule identity when replacement omits one', async () => {
-    const owner = await signUpOwner('debt-schedule-new-identity-owner@example.com');
+  it('rejects an unknown schedule identity without mutating the debt aggregate', async () => {
+    const owner = await signUpOwner('debt-unknown-schedule-identity-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
     await insertDebt({
-      id: 'debt_new_identity',
+      id: 'debt_unknown_schedule_identity',
       createdAt: '2026-09-10 10:00:00',
     });
 
-    const before = await readDebtWithScheduleRows('debt_new_identity');
-    const response = await fetch(
-      `${backend!.baseUrl}/customers/customer_debt/debts/debt_new_identity`,
+    const before = await readDebtWithScheduleRows('debt_unknown_schedule_identity');
+    const response = await replaceDebtRequest(
+      owner.cookieHeader,
+      'debt_unknown_schedule_identity',
       {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
-        },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          description: 'Replaced debt',
-          totalAmount: '275.75',
-          currency: 'EUR',
-          scheduleItems: [
-            {
-              amount: '275.75',
-              dueDate: '2026-09-01',
-            },
-          ],
-        }),
+        expectedVersion: 1,
+        description: 'Should not be saved',
+        totalAmount: '275.75',
+        currency: 'EUR',
+        scheduleItems: [
+          {
+            id: 'schedule_does_not_exist',
+            amount: '275.75',
+            dueDate: '2026-10-01',
+          },
+        ],
       },
     );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      code: 'DEBT_NOT_FOUND',
+      message: 'Debt was not found.',
+    });
+    expect(await readDebtWithScheduleRows('debt_unknown_schedule_identity')).toEqual(
+      before,
+    );
+  });
+
+  it('rejects duplicate schedule identities without mutating the debt aggregate', async () => {
+    const owner = await signUpOwner('debt-duplicate-schedule-identity-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_duplicate_schedule_identity',
+      createdAt: '2026-09-10 10:00:00',
+      scheduleItems: [
+        {
+          id: 'debt_duplicate_schedule_identity_first',
+          amount: '60.00',
+          dueDate: '2026-09-30',
+        },
+        {
+          id: 'debt_duplicate_schedule_identity_second',
+          amount: '65.50',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+
+    const before = await readDebtWithScheduleRows('debt_duplicate_schedule_identity');
+    const response = await replaceDebtRequest(
+      owner.cookieHeader,
+      'debt_duplicate_schedule_identity',
+      {
+        expectedVersion: 1,
+        description: 'Should not be saved',
+        totalAmount: '125.50',
+        currency: 'USD',
+        scheduleItems: [
+          {
+            id: 'debt_duplicate_schedule_identity_first',
+            amount: '60.00',
+            dueDate: '2026-09-30',
+          },
+          {
+            id: 'debt_duplicate_schedule_identity_first',
+            amount: '65.50',
+            dueDate: '2026-10-30',
+          },
+        ],
+      },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'Check the highlighted fields.',
+      fieldErrors: {
+        scheduleItems: ['Schedule items must use distinct saved IDs.'],
+      },
+    });
+    expect(await readDebtWithScheduleRows('debt_duplicate_schedule_identity')).toEqual(
+      before,
+    );
+  });
+
+  it('generates a new schedule identity when replacement omits one', async () => {
+    const owner = await signUpOwner('debt-schedule-new-identity-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    const originalScheduleId = 'debt_new_identity_schedule';
+    await insertDebt({
+      id: 'debt_new_identity',
+      createdAt: '2026-09-10 10:00:00',
+      scheduleItems: [
+        {
+          id: originalScheduleId,
+          amount: '125.50',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_new_identity', {
+      expectedVersion: 1,
+      description: 'Replaced debt',
+      totalAmount: '275.75',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          amount: '275.75',
+          dueDate: '2026-09-01',
+        },
+      ],
+    });
 
     expect(response.status).toBe(200);
     const replaced = debtResponseSchema.parse(await response.json());
@@ -500,16 +790,16 @@ describe('debt routes', () => {
       amount: '275.75',
       dueDate: '2026-09-01',
     });
-    expect(replaced.scheduleItems[0]!.id).not.toBe(before[0]!.schedule_id);
+    expect(replaced.scheduleItems[0]!.id).not.toBe(originalScheduleId);
 
-    const after = await readDebtWithScheduleRows('debt_new_identity');
-    expect(after).toHaveLength(1);
-    expect(after[0]).toMatchObject({
-      schedule_id: replaced.scheduleItems[0]!.id,
-      position: 1,
-      schedule_amount: '275.75',
-      schedule_due_date: '2026-09-01',
-    });
+    expect(await readScheduleItems('debt_new_identity')).toEqual([
+      {
+        id: replaced.scheduleItems[0]!.id,
+        position: 1,
+        amount: '275.75',
+        dueDate: '2026-09-01',
+      },
+    ]);
   });
 
   it('permanently deletes an owned one-payment debt and its schedule', async () => {
@@ -585,7 +875,7 @@ describe('debt routes', () => {
 
     const beforeOwnedDebt = await readDebtWithScheduleRows('debt_lookup');
     const beforeOtherOwnerDebt = await readDebtWithScheduleRows('debt_other_owner');
-    const requestBody = JSON.stringify({
+    const requestBody = {
       expectedVersion: 1,
       description: 'Should not be saved',
       totalAmount: '999.99',
@@ -596,23 +886,13 @@ describe('debt routes', () => {
           dueDate: '2026-10-01',
         },
       ],
-    });
+    };
     const expectedNotFoundBody = JSON.stringify({
       code: 'DEBT_NOT_FOUND',
       message: 'Debt was not found.',
     });
     const replaceDebt: DebtRouteOperation = (customerId, debtId) =>
-      fetch(
-        `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'content-type': 'application/json',
-            cookie: owner.cookieHeader,
-          },
-          body: requestBody,
-        },
-      );
+      replaceDebtRequest(owner.cookieHeader, debtId, requestBody, customerId);
     const deleteDebt: DebtRouteOperation = (customerId, debtId) =>
       fetch(
         `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
@@ -670,28 +950,23 @@ describe('debt routes', () => {
       });
 
       const before = await readDebtWithScheduleRows('debt_replacement_rollback');
-      const response = await fetch(
-        `${backend!.baseUrl}/customers/customer_replacement_rollback/debts/debt_replacement_rollback`,
+      const response = await replaceDebtRequest(
+        owner.cookieHeader,
+        'debt_replacement_rollback',
         {
-          method: 'PUT',
-          headers: {
-            'content-type': 'application/json',
-            cookie: owner.cookieHeader,
-          },
-          body: JSON.stringify({
-            expectedVersion: 1,
-            description: 'Should be rolled back',
-            totalAmount: '999.99',
-            currency: 'EUR',
-            scheduleItems: [
-              {
-                id: 'debt_replacement_rollback_schedule',
-                amount: '999.99',
-                dueDate: '2026-10-01',
-              },
-            ],
-          }),
+          expectedVersion: 1,
+          description: 'Should be rolled back',
+          totalAmount: '999.99',
+          currency: 'EUR',
+          scheduleItems: [
+            {
+              id: 'debt_replacement_rollback_schedule',
+              amount: '999.99',
+              dueDate: '2026-10-01',
+            },
+          ],
         },
+        'customer_replacement_rollback',
       );
 
       expect(response.status).toBe(500);
@@ -1089,6 +1364,25 @@ describe('debt routes', () => {
     expect(whitespaceSearch).toEqual(unfiltered);
   });
 
+  function replaceDebtRequest(
+    cookieHeader: string,
+    debtId: string,
+    body: unknown,
+    customerId = 'customer_debt',
+  ) {
+    return fetch(
+      `${backend!.baseUrl}/customers/${customerId}/debts/${debtId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: cookieHeader,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
   async function setupLiteralSearchScenario() {
     const owner = await signUpOwner('debt-search-literal-owner@example.com');
     await insertCustomer(owner.ownerProfileId, {
@@ -1361,7 +1655,21 @@ describe('debt routes', () => {
         s."updated_at"::text AS "schedule_updated_at"
       FROM "debts" d
       JOIN "debt_schedule_items" s ON s."debt_id" = d."id"
-      WHERE d."id" = $1 AND s."position" = 1
+      WHERE d."id" = $1
+      ORDER BY s."position"
+    `, [debtId]);
+  }
+
+  function readScheduleItems(debtId: string): Promise<ScheduleItemRow[]> {
+    return postgres!.query<ScheduleItemRow>(`
+      SELECT
+        s."id" AS "id",
+        s."position" AS "position",
+        s."amount"::text AS "amount",
+        s."due_date"::text AS "dueDate"
+      FROM "debt_schedule_items" s
+      WHERE s."debt_id" = $1
+      ORDER BY s."position"
     `, [debtId]);
   }
 
@@ -1464,6 +1772,13 @@ describe('debt routes', () => {
     id,
     description = 'Page debt',
     totalAmount = '125.50',
+    scheduleItems = [
+      {
+        id: `${id}_schedule`,
+        amount: totalAmount,
+        dueDate,
+      },
+    ],
   }: {
     customerId?: string;
     createdAt: string;
@@ -1472,6 +1787,11 @@ describe('debt routes', () => {
     description?: string;
     id: string;
     totalAmount?: string;
+    scheduleItems?: Array<{
+      id: string;
+      amount: string;
+      dueDate: string;
+    }>;
   }): Promise<void> {
     await postgres!.query(
       `
@@ -1489,20 +1809,29 @@ describe('debt routes', () => {
       [id, customerId, description, totalAmount, currency, createdAt],
     );
 
-    await postgres!.query(
-      `
-        INSERT INTO "debt_schedule_items" (
-          "id",
-          "debt_id",
-          "position",
-          "amount",
-          "due_date",
-          "created_at",
-          "updated_at"
-        )
-        VALUES ($1, $2, 1, $3, $4::date, $5::timestamp, $5::timestamp)
-      `,
-      [`${id}_schedule`, id, totalAmount, dueDate, createdAt],
-    );
+    for (const [index, scheduleItem] of scheduleItems.entries()) {
+      await postgres!.query(
+        `
+          INSERT INTO "debt_schedule_items" (
+            "id",
+            "debt_id",
+            "position",
+            "amount",
+            "due_date",
+            "created_at",
+            "updated_at"
+          )
+          VALUES ($1, $2, $3, $4, $5::date, $6::timestamp, $6::timestamp)
+        `,
+        [
+          scheduleItem.id,
+          id,
+          index + 1,
+          scheduleItem.amount,
+          scheduleItem.dueDate,
+          createdAt,
+        ],
+      );
+    }
   }
 });

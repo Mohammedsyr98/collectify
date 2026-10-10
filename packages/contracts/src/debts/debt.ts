@@ -144,10 +144,21 @@ export const createDebtRequestSchema = buildDebtRequestSchema(
 export const replaceDebtRequestSchema = buildDebtRequestSchema(
   replaceScheduleItemSchema,
   {
-    onePaymentOnly: true,
     expectedVersion: z.number().int().positive(),
   },
-);
+).superRefine((request, context) => {
+  const submittedIds = request.scheduleItems
+    .map(({ id }) => id)
+    .filter((id): id is string => id !== undefined);
+
+  if (new Set(submittedIds).size !== submittedIds.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['scheduleItems'],
+      message: debtRequestValidationCode.debtScheduleItemIdDuplicate,
+    });
+  }
+});
 
 function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
   switch (issue.target.kind) {

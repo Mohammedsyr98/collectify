@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -151,7 +152,7 @@ export const debtScheduleItems = pgTable(
       sql`${table.position} > 0`,
     ),
     check(debtConstraints.scheduleAmountPositive, sql`${table.amount} > 0`),
-    uniqueIndex(debtConstraints.debtPositionUnique).on(
+    unique(debtConstraints.debtPositionUnique).on(
       table.debtId,
       table.position,
     ),

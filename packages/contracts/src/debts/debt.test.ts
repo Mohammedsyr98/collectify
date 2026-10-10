@@ -142,13 +142,33 @@ describe('debt contracts', () => {
     });
   });
 
-  it('keeps replacement requests one-payment-only', () => {
+  it('accepts retained and new rows in a multi-row replacement request', () => {
+    expect(
+      replaceDebtRequestSchema.parse({
+        ...validReplacementRequest,
+        scheduleItems: [
+          { id: 'schedule_123', amount: '0.30', dueDate: '2026-09-30' },
+          { amount: '125.20', dueDate: '2026-10-30' },
+        ],
+      }),
+    ).toEqual({
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+      expectedVersion: 3,
+      scheduleItems: [
+        { id: 'schedule_123', amount: '0.30', dueDate: '2026-09-30' },
+        { amount: '125.20', dueDate: '2026-10-30' },
+      ],
+    });
+  });
+
+  it('rejects duplicate saved IDs with one schedule-level issue', () => {
     const result = replaceDebtRequestSchema.safeParse({
       ...validReplacementRequest,
-      totalAmount: '125.50',
       scheduleItems: [
-        { amount: '0.30', dueDate: '2026-09-30' },
-        { amount: '125.20', dueDate: '2026-10-30' },
+        { id: 'schedule_123', amount: '60.00', dueDate: '2026-09-30' },
+        { id: 'schedule_123', amount: '65.50', dueDate: '2026-10-30' },
       ],
     });
 
@@ -158,12 +178,28 @@ describe('debt contracts', () => {
       return;
     }
 
-    expect(result.error.issues).toContainEqual(
+    expect(result.error.issues).toEqual([
       expect.objectContaining({
+        code: 'custom',
         path: ['scheduleItems'],
-        message: debtPlanIssueCode.scheduleItemCountInvalid,
+        message: debtRequestValidationCode.debtScheduleItemIdDuplicate,
       }),
-    );
+    ]);
+  });
+
+  it('allows multiple new rows in a replacement request', () => {
+    expect(
+      replaceDebtRequestSchema.parse({
+        ...validReplacementRequest,
+        scheduleItems: [
+          { amount: '0.30', dueDate: '2026-09-30' },
+          { amount: '125.20', dueDate: '2026-10-30' },
+        ],
+      }).scheduleItems,
+    ).toEqual([
+      { amount: '0.30', dueDate: '2026-09-30' },
+      { amount: '125.20', dueDate: '2026-10-30' },
+    ]);
   });
 
   it('rejects ids on create schedule items', () => {
