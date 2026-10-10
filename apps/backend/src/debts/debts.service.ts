@@ -94,11 +94,6 @@ export class DebtsService {
   ): Promise<DebtListResponse> {
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
-    await this.requireOwnedCustomer(
-      this.databaseService.db,
-      currentOwner.ownerProfile.id,
-      customerId,
-    );
 
     const customerFilter = eq(debts.customerId, customerId);
     const listFilter = query.search
@@ -107,58 +102,73 @@ export class DebtsService {
           caseInsensitiveLiteralSubstring(debts.description, query.search),
         )
       : customerFilter;
-    const [{ totalItems } = { totalItems: 0 }] = await this.databaseService.db
-      .select({ totalItems: count() })
-      .from(debts)
-      .where(listFilter);
-    const { offset, ...paginationMetadata } = calculatePagination({
-      page: query.page,
-      pageSize: debtListPageSize,
-      totalItems,
-    });
-    const debtRows = await this.databaseService.db
-      .select({ debt: debts })
-      .from(debts)
-      .innerJoin(
-        debtScheduleItems,
-        and(
-          eq(debtScheduleItems.debtId, debts.id),
-          eq(debtScheduleItems.position, 1),
-        ),
-      )
-      .where(listFilter)
-      .orderBy(
-        asc(debtScheduleItems.dueDate),
-        asc(debts.createdAt),
-        asc(debts.id),
-      )
-      .limit(paginationMetadata.pageSize)
-      .offset(offset);
-    const selectedDebts = debtRows.map(({ debt }) => debt);
-    const scheduleRows = debtRows.length
-      ? await this.databaseService.db
-          .select()
-          .from(debtScheduleItems)
-          .where(
-            inArray(
-              debtScheduleItems.debtId,
-              selectedDebts.map((debt) => debt.id),
+
+    return this.databaseService.db.transaction(
+      async (tx) => {
+        await this.requireOwnedCustomer(
+          tx,
+          currentOwner.ownerProfile.id,
+          customerId,
+        );
+
+        const [{ totalItems } = { totalItems: 0 }] = await tx
+          .select({ totalItems: count() })
+          .from(debts)
+          .where(listFilter);
+        const { offset, ...paginationMetadata } = calculatePagination({
+          page: query.page,
+          pageSize: debtListPageSize,
+          totalItems,
+        });
+        const debtRows = await tx
+          .select({ debt: debts })
+          .from(debts)
+          .innerJoin(
+            debtScheduleItems,
+            and(
+              eq(debtScheduleItems.debtId, debts.id),
+              eq(debtScheduleItems.position, 1),
             ),
           )
-          .orderBy(asc(debtScheduleItems.position))
-      : [];
-    const scheduleItemsByDebtId = groupScheduleItemsByDebtId(scheduleRows);
+          .where(listFilter)
+          .orderBy(
+            asc(debtScheduleItems.dueDate),
+            asc(debts.createdAt),
+            asc(debts.id),
+          )
+          .limit(paginationMetadata.pageSize)
+          .offset(offset);
+        const selectedDebts = debtRows.map(({ debt }) => debt);
+        const scheduleRows = debtRows.length
+          ? await tx
+              .select()
+              .from(debtScheduleItems)
+              .where(
+                inArray(
+                  debtScheduleItems.debtId,
+                  selectedDebts.map((debt) => debt.id),
+                ),
+              )
+              .orderBy(asc(debtScheduleItems.position))
+          : [];
+        const scheduleItemsByDebtId = groupScheduleItemsByDebtId(scheduleRows);
 
-    return {
-      items: selectedDebts.map((debt) =>
-        toDebtResponse(
-          debt,
-          scheduleItemsByDebtId.get(debt.id) ?? [],
-          businessDate,
-        ),
-      ),
-      ...paginationMetadata,
-    };
+        return {
+          items: selectedDebts.map((debt) =>
+            toDebtResponse(
+              debt,
+              scheduleItemsByDebtId.get(debt.id) ?? [],
+              businessDate,
+            ),
+          ),
+          ...paginationMetadata,
+        };
+      },
+      {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      },
+    );
   }
 
   async replaceDebt(
