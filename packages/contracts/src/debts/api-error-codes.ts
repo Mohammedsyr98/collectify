@@ -1,11 +1,13 @@
 export const debtApiErrorCode = {
   validationError: 'VALIDATION_ERROR',
   debtNotFound: 'DEBT_NOT_FOUND',
+  debtVersionConflict: 'DEBT_VERSION_CONFLICT',
 } as const;
 
 export const debtApiErrorCodes = [
   debtApiErrorCode.validationError,
   debtApiErrorCode.debtNotFound,
+  debtApiErrorCode.debtVersionConflict,
 ] as const;
 
 export type DebtApiErrorCode = (typeof debtApiErrorCodes)[number];

@@ -123,6 +123,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
                 if (props.mode === 'edit') {
                   return props.onSubmit({
                     ...request,
+                    expectedVersion: props.debt.version,
                     scheduleItems: [
                       {
                         ...request.scheduleItems[0],

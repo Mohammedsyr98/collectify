@@ -87,7 +87,10 @@ type RequestScheduleItem = {
 
 function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
   scheduleItemSchema: T,
-  options: { readonly onePaymentOnly?: boolean } = {},
+  options: {
+    readonly onePaymentOnly?: boolean;
+    readonly expectedVersion?: z.ZodType<number>;
+  } = {},
 ) {
   const scheduleItemsSchema = z
     .array(scheduleItemSchema)
@@ -99,6 +102,9 @@ function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
   const structuralSchema = z
     .object({
       ...debtRequestFields,
+      ...(options.expectedVersion
+        ? { expectedVersion: options.expectedVersion }
+        : {}),
       scheduleItems: scheduleItemsSchema,
     })
     .strict();
@@ -137,8 +143,22 @@ export const createDebtRequestSchema = buildDebtRequestSchema(
 );
 export const replaceDebtRequestSchema = buildDebtRequestSchema(
   replaceScheduleItemSchema,
-  { onePaymentOnly: true },
-);
+  {
+    expectedVersion: z.number().int().positive(),
+  },
+).superRefine((request, context) => {
+  const submittedIds = request.scheduleItems
+    .map(({ id }) => id)
+    .filter((id): id is string => id !== undefined);
+
+  if (new Set(submittedIds).size !== submittedIds.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['scheduleItems'],
+      message: debtRequestValidationCode.debtScheduleItemIdDuplicate,
+    });
+  }
+});
 
 function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
   switch (issue.target.kind) {
@@ -201,6 +221,7 @@ const debtResponseFields = {
   currency: currencySchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  version: z.number().int().positive(),
 };
 
 const onePaymentDebtResponseSchema = z.object({

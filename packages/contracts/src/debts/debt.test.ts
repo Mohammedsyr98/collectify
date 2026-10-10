@@ -24,6 +24,19 @@ const validCreateRequest = {
   ],
 };
 
+const validReplacementRequest = {
+  description: '  Website redesign  ',
+  totalAmount: ' 125.5 ',
+  currency: 'USD',
+  expectedVersion: 3,
+  scheduleItems: [
+    {
+      amount: '125.5',
+      dueDate: '2026-09-30',
+    },
+  ],
+};
+
 const validInstallmentDebtResponse = {
   id: 'debt_123',
   customerId: 'customer_123',
@@ -49,6 +62,7 @@ const validInstallmentDebtResponse = {
   ],
   createdAt: '2026-09-10T12:00:00.000Z',
   updatedAt: '2026-09-10T12:00:00.000Z',
+  version: 3,
 };
 
 describe('debt contracts', () => {
@@ -90,10 +104,10 @@ describe('debt contracts', () => {
   it('normalizes a replacement request while retaining an optional saved row id', () => {
     expect(
       replaceDebtRequestSchema.parse({
-        ...validCreateRequest,
+        ...validReplacementRequest,
         scheduleItems: [
           {
-            ...validCreateRequest.scheduleItems[0],
+            ...validReplacementRequest.scheduleItems[0],
             id: 'schedule_123',
           },
         ],
@@ -102,6 +116,7 @@ describe('debt contracts', () => {
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
+      expectedVersion: 3,
       scheduleItems: [
         {
           id: 'schedule_123',
@@ -113,10 +128,11 @@ describe('debt contracts', () => {
   });
 
   it('accepts a replacement request without a saved row id', () => {
-    expect(replaceDebtRequestSchema.parse(validCreateRequest)).toEqual({
+    expect(replaceDebtRequestSchema.parse(validReplacementRequest)).toEqual({
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
+      expectedVersion: 3,
       scheduleItems: [
         {
           amount: '125.50',
@@ -126,13 +142,33 @@ describe('debt contracts', () => {
     });
   });
 
-  it('keeps replacement requests one-payment-only', () => {
-    const result = replaceDebtRequestSchema.safeParse({
-      ...validCreateRequest,
+  it('accepts retained and new rows in a multi-row replacement request', () => {
+    expect(
+      replaceDebtRequestSchema.parse({
+        ...validReplacementRequest,
+        scheduleItems: [
+          { id: 'schedule_123', amount: '0.30', dueDate: '2026-09-30' },
+          { amount: '125.20', dueDate: '2026-10-30' },
+        ],
+      }),
+    ).toEqual({
+      description: 'Website redesign',
       totalAmount: '125.50',
+      currency: 'USD',
+      expectedVersion: 3,
       scheduleItems: [
-        { amount: '0.30', dueDate: '2026-09-30' },
+        { id: 'schedule_123', amount: '0.30', dueDate: '2026-09-30' },
         { amount: '125.20', dueDate: '2026-10-30' },
+      ],
+    });
+  });
+
+  it('rejects duplicate saved IDs with one schedule-level issue', () => {
+    const result = replaceDebtRequestSchema.safeParse({
+      ...validReplacementRequest,
+      scheduleItems: [
+        { id: 'schedule_123', amount: '60.00', dueDate: '2026-09-30' },
+        { id: 'schedule_123', amount: '65.50', dueDate: '2026-10-30' },
       ],
     });
 
@@ -142,12 +178,28 @@ describe('debt contracts', () => {
       return;
     }
 
-    expect(result.error.issues).toContainEqual(
+    expect(result.error.issues).toEqual([
       expect.objectContaining({
+        code: 'custom',
         path: ['scheduleItems'],
-        message: debtPlanIssueCode.scheduleItemCountInvalid,
+        message: debtRequestValidationCode.debtScheduleItemIdDuplicate,
       }),
-    );
+    ]);
+  });
+
+  it('allows multiple new rows in a replacement request', () => {
+    expect(
+      replaceDebtRequestSchema.parse({
+        ...validReplacementRequest,
+        scheduleItems: [
+          { amount: '0.30', dueDate: '2026-09-30' },
+          { amount: '125.20', dueDate: '2026-10-30' },
+        ],
+      }).scheduleItems,
+    ).toEqual([
+      { amount: '0.30', dueDate: '2026-09-30' },
+      { amount: '125.20', dueDate: '2026-10-30' },
+    ]);
   });
 
   it('rejects ids on create schedule items', () => {
@@ -407,6 +459,7 @@ describe('debt contracts', () => {
         ],
         createdAt: '2026-09-10T12:00:00.000Z',
         updatedAt: '2026-09-10T12:00:00.000Z',
+        version: 3,
       }),
     ).toEqual({
       id: 'debt_123',
@@ -426,6 +479,7 @@ describe('debt contracts', () => {
       ],
       createdAt: '2026-09-10T12:00:00.000Z',
       updatedAt: '2026-09-10T12:00:00.000Z',
+      version: 3,
     });
   });
 
@@ -502,6 +556,7 @@ describe('debt contracts', () => {
             ],
             createdAt: '2026-09-10T12:00:00.000Z',
             updatedAt: '2026-09-10T12:00:00.000Z',
+            version: 3,
           },
         ],
         page: 1,

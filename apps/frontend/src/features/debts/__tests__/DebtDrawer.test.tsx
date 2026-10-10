@@ -96,6 +96,7 @@ describe('DebtDrawer', () => {
         description: debt.description,
         totalAmount: '275.70',
         currency: 'EUR',
+        expectedVersion: debt.version,
         scheduleItems: [
           {
             id: debt.scheduleItems[0].id,
