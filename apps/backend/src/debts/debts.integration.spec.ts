@@ -687,6 +687,193 @@ describe('debt routes', () => {
     );
   });
 
+  it('allows only one concurrent replacement for the same expected version', async () => {
+    const owner = await signUpOwner('debt-concurrent-replacement-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_concurrent_replacement',
+      createdAt: '2026-09-10 10:00:00',
+    });
+
+    const replacements = [
+      {
+        description: 'First concurrent edit',
+        totalAmount: '150.00',
+        currency: 'EUR',
+        scheduleItems: [
+          {
+            id: 'debt_concurrent_replacement_schedule',
+            amount: '150.00',
+            dueDate: '2026-10-01',
+          },
+        ],
+      },
+      {
+        description: 'Second concurrent edit',
+        totalAmount: '175.00',
+        currency: 'GBP',
+        scheduleItems: [
+          {
+            id: 'debt_concurrent_replacement_schedule',
+            amount: '175.00',
+            dueDate: '2026-10-15',
+          },
+        ],
+      },
+    ];
+
+    const responses = await Promise.all(
+      replacements.map((replacement) =>
+        replaceDebtRequest(owner.cookieHeader, 'debt_concurrent_replacement', {
+          expectedVersion: 1,
+          ...replacement,
+        }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+
+    const winningIndex = responses.findIndex((response) => response.status === 200);
+    const losingIndex = responses.findIndex((response) => response.status === 409);
+    expect(winningIndex).not.toBe(-1);
+    expect(losingIndex).not.toBe(-1);
+    await expect(responses[losingIndex]!.json()).resolves.toEqual({
+      code: 'DEBT_VERSION_CONFLICT',
+      message: 'The debt was changed by another request.',
+    });
+
+    const winningReplacement = replacements[winningIndex]!;
+    await expect(responses[winningIndex]!.json()).resolves.toMatchObject({
+      description: winningReplacement.description,
+      totalAmount: winningReplacement.totalAmount,
+      currency: winningReplacement.currency,
+      version: 2,
+      scheduleItems: [
+        {
+          id: 'debt_concurrent_replacement_schedule',
+          position: 1,
+          amount: winningReplacement.totalAmount,
+          dueDate: winningReplacement.scheduleItems[0]!.dueDate,
+        },
+      ],
+    });
+
+    const persisted = await readDebtWithScheduleRows('debt_concurrent_replacement');
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({
+      description: winningReplacement.description,
+      debt_total_amount: winningReplacement.totalAmount,
+      debt_version: 2,
+      currency: winningReplacement.currency,
+      schedule_id: 'debt_concurrent_replacement_schedule',
+      position: 1,
+      schedule_amount: winningReplacement.totalAmount,
+      schedule_due_date: winningReplacement.scheduleItems[0]!.dueDate,
+    });
+  });
+
+  it('returns a version conflict before validating an ID deleted by the winner', async () => {
+    const owner = await signUpOwner('debt-stale-deleted-id-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    const retainedId = 'debt_stale_deleted_id_retained';
+    const deletedId = 'debt_stale_deleted_id_deleted';
+    await insertDebt({
+      id: 'debt_stale_deleted_id',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        { id: retainedId, amount: '40.00', dueDate: '2026-09-30' },
+        { id: deletedId, amount: '60.00', dueDate: '2026-10-30' },
+      ],
+    });
+
+    const winner = await replaceDebtRequest(owner.cookieHeader, 'debt_stale_deleted_id', {
+      expectedVersion: 1,
+      description: 'Winner replacement',
+      totalAmount: '100.00',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          id: retainedId,
+          amount: '100.00',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+
+    expect(winner.status).toBe(200);
+
+    const stale = await replaceDebtRequest(owner.cookieHeader, 'debt_stale_deleted_id', {
+      expectedVersion: 1,
+      description: 'Stale replacement',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: deletedId,
+          amount: '100.00',
+          dueDate: '2026-12-30',
+        },
+      ],
+    });
+
+    expect(stale.status).toBe(409);
+    await expect(stale.json()).resolves.toEqual({
+      code: 'DEBT_VERSION_CONFLICT',
+      message: 'The debt was changed by another request.',
+    });
+  });
+
+  it('serializes concurrent deletion and replacement of the same debt', async () => {
+    const owner = await signUpOwner('debt-delete-replace-race-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_delete_replace_race',
+      createdAt: '2026-09-10 10:00:00',
+    });
+
+    const [replacement, deletion] = await Promise.all([
+      replaceDebtRequest(owner.cookieHeader, 'debt_delete_replace_race', {
+        expectedVersion: 1,
+        description: 'Racing replacement',
+        totalAmount: '150.00',
+        currency: 'EUR',
+        scheduleItems: [
+          {
+            id: 'debt_delete_replace_race_schedule',
+            amount: '150.00',
+            dueDate: '2026-10-01',
+          },
+        ],
+      }),
+      fetch(
+        `${backend!.baseUrl}/customers/customer_debt/debts/debt_delete_replace_race`,
+        {
+          method: 'DELETE',
+          headers: { cookie: owner.cookieHeader },
+        },
+      ),
+    ]);
+
+    expect(deletion.status).toBe(204);
+    expect([200, 404]).toContain(replacement.status);
+
+    if (replacement.status === 200) {
+      await expect(replacement.json()).resolves.toMatchObject({
+        id: 'debt_delete_replace_race',
+        version: 2,
+        description: 'Racing replacement',
+      });
+    } else {
+      await expect(replacement.json()).resolves.toEqual({
+        code: 'DEBT_NOT_FOUND',
+        message: 'Debt was not found.',
+      });
+    }
+
+    expect(await readDebtWithScheduleRows('debt_delete_replace_race')).toEqual([]);
+  });
+
   it('rejects a schedule identity that belongs to another debt', async () => {
     const owner = await signUpOwner('debt-schedule-identity-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
@@ -982,23 +1169,23 @@ describe('debt routes', () => {
     );
   });
 
-  it('rolls back debt replacement when the schedule update fails', async () => {
+  it('rolls back the complete replacement after schedule mutation', async () => {
     await postgres!.query(`
-      CREATE FUNCTION fail_debt_schedule_update()
+      CREATE FUNCTION fail_debt_replacement_update()
       RETURNS trigger
       LANGUAGE plpgsql
       AS $$
       BEGIN
-        RAISE EXCEPTION 'Injected schedule update failure'
+        RAISE EXCEPTION 'Injected debt replacement failure'
           USING ERRCODE = 'P0001';
       END;
       $$
     `);
     await postgres!.query(`
-      CREATE TRIGGER debt_schedule_items_injected_update_failure
-      BEFORE UPDATE ON "debt_schedule_items"
+      CREATE TRIGGER debt_replacement_injected_update_failure
+      AFTER UPDATE ON "debts"
       FOR EACH ROW
-      EXECUTE FUNCTION fail_debt_schedule_update()
+      EXECUTE FUNCTION fail_debt_replacement_update()
     `);
 
     try {
@@ -1039,9 +1226,9 @@ describe('debt routes', () => {
       );
     } finally {
       await postgres!.query(
-        'DROP TRIGGER debt_schedule_items_injected_update_failure ON "debt_schedule_items"',
+        'DROP TRIGGER debt_replacement_injected_update_failure ON "debts"',
       );
-      await postgres!.query('DROP FUNCTION fail_debt_schedule_update()');
+      await postgres!.query('DROP FUNCTION fail_debt_replacement_update()');
     }
   });
 
