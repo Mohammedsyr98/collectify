@@ -87,7 +87,10 @@ type RequestScheduleItem = {
 
 function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
   scheduleItemSchema: T,
-  options: { readonly onePaymentOnly?: boolean } = {},
+  options: {
+    readonly onePaymentOnly?: boolean;
+    readonly expectedVersion?: z.ZodType<number>;
+  } = {},
 ) {
   const scheduleItemsSchema = z
     .array(scheduleItemSchema)
@@ -99,6 +102,9 @@ function buildDebtRequestSchema<T extends z.ZodType<RequestScheduleItem>>(
   const structuralSchema = z
     .object({
       ...debtRequestFields,
+      ...(options.expectedVersion
+        ? { expectedVersion: options.expectedVersion }
+        : {}),
       scheduleItems: scheduleItemsSchema,
     })
     .strict();
@@ -137,7 +143,10 @@ export const createDebtRequestSchema = buildDebtRequestSchema(
 );
 export const replaceDebtRequestSchema = buildDebtRequestSchema(
   replaceScheduleItemSchema,
-  { onePaymentOnly: true },
+  {
+    onePaymentOnly: true,
+    expectedVersion: z.number().int().positive(),
+  },
 );
 
 function debtPlanIssuePath(issue: DebtPlanIssue): (string | number)[] {
@@ -201,6 +210,7 @@ const debtResponseFields = {
   currency: currencySchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  version: z.number().int().positive(),
 };
 
 const onePaymentDebtResponseSchema = z.object({

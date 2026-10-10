@@ -19,6 +19,7 @@ type DebtWithScheduleRow = {
   customer_id: string;
   description: string;
   debt_total_amount: string;
+  debt_version: number | null;
   currency: string;
   debt_created_at: string;
   debt_updated_at: string;
@@ -226,6 +227,7 @@ describe('debt routes', () => {
           cookie: owner.cookieHeader,
         },
         body: JSON.stringify({
+          expectedVersion: 1,
           description: 'Updated description',
           totalAmount: '275.75',
           currency: 'EUR',
@@ -280,6 +282,138 @@ describe('debt routes', () => {
     expect(after.schedule_updated_at).not.toBe(before.schedule_updated_at);
   });
 
+  it('increments the version for a value-equivalent one-payment replacement', async () => {
+    const owner = await signUpOwner('debt-value-equivalent-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_value_equivalent',
+      createdAt: '2026-09-10 10:00:00',
+    });
+
+    const before = await readDebtWithScheduleRows('debt_value_equivalent');
+    const beforeRow = before[0]!;
+    expect(beforeRow.debt_version).toBe(1);
+
+    const unchangedRequest = {
+      expectedVersion: 1,
+      description: beforeRow.description,
+      totalAmount: beforeRow.debt_total_amount,
+      currency: beforeRow.currency,
+      scheduleItems: [
+        {
+          id: beforeRow.schedule_id,
+          amount: beforeRow.schedule_amount,
+          dueDate: beforeRow.schedule_due_date,
+        },
+      ],
+    };
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_value_equivalent`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify(unchangedRequest),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: 'debt_value_equivalent',
+      version: 2,
+    });
+
+    const after = await readDebtWithScheduleRows('debt_value_equivalent');
+    expect(after[0]).toMatchObject({
+      debt_version: 2,
+      description: beforeRow.description,
+      debt_total_amount: beforeRow.debt_total_amount,
+      currency: beforeRow.currency,
+      schedule_id: beforeRow.schedule_id,
+      schedule_amount: beforeRow.schedule_amount,
+      schedule_due_date: beforeRow.schedule_due_date,
+    });
+  });
+
+  it('rejects a stale one-payment replacement without changing the complete debt', async () => {
+    const owner = await signUpOwner('debt-stale-replacement-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_stale_replacement',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '125.50',
+    });
+
+    const currentReplacement = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_stale_replacement`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          description: 'Current edit',
+          totalAmount: '150.00',
+          currency: 'EUR',
+          scheduleItems: [
+            {
+              id: 'debt_stale_replacement_schedule',
+              amount: '150.00',
+              dueDate: '2026-10-01',
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(currentReplacement.status).toBe(200);
+    await expect(currentReplacement.json()).resolves.toMatchObject({
+      version: 2,
+    });
+
+    const beforeStaleReplacement = await readDebtWithScheduleRows(
+      'debt_stale_replacement',
+    );
+
+    const staleReplacement = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_stale_replacement`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          description: 'Stale edit must not win',
+          totalAmount: '175.00',
+          currency: 'USD',
+          scheduleItems: [
+            {
+              id: 'debt_stale_replacement_schedule',
+              amount: '175.00',
+              dueDate: '2026-11-01',
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(staleReplacement.status).toBe(409);
+    await expect(staleReplacement.json()).resolves.toEqual({
+      code: 'DEBT_VERSION_CONFLICT',
+      message: expect.any(String),
+    });
+    expect(await readDebtWithScheduleRows('debt_stale_replacement')).toEqual(
+      beforeStaleReplacement,
+    );
+  });
+
   it('rejects a schedule identity that belongs to another debt', async () => {
     const owner = await signUpOwner('debt-schedule-identity-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
@@ -302,6 +436,7 @@ describe('debt routes', () => {
           cookie: owner.cookieHeader,
         },
         body: JSON.stringify({
+          expectedVersion: 1,
           description: 'Should not be saved',
           totalAmount: '275.75',
           currency: 'EUR',
@@ -344,6 +479,7 @@ describe('debt routes', () => {
           cookie: owner.cookieHeader,
         },
         body: JSON.stringify({
+          expectedVersion: 1,
           description: 'Replaced debt',
           totalAmount: '275.75',
           currency: 'EUR',
@@ -450,6 +586,7 @@ describe('debt routes', () => {
     const beforeOwnedDebt = await readDebtWithScheduleRows('debt_lookup');
     const beforeOtherOwnerDebt = await readDebtWithScheduleRows('debt_other_owner');
     const requestBody = JSON.stringify({
+      expectedVersion: 1,
       description: 'Should not be saved',
       totalAmount: '999.99',
       currency: 'EUR',
@@ -542,6 +679,7 @@ describe('debt routes', () => {
             cookie: owner.cookieHeader,
           },
           body: JSON.stringify({
+            expectedVersion: 1,
             description: 'Should be rolled back',
             totalAmount: '999.99',
             currency: 'EUR',
@@ -1211,6 +1349,7 @@ describe('debt routes', () => {
         d."customer_id",
         d."description",
         d."total_amount"::text AS "debt_total_amount",
+        d."version" AS "debt_version",
         d."currency",
         d."created_at"::text AS "debt_created_at",
         d."updated_at"::text AS "debt_updated_at",

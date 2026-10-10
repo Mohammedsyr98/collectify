@@ -124,6 +124,7 @@ export const debts = pgTable(
     currency: currencyEnum('currency').notNull(),
     createdAt: timestamp('created_at').notNull(),
     updatedAt: timestamp('updated_at').notNull(),
+    version: integer('version').notNull().default(1),
   },
   (table) => [
     index(debtConstraints.customerIdIndex).on(table.customerId),

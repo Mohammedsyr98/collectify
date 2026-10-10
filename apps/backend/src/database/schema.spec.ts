@@ -100,6 +100,7 @@ describe('database schema', () => {
       'currency',
       'created_at',
       'updated_at',
+      'version',
     ]);
     expect(debtConfig.foreignKeys).toHaveLength(1);
     expect(debtConfig.indexes.map((index) => index.config.name)).toContain(

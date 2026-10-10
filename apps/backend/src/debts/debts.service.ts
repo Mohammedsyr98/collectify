@@ -23,6 +23,7 @@ import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { getScheduleItemTiming } from './debt-timing';
+import { replaceDebt as replaceDebtAggregate } from './debt-replacement';
 import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
@@ -166,85 +167,16 @@ export class DebtsService {
     debtId: string,
     request: ReplaceDebtRequest,
   ): Promise<DebtResponse> {
-    const operationInstant = new Date();
-    const businessDate = getIstanbulBusinessDate(operationInstant);
-
-    const replaced = await this.databaseService.db.transaction(async (tx) => {
-      const ownedDebt = await this.requireOwnedDebt(
-        tx,
-        currentOwner.ownerProfile.id,
-        customerId,
-        debtId,
-      );
-      const [debt] = await tx
-        .update(debts)
-        .set({
-          description: request.description,
-          totalAmount: request.totalAmount,
-          currency: request.currency,
-          updatedAt: operationInstant,
-        })
-        .where(eq(debts.id, ownedDebt.id))
-        .returning();
-
-      const submittedScheduleItem = request.scheduleItems[0];
-      let updatedScheduleItem: DebtScheduleItemRow | undefined;
-
-      if (submittedScheduleItem.id) {
-        [updatedScheduleItem] = await tx
-          .update(debtScheduleItems)
-          .set({
-            amount: submittedScheduleItem.amount,
-            dueDate: submittedScheduleItem.dueDate,
-            updatedAt: operationInstant,
-          })
-          .where(
-            and(
-              eq(debtScheduleItems.id, submittedScheduleItem.id),
-              eq(debtScheduleItems.debtId, ownedDebt.id),
-            ),
-          )
-          .returning();
-      } else {
-        const [deletedScheduleItem] = await tx
-          .delete(debtScheduleItems)
-          .where(
-            and(
-              eq(debtScheduleItems.debtId, ownedDebt.id),
-              eq(debtScheduleItems.position, 1),
-            ),
-          )
-          .returning();
-
-        if (!deletedScheduleItem) {
-          throw debtException(debtApiErrorCode.debtNotFound);
-        }
-
-        [updatedScheduleItem] = await tx
-          .insert(debtScheduleItems)
-          .values({
-            id: randomUUID(),
-            debtId: ownedDebt.id,
-            position: deletedScheduleItem.position,
-            amount: submittedScheduleItem.amount,
-            dueDate: submittedScheduleItem.dueDate,
-            createdAt: operationInstant,
-            updatedAt: operationInstant,
-          })
-          .returning();
-      }
-
-      if (!debt || !updatedScheduleItem) {
-        throw debtException(debtApiErrorCode.debtNotFound);
-      }
-
-      return { debt, scheduleItem: updatedScheduleItem };
+    const replaced = await replaceDebtAggregate(this.databaseService.db, {
+      ownerProfileId: currentOwner.ownerProfile.id,
+      customerId,
+      debtId,
+      request,
     });
-
     return toDebtResponse(
       replaced.debt,
-      [replaced.scheduleItem],
-      businessDate,
+      replaced.scheduleItems,
+      getIstanbulBusinessDate(replaced.debt.updatedAt),
     );
   }
 
@@ -353,6 +285,7 @@ function toDebtResponse(
     currency: debt.currency,
     createdAt: debt.createdAt.toISOString(),
     updatedAt: debt.updatedAt.toISOString(),
+    version: debt.version,
   };
 
   if (responseScheduleItems.length === 1) {
