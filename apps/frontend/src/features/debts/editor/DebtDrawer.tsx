@@ -17,7 +17,7 @@ import { FormSelect } from '../../../shared/ui/form/FormSelect';
 import { useDebtValidationErrorFormatter } from '../localization/useDebtValidationErrorFormatter';
 import { DebtPlanFields } from './DebtPlanFields';
 import {
-  createDebtDraft,
+  getDebtDraftDefaultValues,
   debtDraftSchema,
   type DebtDraft,
 } from './debt-draft';
@@ -45,8 +45,14 @@ export function DebtDrawer(props: DebtDrawerProps) {
   const { isSubmitting, mode = 'create', onClose, returnFocusRef } = props;
   const { t } = useTranslation();
   const formatValidationError = useDebtValidationErrorFormatter();
+  const descriptionKey =
+    props.mode === 'edit'
+      ? props.debt.paymentPlanType === 'installment'
+        ? 'debts.drawer.editInstallmentDescription'
+        : 'debts.drawer.editDescription'
+      : 'debts.drawer.description';
   const form = useForm<DebtDraft, unknown, CreateDebtRequest>({
-    defaultValues: createDebtDraft(
+    defaultValues: getDebtDraftDefaultValues(
       props.mode === 'edit'
         ? { debt: props.debt, mode: 'edit' }
         : { defaultCurrency: props.defaultCurrency, mode: 'create' },
@@ -109,9 +115,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
             id="debt-drawer-description"
           >
             {t(
-              mode === 'edit'
-                ? 'debts.drawer.editDescription'
-                : 'debts.drawer.description',
+              descriptionKey,
             )}
           </Dialog.Description>
 
@@ -121,16 +125,9 @@ export function DebtDrawer(props: DebtDrawerProps) {
               noValidate
               onSubmit={form.handleSubmit((request) => {
                 if (props.mode === 'edit') {
-                  return props.onSubmit({
-                    ...request,
-                    expectedVersion: props.debt.version,
-                    scheduleItems: [
-                      {
-                        ...request.scheduleItems[0],
-                        id: props.debt.scheduleItems[0].id,
-                      },
-                    ],
-                  });
+                  return props.onSubmit(
+                    toReplaceDebtRequest(request, form.getValues(), props.debt),
+                  );
                 }
 
                 return props.onSubmit(request);
@@ -209,4 +206,27 @@ export function DebtDrawer(props: DebtDrawerProps) {
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+function toReplaceDebtRequest(
+  request: CreateDebtRequest,
+  draft: DebtDraft,
+  debt: DebtResponse,
+): ReplaceDebtRequest {
+  const scheduleItems = request.scheduleItems.map((scheduleItem, index) => {
+    const savedScheduleItemId =
+      debt.paymentPlanType === 'installment'
+        ? draft.installmentPlan.manual.scheduleItems[index]?.savedScheduleItemId
+        : debt.scheduleItems[0]?.id;
+
+    return savedScheduleItemId
+      ? { ...scheduleItem, id: savedScheduleItemId }
+      : scheduleItem;
+  });
+
+  return {
+    ...request,
+    expectedVersion: debt.version,
+    scheduleItems,
+  };
 }

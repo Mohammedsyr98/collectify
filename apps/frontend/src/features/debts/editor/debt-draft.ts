@@ -37,6 +37,7 @@ const debtDraftInputSchema = z.object({
     manual: z.object({
       scheduleItems: z.array(
         z.object({
+          savedScheduleItemId: z.string().min(1).optional(),
           amount: z.string(),
           dueDate: z.string(),
         }),
@@ -51,28 +52,40 @@ const descriptionDraftSchema = z.object({
 
 export type DebtDraft = z.input<typeof debtDraftInputSchema>;
 
-export function createDebtDraft(
+export function getDebtDraftDefaultValues(
   source:
     | { readonly mode: 'create'; readonly defaultCurrency: Currency }
     | { readonly mode: 'edit'; readonly debt: DebtResponse },
 ): DebtDraft {
+  const isInstallmentEdit =
+    source.mode === 'edit' && source.debt.paymentPlanType === 'installment';
+
   return {
     description: source.mode === 'edit' ? source.debt.description : '',
     totalAmount: source.mode === 'edit' ? source.debt.totalAmount : '',
     currency: source.mode === 'edit' ? source.debt.currency : source.defaultCurrency,
-    paymentPlan: 'onePayment',
+    paymentPlan: isInstallmentEdit ? 'installment' : 'onePayment',
     onePayment: {
-      dueDate: source.mode === 'edit' ? (source.debt.scheduleItems[0]?.dueDate ?? '') : '',
+      dueDate:
+        source.mode === 'edit' && !isInstallmentEdit
+          ? (source.debt.scheduleItems[0]?.dueDate ?? '')
+          : '',
     },
     installmentPlan: {
-      mode: 'automatic',
+      mode: isInstallmentEdit ? 'manual' : 'automatic',
       automatic: {
         installmentCount: '2',
         frequency: 'monthly',
         firstInstallmentDueDate: '',
       },
       manual: {
-        scheduleItems: [],
+        scheduleItems: isInstallmentEdit
+          ? source.debt.scheduleItems.map(({ id, amount, dueDate }) => ({
+              savedScheduleItemId: id,
+              amount,
+              dueDate,
+            }))
+          : [],
       },
     },
   };
@@ -225,6 +238,7 @@ const manualPlanSchema = z
       manual: z.object({
         scheduleItems: z.array(
           z.object({
+            savedScheduleItemId: z.string().min(1).optional(),
             amount: debtScheduleItemAmountSchema,
             dueDate: debtDueDateSchema,
           }),
@@ -234,11 +248,22 @@ const manualPlanSchema = z
   })
   .transform(({ installmentPlan, totalAmount }): ParsedDebtPlan => ({
     totalAmount,
-    scheduleItems: installmentPlan.manual.scheduleItems,
+    scheduleItems: installmentPlan.manual.scheduleItems.map(({ amount, dueDate }) => ({
+      amount,
+      dueDate,
+    })),
   }))
   .superRefine((plan, context) => {
     addDomainIssues(context, validateDebtPlan(plan), 'manual');
   });
+
+export function getManualScheduleMaximum(totalAmount: string): number | undefined {
+  const parsedTotalAmount = debtTotalAmountSchema.safeParse(totalAmount);
+
+  return parsedTotalAmount.success
+    ? getMaximumInstallmentCount(parsedTotalAmount.data)
+    : undefined;
+}
 
 function addDomainIssues(
   context: z.RefinementCtx,
