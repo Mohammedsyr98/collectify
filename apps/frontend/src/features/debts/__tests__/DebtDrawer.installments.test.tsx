@@ -197,6 +197,9 @@ describe('DebtDrawer payment plans', () => {
       expect(
         drawer.getByRole('button', { name: 'Reset to automatic schedule' }),
       ).toBeInTheDocument();
+      expect(
+        drawer.queryByRole('button', { name: 'Split amounts equally' }),
+      ).not.toBeInTheDocument();
       expect(drawer.queryByLabelText('Installment count')).not.toBeInTheDocument();
       expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('33.33');
       expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('33.33');
