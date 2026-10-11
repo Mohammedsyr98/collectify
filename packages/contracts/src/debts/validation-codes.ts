@@ -11,6 +11,7 @@ export const debtRequestValidationCode = {
   debtDueDateInvalid: 'DEBT_DUE_DATE_INVALID',
   debtDueDateRequired: 'DEBT_DUE_DATE_REQUIRED',
   debtScheduleItemAmountInvalid: 'DEBT_SCHEDULE_ITEM_AMOUNT_INVALID',
+  debtScheduleItemIdDuplicate: 'DEBT_SCHEDULE_ITEM_ID_DUPLICATE',
   debtTotalAmountInvalid: 'DEBT_TOTAL_AMOUNT_INVALID',
   debtTotalAmountTooLarge: 'DEBT_TOTAL_AMOUNT_TOO_LARGE',
 } as const;

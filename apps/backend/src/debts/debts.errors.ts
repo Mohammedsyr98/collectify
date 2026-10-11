@@ -15,6 +15,13 @@ const debtApiErrors = {
     },
     status: HttpStatus.NOT_FOUND,
   },
+  [debtApiErrorCode.debtVersionConflict]: {
+    response: {
+      code: debtApiErrorCode.debtVersionConflict,
+      message: 'Debt was changed by another request.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
 } as const;
 
 const debtValidationMessages = {
@@ -29,6 +36,8 @@ const debtValidationMessages = {
     'Payment amounts must match the debt total.',
   [debtRequestValidationCode.debtScheduleItemAmountInvalid]:
     'Enter a valid payment amount.',
+  [debtRequestValidationCode.debtScheduleItemIdDuplicate]:
+    'Schedule items must use distinct saved IDs.',
   [debtPlanIssueCode.scheduleItemAmountNotPositive]:
     'Payment amount must be greater than zero.',
   [debtPlanIssueCode.scheduleItemCountInvalid]:
@@ -50,7 +59,9 @@ export function resolveDebtValidationMessage(message: string): string {
 }
 
 export function debtException(
-  code: typeof debtApiErrorCode.debtNotFound,
+  code:
+    | typeof debtApiErrorCode.debtNotFound
+    | typeof debtApiErrorCode.debtVersionConflict,
 ): HttpException {
   const error = debtApiErrors[code];
 

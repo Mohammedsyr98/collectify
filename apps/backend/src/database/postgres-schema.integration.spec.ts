@@ -283,6 +283,30 @@ describe('Postgres migrations', () => {
     });
   });
 
+  it('declares debt schedule positions as an initially immediate deferrable unique constraint', async () => {
+    const constraints = await postgres!.query<{
+      constraint_type: string;
+      is_deferrable: boolean;
+      initially_deferred: boolean;
+    }>(`
+      SELECT
+        contype AS constraint_type,
+        condeferrable AS is_deferrable,
+        condeferred AS initially_deferred
+      FROM pg_constraint
+      WHERE conrelid = 'debt_schedule_items'::regclass
+        AND conname = '${debtConstraints.debtPositionUnique}'
+    `);
+
+    expect(constraints).toEqual([
+      {
+        constraint_type: 'u',
+        is_deferrable: true,
+        initially_deferred: false,
+      },
+    ]);
+  });
+
   it('cascades customer deletion through debts and schedule items', async () => {
     await insertDebtCustomer('debt_constraint_cascade');
     await insertDebtFixture(

@@ -11,8 +11,10 @@ describe('debt API error code contracts', () => {
     expect(debtApiErrorCodes).toEqual([
       'VALIDATION_ERROR',
       'DEBT_NOT_FOUND',
+      'DEBT_VERSION_CONFLICT',
     ]);
     expect(isDebtApiErrorCode(debtApiErrorCode.debtNotFound)).toBe(true);
+    expect(isDebtApiErrorCode(debtApiErrorCode.debtVersionConflict)).toBe(true);
     expect(isDebtApiErrorCode('SOMETHING_ELSE')).toBe(false);
   });
 });
