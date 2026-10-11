@@ -440,6 +440,7 @@ describe('CustomerDetailsPage', () => {
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
 
     expect(replacementRequest).toEqual({
+      expectedVersion: initialDebt.version,
       description: 'Updated website redesign',
       totalAmount: '275.70',
       currency: 'EUR',

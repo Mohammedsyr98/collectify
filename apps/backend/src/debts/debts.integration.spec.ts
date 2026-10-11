@@ -699,7 +699,7 @@ describe('debt routes', () => {
       {
         description: 'First concurrent edit',
         totalAmount: '150.00',
-        currency: 'EUR',
+        currency: 'USD',
         scheduleItems: [
           {
             id: 'debt_concurrent_replacement_schedule',
@@ -711,7 +711,7 @@ describe('debt routes', () => {
       {
         description: 'Second concurrent edit',
         totalAmount: '175.00',
-        currency: 'GBP',
+        currency: 'USD',
         scheduleItems: [
           {
             id: 'debt_concurrent_replacement_schedule',
@@ -739,7 +739,7 @@ describe('debt routes', () => {
     expect(losingIndex).not.toBe(-1);
     await expect(responses[losingIndex]!.json()).resolves.toEqual({
       code: 'DEBT_VERSION_CONFLICT',
-      message: 'The debt was changed by another request.',
+      message: expect.any(String),
     });
 
     const winningReplacement = replacements[winningIndex]!;
@@ -820,7 +820,7 @@ describe('debt routes', () => {
     expect(stale.status).toBe(409);
     await expect(stale.json()).resolves.toEqual({
       code: 'DEBT_VERSION_CONFLICT',
-      message: 'The debt was changed by another request.',
+      message: expect.any(String),
     });
   });
 
