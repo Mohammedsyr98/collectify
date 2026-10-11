@@ -4,6 +4,7 @@ import { useController, useFieldArray, useFormContext, useWatch } from 'react-ho
 import { useTranslation } from 'react-i18next';
 
 import {
+  allocateInstallmentAmounts,
   getInstallmentDueDateRange,
   summarizeDebtPlanAmounts,
   type InstallmentDueDateRange,
@@ -88,9 +89,26 @@ export function InstallmentPlanFields({
     setValue('installmentPlan.mode', 'automatic');
   };
 
+  const splitAmountsEqually = () => {
+    const amounts = getEqualInstallmentAmounts(totalAmount, fields.length);
+
+    if (amounts === undefined) {
+      return;
+    }
+
+    amounts.forEach((amount, index) => {
+      setValue(`installmentPlan.manual.scheduleItems.${index}.amount`, amount, {
+        shouldDirty: true,
+        shouldValidate: isSubmitted,
+      });
+    });
+  };
+
   const maximum = getManualScheduleMaximum(totalAmount);
   const minimumInstallmentCount = 2;
   const isAddDisabled = disabled || maximum === undefined || fields.length >= maximum;
+  const isSplitDisabled =
+    disabled || getEqualInstallmentAmounts(totalAmount, fields.length) === undefined;
   const manualCountGuidance =
     maximum === undefined || maximum < minimumInstallmentCount
       ? t('debts.form.installmentsUnavailable')
@@ -164,6 +182,16 @@ export function InstallmentPlanFields({
           >
             {manualCountGuidance}
           </p>
+          {!allowScheduleGeneration ? (
+            <button
+              className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSplitDisabled}
+              onClick={splitAmountsEqually}
+              type="button"
+            >
+              {t('debts.form.splitAmountsEqually')}
+            </button>
+          ) : null}
           <div className="grid gap-3">
             {fields.map((field, index) => {
               const dateBounds = getManualDateBounds(manualScheduleItems, index);
@@ -221,6 +249,17 @@ export function InstallmentPlanFields({
       )}
     </div>
   );
+}
+
+function getEqualInstallmentAmounts(
+  totalAmount: string,
+  installmentCount: number,
+): readonly string[] | undefined {
+  try {
+    return allocateInstallmentAmounts(totalAmount, installmentCount);
+  } catch {
+    return undefined;
+  }
 }
 
 function ManualInstallmentSummary({

@@ -135,6 +135,111 @@ describe('DebtDrawer saved installment editing', () => {
     );
   });
 
+  it('re-splits saved installments from the current total and saves the same schedule rows', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
+      async () => undefined,
+    );
+    const debt = {
+      ...savedInstallmentDebt,
+      totalAmount: '99.00',
+      scheduleItems: savedInstallmentDebt.scheduleItems.map((item, index) => ({
+        ...item,
+        amount: index === 2 ? '29.00' : item.amount,
+      })),
+    } satisfies DebtResponse;
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const totalAmount = drawer.getByLabelText('Total amount');
+    const splitButton = drawer.getByRole('button', { name: 'Split amounts equally' });
+
+    await user.click(splitButton);
+
+    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('33.00');
+    expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('33.00');
+    expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('33.00');
+
+    await user.clear(totalAmount);
+    await user.type(totalAmount, '90');
+    await user.click(splitButton);
+
+    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('30.00');
+    expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('30.00');
+    expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('30.00');
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        description: debt.description,
+        totalAmount: '90.00',
+        currency: 'USD',
+        expectedVersion: debt.version,
+        scheduleItems: [
+          {
+            id: 'schedule_a',
+            amount: '30.00',
+            dueDate: '2026-10-01',
+          },
+          {
+            id: 'schedule_b',
+            amount: '30.00',
+            dueDate: '2026-11-01',
+          },
+          {
+            id: 'schedule_c',
+            amount: '30.00',
+            dueDate: '2026-12-01',
+          },
+        ],
+      }),
+    );
+  });
+
+  it('enables splitting only when the total can fund every saved installment', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={savedInstallmentDebt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const totalAmount = drawer.getByLabelText('Total amount');
+    const splitButton = drawer.getByRole('button', { name: 'Split amounts equally' });
+
+    expect(splitButton).toBeEnabled();
+
+    await user.clear(totalAmount);
+
+    expect(splitButton).toBeDisabled();
+
+    await user.type(totalAmount, '0.02');
+
+    expect(splitButton).toBeDisabled();
+
+    await user.clear(totalAmount);
+    await user.type(totalAmount, '0.03');
+
+    expect(splitButton).toBeEnabled();
+  });
+
   it('preserves both edited plan drafts across repeated plan switches', async () => {
     const user = userEvent.setup();
 
