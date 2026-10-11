@@ -12,13 +12,19 @@ import {
 import { FormInput } from '../../../shared/ui/form/FormInput';
 import { SegmentedControl } from '../../../shared/ui/segmented-control/SegmentedControl';
 import { formatCurrencyAmount, useLocalization } from '../../../shared/localization';
-import { buildAutomaticSchedulePreview, type DebtDraft } from './debt-draft';
+import {
+  buildAutomaticSchedulePreview,
+  getManualScheduleMaximum,
+  type DebtDraft,
+} from './debt-draft';
 import { InstallmentSchedulePreview } from './InstallmentSchedulePreview';
 
 export function InstallmentPlanFields({
+  allowScheduleGeneration,
   disabled,
   formatError,
 }: {
+  allowScheduleGeneration: boolean;
   disabled: boolean;
   formatError: (error: string) => string;
 }) {
@@ -82,7 +88,7 @@ export function InstallmentPlanFields({
     setValue('installmentPlan.mode', 'automatic');
   };
 
-  const maximum = schedulePreview?.maximumInstallmentCount;
+  const maximum = getManualScheduleMaximum(totalAmount);
   const minimumInstallmentCount = 2;
   const isAddDisabled = disabled || maximum === undefined || fields.length >= maximum;
   const manualCountGuidance =
@@ -142,14 +148,16 @@ export function InstallmentPlanFields({
         </>
       ) : (
         <section className="grid gap-3">
-          <button
-            className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
-            disabled={disabled}
-            onClick={reset}
-            type="button"
-          >
-            {t('debts.form.resetToAutomaticSchedule')}
-          </button>
+          {allowScheduleGeneration ? (
+            <button
+              className="min-h-10 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+              disabled={disabled}
+              onClick={reset}
+              type="button"
+            >
+              {t('debts.form.resetToAutomaticSchedule')}
+            </button>
+          ) : null}
           <p
             className="m-0 text-[0.72rem] leading-[1.35] text-muted-foreground"
             id="manual-installment-count-guidance"

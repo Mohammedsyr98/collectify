@@ -73,7 +73,11 @@ export function DebtPlanFields({
           type="date"
         />
       ) : (
-        <InstallmentPlanFields disabled={disabled} formatError={formatError} />
+        <InstallmentPlanFields
+          allowScheduleGeneration={mode === 'create'}
+          disabled={disabled}
+          formatError={formatError}
+        />
       )}
     </div>
   );

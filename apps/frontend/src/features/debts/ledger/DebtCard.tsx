@@ -22,16 +22,12 @@ export function DebtCard({
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const actionItems = [
-    ...(debt.paymentPlanType === 'onePayment'
-      ? [
-          {
-            icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
-            id: 'edit-debt',
-            label: t('debts.card.actions.edit'),
-            onSelect: (trigger: HTMLButtonElement | null) => onEdit?.(debt, trigger),
-          },
-        ]
-      : []),
+    {
+      icon: <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />,
+      id: 'edit-debt',
+      label: t('debts.card.actions.edit'),
+      onSelect: (trigger: HTMLButtonElement | null) => onEdit?.(debt, trigger),
+    },
     {
       icon: <Trash2 aria-hidden="true" size={15} strokeWidth={2.5} />,
       id: 'delete-debt',

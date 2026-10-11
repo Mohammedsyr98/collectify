@@ -94,7 +94,7 @@ describe('CustomerDebtLedger', () => {
     expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
   });
 
-  it('renders an installment count without offering one-payment editing', async () => {
+  it('renders an installment count and offers editing', async () => {
     const installmentDebt: DebtResponse = {
       ...createdDebt,
       description: 'Website redesign installments',
@@ -133,8 +133,8 @@ describe('CustomerDebtLedger', () => {
       name: 'Actions for Website redesign installments',
     });
     expect(
-      within(actionsMenu).queryByRole('menuitem', { name: 'Edit debt' }),
-    ).not.toBeInTheDocument();
+      within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+    ).toBeInTheDocument();
     expect(
       within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
     ).toBeInTheDocument();
