@@ -40,28 +40,26 @@ export function DebtPlanFields({
 
   return (
     <div className="grid gap-[13px]">
-      {mode === 'create' ? (
-        <fieldset className="m-0 grid gap-[5px] border-0 p-0" disabled={disabled}>
-          <legend className="p-0 text-[0.73rem] font-bold leading-[1.3] text-card-foreground">
-            {t('debts.form.paymentPlanLabel')}
-          </legend>
-          <SegmentedControl
-            ariaLabel={t('debts.form.paymentPlanLabel')}
-            onChange={selectPaymentPlan}
-            options={[
-              {
-                label: t('debts.form.onePaymentOption'),
-                value: 'onePayment',
-              },
-              {
-                label: t('debts.form.installmentsOption'),
-                value: 'installment',
-              },
-            ]}
-            value={paymentPlan}
-          />
-        </fieldset>
-      ) : null}
+      <fieldset className="m-0 grid gap-[5px] border-0 p-0" disabled={disabled}>
+        <legend className="p-0 text-[0.73rem] font-bold leading-[1.3] text-card-foreground">
+          {t('debts.form.paymentPlanLabel')}
+        </legend>
+        <SegmentedControl
+          ariaLabel={t('debts.form.paymentPlanLabel')}
+          onChange={selectPaymentPlan}
+          options={[
+            {
+              label: t('debts.form.onePaymentOption'),
+              value: 'onePayment',
+            },
+            {
+              label: t('debts.form.installmentsOption'),
+              value: 'installment',
+            },
+          ]}
+          value={paymentPlan}
+        />
+      </fieldset>
 
       {paymentPlan === 'onePayment' ? (
         <FormInput<DebtDraft>

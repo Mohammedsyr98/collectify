@@ -25,6 +25,7 @@ const debtDraftInputSchema = z.object({
   currency: currencySchema,
   paymentPlan: z.enum(['onePayment', 'installment']),
   onePayment: z.object({
+    savedScheduleItemId: z.string().min(1).optional(),
     dueDate: z.string(),
   }),
   installmentPlan: z.object({
@@ -66,9 +67,13 @@ export function getDebtDraftDefaultValues(
     currency: source.mode === 'edit' ? source.debt.currency : source.defaultCurrency,
     paymentPlan: isInstallmentEdit ? 'installment' : 'onePayment',
     onePayment: {
+      savedScheduleItemId:
+        source.mode === 'edit' && source.debt.paymentPlanType === 'onePayment'
+          ? source.debt.scheduleItems[0]?.id
+          : undefined,
       dueDate:
-        source.mode === 'edit' && !isInstallmentEdit
-          ? (source.debt.scheduleItems[0]?.dueDate ?? '')
+        source.mode === 'edit'
+          ? (source.debt.scheduleItems.at(-1)?.dueDate ?? '')
           : '',
     },
     installmentPlan: {

@@ -83,6 +83,90 @@ describe('DebtDrawer saved installment editing', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('initializes one-payment conversion from the final installment date', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={savedInstallmentDebt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+
+    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+
+    expect(drawer.getByLabelText('Due date')).toHaveValue('2026-12-01');
+  });
+
+  it('submits an installment conversion with a fresh one-payment identity', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
+      async () => undefined,
+    );
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={savedInstallmentDebt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+
+    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+    await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        description: savedInstallmentDebt.description,
+        totalAmount: '100.00',
+        currency: 'USD',
+        expectedVersion: savedInstallmentDebt.version,
+        scheduleItems: [{ amount: '100.00', dueDate: '2026-12-01' }],
+      }),
+    );
+  });
+
+  it('preserves both edited plan drafts across repeated plan switches', async () => {
+    const user = userEvent.setup();
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={savedInstallmentDebt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const firstInstallmentAmount = drawer.getByLabelText('Installment 1 amount');
+
+    await user.clear(firstInstallmentAmount);
+    await user.type(firstInstallmentAmount, '45');
+    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+
+    const onePaymentDueDate = drawer.getByLabelText('Due date');
+    await user.clear(onePaymentDueDate);
+    await user.type(onePaymentDueDate, '2027-01-15');
+    await user.click(drawer.getByRole('button', { name: 'Installments' }));
+
+    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('45');
+
+    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+
+    expect(drawer.getByLabelText('Due date')).toHaveValue('2027-01-15');
+  });
+
   it('replaces saved installment rows while preserving retained ids and omitting new ids', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(

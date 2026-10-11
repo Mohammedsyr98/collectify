@@ -213,11 +213,9 @@ function toReplaceDebtRequest(
   draft: DebtDraft,
   debt: DebtResponse,
 ): ReplaceDebtRequest {
+  const savedScheduleItemIds = getActiveSavedScheduleItemIds(draft);
   const scheduleItems = request.scheduleItems.map((scheduleItem, index) => {
-    const savedScheduleItemId =
-      debt.paymentPlanType === 'installment'
-        ? draft.installmentPlan.manual.scheduleItems[index]?.savedScheduleItemId
-        : debt.scheduleItems[0]?.id;
+    const savedScheduleItemId = savedScheduleItemIds[index];
 
     return savedScheduleItemId
       ? { ...scheduleItem, id: savedScheduleItemId }
@@ -229,4 +227,20 @@ function toReplaceDebtRequest(
     expectedVersion: debt.version,
     scheduleItems,
   };
+}
+
+function getActiveSavedScheduleItemIds(
+  draft: DebtDraft,
+): ReadonlyArray<string | undefined> {
+  if (draft.paymentPlan === 'onePayment') {
+    return [draft.onePayment.savedScheduleItemId];
+  }
+
+  if (draft.installmentPlan.mode === 'manual') {
+    return draft.installmentPlan.manual.scheduleItems.map(
+      ({ savedScheduleItemId }) => savedScheduleItemId,
+    );
+  }
+
+  return [];
 }
