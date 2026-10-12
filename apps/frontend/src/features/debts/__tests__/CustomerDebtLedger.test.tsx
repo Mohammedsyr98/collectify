@@ -20,7 +20,11 @@ import { server } from '../../../shared/test/server';
 import { baseCustomer, resetCustomerTestEnvironment } from '../../customers/__tests__/customerTestData';
 import { RouterLocationProbe } from '../../customers/__tests__/RouterLocationProbe';
 import { CustomerDebtLedger } from '../CustomerDebtLedger';
-import { createDebtFixture, emptyDebtList } from './debtTestData';
+import {
+  createDebtFixture,
+  createInstallmentDebtFixture,
+  emptyDebtList,
+} from './debtTestData';
 
 const ownerSession: SessionResponse = {
   authenticated: true,
@@ -85,11 +89,6 @@ describe('CustomerDebtLedger', () => {
     expect(within(debtCard).getByText('Remaining')).toBeInTheDocument();
     expect(within(debtCard).getByText('Due')).toBeInTheDocument();
     expect(within(debtCard).getByText('September 30, 2026')).toBeInTheDocument();
-    expect(
-      within(debtCard).getByRole('progressbar', {
-        name: 'Payment progress for Website redesign',
-      }),
-    ).toHaveAttribute('aria-valuenow', '0');
     expect(within(debtCard).queryByText('Due today')).not.toBeInTheDocument();
     expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
   });
@@ -139,6 +138,94 @@ describe('CustomerDebtLedger', () => {
       within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
     ).toBeInTheDocument();
   });
+
+  it('shows factual overdue and due-today installment counts without an aggregate status', async () => {
+    renderLedger([createInstallmentDebtFixture(baseCustomer.id)]);
+
+    const debtCard = await getDebtCard('Website redesign installments');
+
+    expect(within(debtCard).getByText('4 installments')).toBeInTheDocument();
+    expect(within(debtCard).getByText('2 overdue')).toBeInTheDocument();
+    expect(within(debtCard).getByText('1 due today')).toBeInTheDocument();
+    expect(within(debtCard).queryByText('Upcoming')).not.toBeInTheDocument();
+    expect(within(debtCard).queryByText('Next installment')).not.toBeInTheDocument();
+    expect(within(debtCard).queryByText('$50.00')).not.toBeInTheDocument();
+  });
+
+  it('expands an installment card into ordered read-only schedule rows', async () => {
+    const user = userEvent.setup();
+    renderLedger([createInstallmentDebtFixture(baseCustomer.id)]);
+
+    const debtCard = await getDebtCard('Website redesign installments');
+    const expandButton = within(debtCard).getByRole('button', {
+      name: 'View installments',
+    });
+
+    expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      within(debtCard).queryByRole('region', {
+        name: 'Installment schedule for Website redesign installments',
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(expandButton);
+
+    expect(expandButton).toHaveAttribute('aria-expanded', 'true');
+    const schedule = within(debtCard).getByRole('region', {
+      name: 'Installment schedule for Website redesign installments',
+    });
+    expect(expandButton).toHaveAttribute('aria-controls', schedule.id);
+    const rows = within(schedule).getAllByRole('listitem');
+
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toHaveTextContent('$20.00');
+    expect(rows[0]).toHaveTextContent('Overdue');
+    expect(rows[1]).toHaveTextContent('$30.00');
+    expect(rows[1]).toHaveTextContent('Overdue');
+    expect(rows[2]).toHaveTextContent('$25.00');
+    expect(rows[2]).toHaveTextContent('Due today');
+    expect(rows[3]).toHaveTextContent('$25.00');
+    expect(rows[3]).toHaveTextContent('Upcoming');
+    expect(within(schedule).queryByRole('textbox')).not.toBeInTheDocument();
+
+    await user.click(
+      within(debtCard).getByRole('button', { name: 'Hide installments' }),
+    );
+
+    expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      within(debtCard).queryByRole('region', {
+        name: 'Installment schedule for Website redesign installments',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      createDebt: () => createdDebt,
+      description: 'Website redesign',
+      paymentPlan: 'one-payment',
+    },
+    {
+      createDebt: () => createInstallmentDebtFixture(baseCustomer.id),
+      description: 'Website redesign installments',
+      paymentPlan: 'installment',
+    },
+  ])(
+    'keeps one debt-level payment progress bar for $paymentPlan debts',
+    async ({ createDebt, description }) => {
+      renderLedger([createDebt()]);
+
+      const debtCard = await getDebtCard(description);
+      const progressBars = within(debtCard).getAllByRole('progressbar');
+
+      expect(progressBars).toHaveLength(1);
+      expect(progressBars[0]).toHaveAccessibleName(
+        `Payment progress for ${description}`,
+      );
+      expect(progressBars[0]).toHaveAttribute('aria-valuenow', '0');
+    },
+  );
 
   it('opens the debt actions menu with Enter', async () => {
     const user = userEvent.setup();
@@ -262,6 +349,26 @@ describe('CustomerDebtLedger', () => {
     expect(within(debtCard).getByText('Tek ödeme')).toBeInTheDocument();
     expect(within(debtCard).getByText('Vadesi bugün')).toBeInTheDocument();
   });
+  it('localizes installment expansion and keeps schedule amounts bidi-isolated in Arabic', async () => {
+    window.localStorage.setItem(localeStorageKey, 'ar');
+    const user = userEvent.setup();
+
+    renderLedger([createInstallmentDebtFixture(baseCustomer.id)]);
+
+    const debtCard = await getDebtCard('Website redesign installments');
+    await user.click(
+      within(debtCard).getByRole('button', { name: 'عرض الأقساط' }),
+    );
+
+    const schedule = within(debtCard).getByRole('region', {
+      name: 'جدول الأقساط لـ Website redesign installments',
+    });
+
+    expect(schedule.querySelectorAll('bdi[dir="ltr"]')).toHaveLength(4);
+    expect(within(schedule).getAllByText('متأخر')).toHaveLength(2);
+    expect(within(schedule).getByText('مستحق اليوم')).toBeInTheDocument();
+  });
+
   it('opens the add-debt drawer from the ledger section', async () => {
     const user = userEvent.setup();
 

@@ -13,6 +13,7 @@ import {
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
+import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 
 describe('customer routes', () => {
   const customerCountWithSecondPage = customerListPageSize + 1;
@@ -528,6 +529,62 @@ describe('customer routes', () => {
           currency: 'EUR',
           remainingAmount: '40.00',
           overdueAmount: '40.00',
+        },
+      ],
+    });
+  });
+
+  it('sums every overdue installment row while excluding due-today and upcoming rows', async () => {
+    const owner = await signUpOwner('customer-installment-financials-owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-INSTALLMENTS',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    const created = createCustomerResponseSchema.parse(
+      await createResponse.json(),
+    );
+    const businessDate = getIstanbulBusinessDate(new Date());
+
+    const debtResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Website redesign installments',
+          totalAmount: '100.00',
+          currency: 'USD',
+          scheduleItems: [
+            { amount: '20.00', dueDate: '1900-01-01' },
+            { amount: '30.00', dueDate: '1900-01-02' },
+            { amount: '25.00', dueDate: businessDate },
+            { amount: '25.00', dueDate: '2999-01-01' },
+          ],
+        }),
+      },
+    );
+
+    expect(debtResponse.status).toBe(201);
+
+    const listResponse = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(listResponse.status).toBe(200);
+    const list = customerListResponseSchema.parse(await listResponse.json());
+
+    expect(list.items[0]?.financialSummary).toEqual({
+      balancesByCurrency: [
+        {
+          currency: 'USD',
+          remainingAmount: '100.00',
+          overdueAmount: '50.00',
         },
       ],
     });

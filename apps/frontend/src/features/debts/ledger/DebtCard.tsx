@@ -1,4 +1,5 @@
-import { CalendarDays, Pencil, Trash2 } from 'lucide-react';
+import { useId, useState } from 'react';
+import { CalendarDays, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
@@ -61,18 +62,101 @@ export function DebtCard({
       {debt.paymentPlanType === 'onePayment' ? (
         <OnePaymentSummary debt={debt} locale={locale} />
       ) : (
-        <InstallmentSummary count={debt.scheduleItems.length} />
+        <InstallmentSummary debt={debt} locale={locale} />
       )}
     </article>
   );
 }
 
-function InstallmentSummary({ count }: { count: number }) {
+function InstallmentSummary({
+  debt,
+  locale,
+}: {
+  debt: Extract<DebtResponse, { paymentPlanType: 'installment' }>;
+  locale: string;
+}) {
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
+  const overdueCount = debt.scheduleItems.filter(
+    (scheduleItem) => scheduleItem.timing === 'overdue',
+  ).length;
+  const dueTodayCount = debt.scheduleItems.filter(
+    (scheduleItem) => scheduleItem.timing === 'dueToday',
+  ).length;
 
   return (
-    <div className="flex items-center border-t border-border pt-3 text-[0.8rem] font-bold text-muted-foreground">
-      <span>{t('debts.card.installmentCount', { count })}</span>
+    <div className="grid gap-3 border-t border-border pt-3 text-[0.8rem] font-bold text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2">
+        <span>{t('debts.card.installmentCount', { count: debt.scheduleItems.length })}</span>
+        {overdueCount > 0 ? (
+          <span className="rounded-[5px] border border-status-overdue-border bg-status-overdue-background px-2 py-0.5 text-[0.7rem] font-black text-status-overdue-foreground">
+            {t('debts.card.overdueInstallmentCount', { count: overdueCount })}
+          </span>
+        ) : null}
+        {dueTodayCount > 0 ? (
+          <span className="rounded-[5px] border border-status-due-border bg-status-due-background px-2 py-0.5 text-[0.7rem] font-black text-status-due-foreground">
+            {t('debts.card.dueTodayInstallmentCount', { count: dueTodayCount })}
+          </span>
+        ) : null}
+      </div>
+
+      <PaymentProgress debt={debt} locale={locale} />
+
+      <button
+        aria-controls={contentId}
+        aria-expanded={expanded}
+        className="inline-flex w-fit items-center gap-1 rounded-[5px] border border-border px-2 py-1 text-[0.75rem] font-black text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        onClick={() => setExpanded((value) => !value)}
+        type="button"
+      >
+        <span>
+          {t(expanded ? 'debts.card.hideInstallments' : 'debts.card.viewInstallments')}
+        </span>
+        {expanded ? (
+          <ChevronUp aria-hidden="true" size={15} strokeWidth={2.5} />
+        ) : (
+          <ChevronDown aria-hidden="true" size={15} strokeWidth={2.5} />
+        )}
+      </button>
+
+      {expanded ? (
+        <div
+          aria-label={t('debts.card.installmentScheduleLabel', {
+            description: debt.description,
+          })}
+          className="grid gap-2"
+          id={contentId}
+          role="region"
+        >
+          <ol className="m-0 grid list-none gap-2 p-0">
+            {debt.scheduleItems.map((scheduleItem) => (
+              <li
+                className="grid gap-1 rounded-[5px] border border-border bg-background p-2"
+                key={scheduleItem.id}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[0.75rem] font-black text-muted-foreground">
+                    {t('debts.card.installmentNumber', {
+                      number: scheduleItem.position,
+                    })}
+                  </span>
+                  <bdi className="text-[0.85rem] font-black" dir="ltr">
+                    {formatCurrencyAmount(scheduleItem.amount, debt.currency, locale)}
+                  </bdi>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[0.75rem] font-bold text-muted-foreground">
+                  <CalendarDays aria-hidden="true" size={14} strokeWidth={2.4} />
+                  <time dateTime={scheduleItem.dueDate}>
+                    {formatDateOnly(scheduleItem.dueDate, locale)}
+                  </time>
+                  <TimingBadge timing={scheduleItem.timing} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -86,9 +170,6 @@ function OnePaymentSummary({
 }) {
   const { t } = useTranslation();
   const scheduleItem = debt.scheduleItems[0];
-  const paidAmount = '0.00';
-  const remainingAmount = debt.totalAmount;
-  const paidPercentage = 0;
 
   return (
     <>
@@ -97,40 +178,7 @@ function OnePaymentSummary({
         <TimingBadge timing={scheduleItem?.timing} />
       </div>
 
-      <div className="grid gap-3 border-t border-border pt-3">
-        <div className="grid grid-cols-2 gap-3">
-          <FinancialMetric
-            currency={debt.currency}
-            label={t('debts.card.paid')}
-            locale={locale}
-            value={paidAmount}
-          />
-          <FinancialMetric
-            currency={debt.currency}
-            label={t('debts.card.remaining')}
-            locale={locale}
-            value={remainingAmount}
-          />
-        </div>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-          <div
-            aria-label={t('debts.card.paymentProgress', {
-              description: debt.description,
-            })}
-            aria-valuemax={100}
-            aria-valuemin={0}
-            aria-valuenow={paidPercentage}
-            className="h-1.5 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-          >
-            <span
-              className="block h-full rounded-full bg-primary transition-[width] duration-200"
-              style={{ width: `${paidPercentage}%` }}
-            />
-          </div>
-          <span className="text-[0.72rem] font-black text-muted-foreground">{paidPercentage}%</span>
-        </div>
-      </div>
+      <PaymentProgress debt={debt} locale={locale} />
 
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3 text-[0.8rem] font-bold text-muted-foreground">
         <CalendarDays aria-hidden="true" size={16} strokeWidth={2.4} />
@@ -140,6 +188,55 @@ function OnePaymentSummary({
         </time>
       </div>
     </>
+  );
+}
+
+function PaymentProgress({
+  debt,
+  locale,
+}: {
+  debt: DebtResponse;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  const paidAmount = '0.00';
+  const paidPercentage = 0;
+
+  return (
+    <div className="grid gap-3 border-t border-border pt-3">
+      <div className="grid grid-cols-2 gap-3">
+        <FinancialMetric
+          currency={debt.currency}
+          label={t('debts.card.paid')}
+          locale={locale}
+          value={paidAmount}
+        />
+        <FinancialMetric
+          currency={debt.currency}
+          label={t('debts.card.remaining')}
+          locale={locale}
+          value={debt.totalAmount}
+        />
+      </div>
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+        <div
+          aria-label={t('debts.card.paymentProgress', {
+            description: debt.description,
+          })}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={paidPercentage}
+          className="h-1.5 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+        >
+          <span
+            className="block h-full rounded-full bg-primary transition-[width] duration-200"
+            style={{ width: `${paidPercentage}%` }}
+          />
+        </div>
+        <span className="text-[0.72rem] font-black text-muted-foreground">{paidPercentage}%</span>
+      </div>
+    </div>
   );
 }
 
