@@ -1,0 +1,7 @@
+interface:
+  display_name: "Senior UI/UX"
+  short_description: "UX strategy, visual direction, and design review"
+  default_prompt: "Use $senior-ui-ux to define or critique this experience and its visual direction without implementing product code."
+
+policy:
+  allow_implicit_invocation: false
