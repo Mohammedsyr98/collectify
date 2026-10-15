@@ -5,25 +5,26 @@ import {
   validateDebtPlan,
   type DebtPlanIssue,
 } from '@collectify/domain/debt-plan';
+import {
+  formatMoney,
+  isMoneyWithinNumeric182Precision,
+  parseMoney,
+} from '@collectify/domain/money';
 import { currencySchema } from '../owner-profile/owner-profile.js';
 import { oneBasedPageSchema } from '../pagination.js';
 import {
   debtRequestValidationCode,
   type DebtValidationCode,
 } from './validation-codes.js';
+import { moneySchema } from '../money.js';
 
 function createDebtAmountSchema(invalidCode: string, tooLargeCode: string) {
   return z
     .string()
     .trim()
     .regex(/^\d+(?:\.\d{1,2})?$/, invalidCode)
-    .refine(isWithinNumeric182Precision, tooLargeCode)
-    .transform((amount) => {
-      const [wholeAmount, fractionalAmount = ''] = amount.split('.');
-      const normalizedWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
-
-      return `${normalizedWholeAmount}.${fractionalAmount.padEnd(2, '0')}`;
-    });
+    .refine(isMoneyWithinNumeric182Precision, tooLargeCode)
+    .transform((amount) => formatMoney(parseMoney(amount)));
 }
 
 export const debtTotalAmountSchema = createDebtAmountSchema(
@@ -34,10 +35,6 @@ export const debtScheduleItemAmountSchema = createDebtAmountSchema(
   debtRequestValidationCode.debtScheduleItemAmountInvalid,
   debtRequestValidationCode.debtTotalAmountTooLarge,
 );
-const canonicalDebtAmountSchema = z
-  .string()
-  .regex(/^\d+\.\d{2}$/)
-  .refine(isWithinNumeric182Precision);
 const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
 const dateOnlySyntaxSchema = z.string().regex(dateOnlySyntaxPattern);
 
@@ -51,13 +48,6 @@ export const debtDescriptionSchema = z
   .trim()
   .min(1, debtRequestValidationCode.debtDescriptionRequired)
   .max(200, debtRequestValidationCode.debtDescriptionTooLong);
-
-function isWithinNumeric182Precision(amount: string): boolean {
-  const [wholeAmount] = amount.split('.');
-  const significantWholeAmount = wholeAmount.replace(/^0+(?=\d)/, '');
-
-  return significantWholeAmount.length <= 16;
-}
 
 const createScheduleItemSchema = z
   .object({
@@ -184,7 +174,7 @@ function assertNever(value: never): never {
 const onePaymentScheduleItemSchema = z.object({
   id: z.string().min(1),
   position: z.literal(1),
-  amount: canonicalDebtAmountSchema,
+  amount: moneySchema,
   dueDate: dateOnlySyntaxSchema,
   timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
@@ -192,7 +182,7 @@ const onePaymentScheduleItemSchema = z.object({
 const installmentScheduleItemSchema = z.object({
   id: z.string().min(1),
   position: z.number().int().min(1),
-  amount: canonicalDebtAmountSchema,
+  amount: moneySchema,
   dueDate: dateOnlySyntaxSchema,
   timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
@@ -217,7 +207,7 @@ const debtResponseFields = {
   id: z.string().min(1),
   customerId: z.string().min(1),
   description: z.string().min(1).max(200),
-  totalAmount: canonicalDebtAmountSchema,
+  totalAmount: moneySchema,
   currency: currencySchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
