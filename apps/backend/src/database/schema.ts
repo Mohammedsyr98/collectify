@@ -11,8 +11,9 @@ import {
   timestamp,
   unique,
   uniqueIndex,
+  uuid,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 
 export const ownerLanguageEnum = pgEnum('owner_language', ['en', 'tr', 'ar']);
 export const currencyEnum = pgEnum('currency', ['TRY', 'USD', 'EUR']);
@@ -91,6 +92,22 @@ export const debtConstraints = {
   debtPositionUnique: 'debt_schedule_items_debt_id_position_unique',
 } as const;
 
+export const paymentIndexes = {
+  scheduleItemHistory: 'payments_schedule_item_history_idx',
+} as const;
+
+export const paymentConstraints = {
+  amountPositive: 'payments_amount_positive',
+  noteMaxLength: 'payments_note_max_length',
+  idempotencyKeyUnique: 'payments_idempotency_key_unique',
+  scheduleItemForeignKey:
+    'payments_schedule_item_id_debt_schedule_items_id_fk',
+} as const;
+
+export const paymentTriggers = {
+  requestFingerprintImmutable: 'payments_request_fingerprint_immutable',
+} as const;
+
 export const customers = pgTable(
   'customers',
   {
@@ -155,6 +172,37 @@ export const debtScheduleItems = pgTable(
     unique(debtConstraints.debtPositionUnique).on(
       table.debtId,
       table.position,
+    ),
+  ],
+);
+
+export const payments = pgTable(
+  'payments',
+  {
+    id: text('id').primaryKey(),
+    scheduleItemId: text('schedule_item_id')
+      .notNull()
+      .references(() => debtScheduleItems.id, { onDelete: 'restrict' }),
+    amount: numeric('amount', { precision: 18, scale: 2 }).notNull(),
+    paymentDate: date('payment_date', { mode: 'string' }).notNull(),
+    note: text('note'),
+    idempotencyKey: uuid('idempotency_key').notNull(),
+    requestFingerprint: text('request_fingerprint').notNull(),
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
+  },
+  (table) => [
+    check(paymentConstraints.amountPositive, sql`${table.amount} > 0`),
+    check(
+      paymentConstraints.noteMaxLength,
+      sql`${table.note} IS NULL OR char_length(${table.note}) <= 500`,
+    ),
+    unique(paymentConstraints.idempotencyKeyUnique).on(table.idempotencyKey),
+    index(paymentIndexes.scheduleItemHistory).on(
+      table.scheduleItemId,
+      desc(table.paymentDate),
+      desc(table.createdAt),
+      desc(table.id),
     ),
   ],
 );
