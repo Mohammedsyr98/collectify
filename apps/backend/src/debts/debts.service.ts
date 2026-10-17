@@ -13,21 +13,32 @@ import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
-import {
-  DatabaseService,
-  type Database,
-} from '../database/database.service';
+import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { getScheduleItemTiming } from './debt-timing';
-import { replaceDebt as replaceDebtAggregate } from './debt-replacement';
+import { replaceDebt as replaceDebtInDatabase } from './debt-replacement';
 import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
 type DebtScheduleItemRow = typeof debtScheduleItems.$inferSelect;
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+type DebtWithScheduleItems = {
+  debt: DebtRow;
+  scheduleItems: DebtScheduleItemRow[];
+};
+
+type DebtPage = {
+  items: DebtWithScheduleItems[];
+  page: number;
+  pageSize: typeof debtListPageSize;
+  totalItems: number;
+  totalPages: number;
+};
 
 @Injectable()
 export class DebtsService {
@@ -42,49 +53,18 @@ export class DebtsService {
     const businessDate = getIstanbulBusinessDate(operationInstant);
     const debtId = randomUUID();
 
-    const created = await this.databaseService.db.transaction(async (tx) => {
-      await this.requireOwnedCustomer(
-        tx,
-        currentOwner.ownerProfile.id,
+    const createdDebt = await this.databaseService.db.transaction(async (tx) => {
+      await this.requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
+
+      return insertDebtAndScheduleItems(tx, {
+        debtId,
         customerId,
-      );
-
-      const [debt] = await tx
-        .insert(debts)
-        .values({
-          id: debtId,
-          customerId,
-          description: request.description,
-          totalAmount: request.totalAmount,
-          currency: request.currency,
-          createdAt: operationInstant,
-          updatedAt: operationInstant,
-        })
-        .returning();
-
-      const createdScheduleItems = await tx
-        .insert(debtScheduleItems)
-        .values(
-          request.scheduleItems.map((scheduleItem, index) => ({
-            id: randomUUID(),
-            debtId,
-            position: index + 1,
-            amount: scheduleItem.amount,
-            dueDate: scheduleItem.dueDate,
-            createdAt: operationInstant,
-            updatedAt: operationInstant,
-          })),
-        )
-        .returning();
-
-      return { debt: debt!, scheduleItems: createdScheduleItems };
+        request,
+        operationInstant,
+      });
     });
 
-    return toDebtResponse(
-      created.debt,
-      created.scheduleItems,
-      businessDate,
-    );
+    return buildDebtResponse(createdDebt.debt, createdDebt.scheduleItems, businessDate);
   }
 
   async listDebts(
@@ -95,80 +75,27 @@ export class DebtsService {
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
 
-    const customerFilter = eq(debts.customerId, customerId);
-    const listFilter = query.search
-      ? and(
-          customerFilter,
-          caseInsensitiveLiteralSubstring(debts.description, query.search),
-        )
-      : customerFilter;
-
-    return this.databaseService.db.transaction(
+    const page = await this.databaseService.db.transaction(
       async (tx) => {
-        await this.requireOwnedCustomer(
-          tx,
-          currentOwner.ownerProfile.id,
-          customerId,
-        );
+        await this.requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
 
-        const [{ totalItems } = { totalItems: 0 }] = await tx
-          .select({ totalItems: count() })
-          .from(debts)
-          .where(listFilter);
-        const { offset, ...paginationMetadata } = calculatePagination({
-          page: query.page,
-          pageSize: debtListPageSize,
-          totalItems,
-        });
-        const debtRows = await tx
-          .select({ debt: debts })
-          .from(debts)
-          .innerJoin(
-            debtScheduleItems,
-            and(
-              eq(debtScheduleItems.debtId, debts.id),
-              eq(debtScheduleItems.position, 1),
-            ),
-          )
-          .where(listFilter)
-          .orderBy(
-            asc(debtScheduleItems.dueDate),
-            asc(debts.createdAt),
-            asc(debts.id),
-          )
-          .limit(paginationMetadata.pageSize)
-          .offset(offset);
-        const selectedDebts = debtRows.map(({ debt }) => debt);
-        const scheduleRows = debtRows.length
-          ? await tx
-              .select()
-              .from(debtScheduleItems)
-              .where(
-                inArray(
-                  debtScheduleItems.debtId,
-                  selectedDebts.map((debt) => debt.id),
-                ),
-              )
-              .orderBy(asc(debtScheduleItems.position))
-          : [];
-        const scheduleItemsByDebtId = groupScheduleItemsByDebtId(scheduleRows);
-
-        return {
-          items: selectedDebts.map((debt) =>
-            toDebtResponse(
-              debt,
-              scheduleItemsByDebtId.get(debt.id) ?? [],
-              businessDate,
-            ),
-          ),
-          ...paginationMetadata,
-        };
+        return loadDebtPage(tx, customerId, query);
       },
       {
         isolationLevel: 'repeatable read',
         accessMode: 'read only',
       },
     );
+
+    return {
+      items: page.items.map(({ debt, scheduleItems }) =>
+        buildDebtResponse(debt, scheduleItems, businessDate),
+      ),
+      page: page.page,
+      pageSize: page.pageSize,
+      totalItems: page.totalItems,
+      totalPages: page.totalPages,
+    };
   }
 
   async replaceDebt(
@@ -177,16 +104,16 @@ export class DebtsService {
     debtId: string,
     request: ReplaceDebtRequest,
   ): Promise<DebtResponse> {
-    const replaced = await replaceDebtAggregate(this.databaseService.db, {
+    const replacedDebt = await replaceDebtInDatabase(this.databaseService.db, {
       ownerProfileId: currentOwner.ownerProfile.id,
       customerId,
       debtId,
       request,
     });
-    return toDebtResponse(
-      replaced.debt,
-      replaced.scheduleItems,
-      getIstanbulBusinessDate(replaced.debt.updatedAt),
+    return buildDebtResponse(
+      replacedDebt.debt,
+      replacedDebt.scheduleItems,
+      getIstanbulBusinessDate(replacedDebt.debt.updatedAt),
     );
   }
 
@@ -247,12 +174,7 @@ export class DebtsService {
     const [customer] = await executor
       .select({ id: customers.id })
       .from(customers)
-      .where(
-        and(
-          eq(customers.id, customerId),
-          eq(customers.ownerProfileId, ownerProfileId),
-        ),
-      )
+      .where(and(eq(customers.id, customerId), eq(customers.ownerProfileId, ownerProfileId)))
       .limit(1);
 
     if (!customer) {
@@ -261,26 +183,124 @@ export class DebtsService {
   }
 }
 
+async function insertDebtAndScheduleItems(
+  tx: Transaction,
+  {
+    debtId,
+    customerId,
+    request,
+    operationInstant,
+  }: {
+    debtId: string;
+    customerId: string;
+    request: CreateDebtRequest;
+    operationInstant: Date;
+  },
+): Promise<DebtWithScheduleItems> {
+  const [debt] = await tx
+    .insert(debts)
+    .values({
+      id: debtId,
+      customerId,
+      description: request.description,
+      totalAmount: request.totalAmount,
+      currency: request.currency,
+      createdAt: operationInstant,
+      updatedAt: operationInstant,
+    })
+    .returning();
+
+  const scheduleItems = await tx
+    .insert(debtScheduleItems)
+    .values(
+      request.scheduleItems.map((scheduleItem, index) => ({
+        id: randomUUID(),
+        debtId,
+        position: index + 1,
+        amount: scheduleItem.amount,
+        dueDate: scheduleItem.dueDate,
+        createdAt: operationInstant,
+        updatedAt: operationInstant,
+      })),
+    )
+    .returning();
+
+  return { debt: debt!, scheduleItems };
+}
+
+async function loadDebtPage(
+  tx: Transaction,
+  customerId: string,
+  query: DebtListQuery,
+): Promise<DebtPage> {
+  const customerFilter = eq(debts.customerId, customerId);
+  const listFilter = query.search
+    ? and(customerFilter, caseInsensitiveLiteralSubstring(debts.description, query.search))
+    : customerFilter;
+  const [{ totalItems } = { totalItems: 0 }] = await tx
+    .select({ totalItems: count() })
+    .from(debts)
+    .where(listFilter);
+  const { offset, ...pagination } = calculatePagination({
+    page: query.page,
+    pageSize: debtListPageSize,
+    totalItems,
+  });
+  const debtRows = await tx
+    .select({ debt: debts })
+    .from(debts)
+    .innerJoin(
+      debtScheduleItems,
+      and(eq(debtScheduleItems.debtId, debts.id), eq(debtScheduleItems.position, 1)),
+    )
+    .where(listFilter)
+    .orderBy(asc(debtScheduleItems.dueDate), asc(debts.createdAt), asc(debts.id))
+    .limit(pagination.pageSize)
+    .offset(offset);
+  const selectedDebts = debtRows.map(({ debt }) => debt);
+  const scheduleRows = debtRows.length
+    ? await tx
+        .select()
+        .from(debtScheduleItems)
+        .where(
+          inArray(
+            debtScheduleItems.debtId,
+            selectedDebts.map((debt) => debt.id),
+          ),
+        )
+        .orderBy(asc(debtScheduleItems.position))
+    : [];
+  const scheduleItemsByDebtId = groupScheduleItemsByDebtId(scheduleRows);
+
+  return {
+    items: selectedDebts.map((debt) => ({
+      debt,
+      scheduleItems: scheduleItemsByDebtId.get(debt.id) ?? [],
+    })),
+    ...pagination,
+  };
+}
+
 function groupScheduleItemsByDebtId(
   scheduleRows: DebtScheduleItemRow[],
 ): Map<string, DebtScheduleItemRow[]> {
   const scheduleItemsByDebtId = new Map<string, DebtScheduleItemRow[]>();
 
   for (const scheduleItem of scheduleRows) {
-    const debtScheduleItems = scheduleItemsByDebtId.get(scheduleItem.debtId) ?? [];
-    debtScheduleItems.push(scheduleItem);
-    scheduleItemsByDebtId.set(scheduleItem.debtId, debtScheduleItems);
+    const scheduleItems = scheduleItemsByDebtId.get(scheduleItem.debtId) ?? [];
+    scheduleItems.push(scheduleItem);
+    scheduleItemsByDebtId.set(scheduleItem.debtId, scheduleItems);
   }
 
   return scheduleItemsByDebtId;
 }
 
-function toDebtResponse(
+function buildDebtResponse(
   debt: DebtRow,
-  scheduleRows: DebtScheduleItemRow[],
+  scheduleItems: DebtScheduleItemRow[],
   businessDate: string,
 ): DebtResponse {
-  const responseScheduleItems = scheduleRows.map((scheduleItem) => ({
+  const responseScheduleItems = scheduleItems.map((scheduleItem) => ({
     id: scheduleItem.id,
     position: scheduleItem.position,
     amount: scheduleItem.amount,
@@ -304,10 +324,12 @@ function toDebtResponse(
     return {
       ...debtResponseFields,
       paymentPlanType: 'onePayment',
-      scheduleItems: [{
-        ...scheduleItem,
-        position: 1,
-      }],
+      scheduleItems: [
+        {
+          ...scheduleItem,
+          position: 1,
+        },
+      ],
     };
   }
 
