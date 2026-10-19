@@ -171,10 +171,24 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled debt plan value: ${String(value)}`);
 }
 
+export const paymentStateSchema = z.enum([
+  'unpaid',
+  'partiallyPaid',
+  'paid',
+]);
+
+const paymentSummaryFields = {
+  paidAmount: moneySchema,
+  remainingAmount: moneySchema,
+  paymentState: paymentStateSchema,
+  paymentCount: z.number().int().min(0),
+};
+
 const onePaymentScheduleItemSchema = z.object({
   id: z.string().min(1),
   position: z.literal(1),
   amount: moneySchema,
+  ...paymentSummaryFields,
   dueDate: dateOnlySyntaxSchema,
   timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
@@ -183,6 +197,7 @@ const installmentScheduleItemSchema = z.object({
   id: z.string().min(1),
   position: z.number().int().min(1),
   amount: moneySchema,
+  ...paymentSummaryFields,
   dueDate: dateOnlySyntaxSchema,
   timing: z.enum(['upcoming', 'dueToday', 'overdue']),
 });
@@ -208,6 +223,7 @@ const debtResponseFields = {
   customerId: z.string().min(1),
   description: z.string().min(1).max(200),
   totalAmount: moneySchema,
+  ...paymentSummaryFields,
   currency: currencySchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -251,5 +267,6 @@ export const debtListResponseSchema = z.object({
 export type CreateDebtRequest = z.infer<typeof createDebtRequestSchema>;
 export type ReplaceDebtRequest = z.infer<typeof replaceDebtRequestSchema>;
 export type DebtListQuery = z.infer<typeof debtListQuerySchema>;
+export type PaymentState = z.infer<typeof paymentStateSchema>;
 export type DebtResponse = z.infer<typeof debtResponseSchema>;
 export type DebtListResponse = z.infer<typeof debtListResponseSchema>;
