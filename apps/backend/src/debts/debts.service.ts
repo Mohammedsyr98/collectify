@@ -9,7 +9,7 @@ import {
   type DebtResponse,
   type ReplaceDebtRequest,
 } from '@collectify/contracts';
-import { and, asc, count, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
@@ -19,21 +19,19 @@ import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
-import { getScheduleItemTiming } from './debt-timing';
+import { loadDebtsWithPaymentDetails } from './debt-read-model';
 import { replaceDebt as replaceDebtInDatabase } from './debt-replacement';
 import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
-type DebtScheduleItemRow = typeof debtScheduleItems.$inferSelect;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
-type DebtWithScheduleItems = {
+type DebtPageItem = {
   debt: DebtRow;
-  scheduleItems: DebtScheduleItemRow[];
 };
 
 type DebtPage = {
-  items: DebtWithScheduleItems[];
+  items: DebtPageItem[];
   page: number;
   pageSize: typeof debtListPageSize;
   totalItems: number;
@@ -53,18 +51,19 @@ export class DebtsService {
     const businessDate = getIstanbulBusinessDate(operationInstant);
     const debtId = randomUUID();
 
-    const createdDebt = await this.databaseService.db.transaction(async (tx) => {
+    return this.databaseService.db.transaction(async (tx) => {
       await this.requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
 
-      return insertDebtAndScheduleItems(tx, {
+      const createdDebt = await insertDebtAndScheduleItems(tx, {
         debtId,
         customerId,
         request,
         operationInstant,
       });
-    });
 
-    return buildDebtResponse(createdDebt.debt, createdDebt.scheduleItems, businessDate);
+      const [response] = await loadDebtsWithPaymentDetails(tx, [createdDebt], businessDate);
+      return response!;
+    });
   }
 
   async listDebts(
@@ -75,27 +74,30 @@ export class DebtsService {
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
 
-    const page = await this.databaseService.db.transaction(
+    return this.databaseService.db.transaction(
       async (tx) => {
         await this.requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
 
-        return loadDebtPage(tx, customerId, query);
+        const page = await loadDebtPage(tx, customerId, query);
+        const responses = await loadDebtsWithPaymentDetails(
+          tx,
+          page.items.map(({ debt }) => debt),
+          businessDate,
+        );
+
+        return {
+          items: responses,
+          page: page.page,
+          pageSize: page.pageSize,
+          totalItems: page.totalItems,
+          totalPages: page.totalPages,
+        };
       },
       {
         isolationLevel: 'repeatable read',
         accessMode: 'read only',
       },
     );
-
-    return {
-      items: page.items.map(({ debt, scheduleItems }) =>
-        buildDebtResponse(debt, scheduleItems, businessDate),
-      ),
-      page: page.page,
-      pageSize: page.pageSize,
-      totalItems: page.totalItems,
-      totalPages: page.totalPages,
-    };
   }
 
   async replaceDebt(
@@ -104,17 +106,21 @@ export class DebtsService {
     debtId: string,
     request: ReplaceDebtRequest,
   ): Promise<DebtResponse> {
-    const replacedDebt = await replaceDebtInDatabase(this.databaseService.db, {
-      ownerProfileId: currentOwner.ownerProfile.id,
-      customerId,
-      debtId,
-      request,
+    return this.databaseService.db.transaction(async (tx) => {
+      const replacedDebt = await replaceDebtInDatabase(tx, {
+        ownerProfileId: currentOwner.ownerProfile.id,
+        customerId,
+        debtId,
+        request,
+      });
+
+      const [response] = await loadDebtsWithPaymentDetails(
+        tx,
+        [replacedDebt.debt],
+        getIstanbulBusinessDate(replacedDebt.debt.updatedAt),
+      );
+      return response!;
     });
-    return buildDebtResponse(
-      replacedDebt.debt,
-      replacedDebt.scheduleItems,
-      getIstanbulBusinessDate(replacedDebt.debt.updatedAt),
-    );
   }
 
   async deleteDebt(
@@ -196,7 +202,7 @@ async function insertDebtAndScheduleItems(
     request: CreateDebtRequest;
     operationInstant: Date;
   },
-): Promise<DebtWithScheduleItems> {
+): Promise<DebtRow> {
   const [debt] = await tx
     .insert(debts)
     .values({
@@ -210,7 +216,7 @@ async function insertDebtAndScheduleItems(
     })
     .returning();
 
-  const scheduleItems = await tx
+  await tx
     .insert(debtScheduleItems)
     .values(
       request.scheduleItems.map((scheduleItem, index) => ({
@@ -222,10 +228,9 @@ async function insertDebtAndScheduleItems(
         createdAt: operationInstant,
         updatedAt: operationInstant,
       })),
-    )
-    .returning();
+    );
 
-  return { debt: debt!, scheduleItems };
+  return debt!;
 }
 
 async function loadDebtPage(
@@ -258,84 +263,8 @@ async function loadDebtPage(
     .limit(pagination.pageSize)
     .offset(offset);
   const selectedDebts = debtRows.map(({ debt }) => debt);
-  const scheduleRows = debtRows.length
-    ? await tx
-        .select()
-        .from(debtScheduleItems)
-        .where(
-          inArray(
-            debtScheduleItems.debtId,
-            selectedDebts.map((debt) => debt.id),
-          ),
-        )
-        .orderBy(asc(debtScheduleItems.position))
-    : [];
-  const scheduleItemsByDebtId = groupScheduleItemsByDebtId(scheduleRows);
-
   return {
-    items: selectedDebts.map((debt) => ({
-      debt,
-      scheduleItems: scheduleItemsByDebtId.get(debt.id) ?? [],
-    })),
+    items: selectedDebts.map((debt) => ({ debt })),
     ...pagination,
-  };
-}
-
-function groupScheduleItemsByDebtId(
-  scheduleRows: DebtScheduleItemRow[],
-): Map<string, DebtScheduleItemRow[]> {
-  const scheduleItemsByDebtId = new Map<string, DebtScheduleItemRow[]>();
-
-  for (const scheduleItem of scheduleRows) {
-    const scheduleItems = scheduleItemsByDebtId.get(scheduleItem.debtId) ?? [];
-    scheduleItems.push(scheduleItem);
-    scheduleItemsByDebtId.set(scheduleItem.debtId, scheduleItems);
-  }
-
-  return scheduleItemsByDebtId;
-}
-
-function buildDebtResponse(
-  debt: DebtRow,
-  scheduleItems: DebtScheduleItemRow[],
-  businessDate: string,
-): DebtResponse {
-  const responseScheduleItems = scheduleItems.map((scheduleItem) => ({
-    id: scheduleItem.id,
-    position: scheduleItem.position,
-    amount: scheduleItem.amount,
-    dueDate: scheduleItem.dueDate,
-    timing: getScheduleItemTiming(scheduleItem.dueDate, businessDate),
-  }));
-  const debtResponseFields = {
-    id: debt.id,
-    customerId: debt.customerId,
-    description: debt.description,
-    totalAmount: debt.totalAmount,
-    currency: debt.currency,
-    createdAt: debt.createdAt.toISOString(),
-    updatedAt: debt.updatedAt.toISOString(),
-    version: debt.version,
-  };
-
-  if (responseScheduleItems.length === 1) {
-    const scheduleItem = responseScheduleItems[0]!;
-
-    return {
-      ...debtResponseFields,
-      paymentPlanType: 'onePayment',
-      scheduleItems: [
-        {
-          ...scheduleItem,
-          position: 1,
-        },
-      ],
-    };
-  }
-
-  return {
-    ...debtResponseFields,
-    paymentPlanType: 'installment',
-    scheduleItems: responseScheduleItems,
   };
 }

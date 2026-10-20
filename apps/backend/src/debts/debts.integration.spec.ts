@@ -144,6 +144,52 @@ describe('debt routes', () => {
     ]);
   });
 
+  it('combines multiple payments into exact one-payment debt progress', async () => {
+    const owner = await signUpOwner('debt-payment-progress-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_payment_progress',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_progress_first',
+      scheduleItemId: 'debt_payment_progress_schedule',
+      amount: '0.10',
+      idempotencyKey: '00000000-0000-4000-8000-000000000001',
+    });
+    await insertPayment({
+      id: 'payment_progress_second',
+      scheduleItemId: 'debt_payment_progress_schedule',
+      amount: '25.20',
+      idempotencyKey: '00000000-0000-4000-8000-000000000002',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+    expect(list.items[0]).toMatchObject({
+      paidAmount: '25.30',
+      remainingAmount: '74.70',
+      paymentState: 'partiallyPaid',
+      paymentCount: 2,
+      scheduleItems: [
+        {
+          paidAmount: '25.30',
+          remainingAmount: '74.70',
+          paymentState: 'partiallyPaid',
+          paymentCount: 2,
+        },
+      ],
+    });
+  });
+
   it('creates and retrieves a durable installment debt with every schedule item', async () => {
     const owner = await signUpOwner('debt-installment-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
@@ -2084,5 +2130,34 @@ describe('debt routes', () => {
         ],
       );
     }
+  }
+
+  function insertPayment({
+    id,
+    scheduleItemId,
+    amount,
+    idempotencyKey,
+  }: {
+    id: string;
+    scheduleItemId: string;
+    amount: string;
+    idempotencyKey: string;
+  }): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "payments" (
+          "id",
+          "schedule_item_id",
+          "amount",
+          "payment_date",
+          "idempotency_key",
+          "request_fingerprint",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, '2026-09-15'::date, $4::uuid, $1, now(), now())
+      `,
+      [id, scheduleItemId, amount, idempotencyKey],
+    );
   }
 });

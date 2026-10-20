@@ -22,14 +22,13 @@ type ReplacedDebt = {
   scheduleItems: DebtScheduleItemRow[];
 };
 
-export function replaceDebt(
-  database: Database,
+export async function replaceDebt(
+  tx: Transaction,
   command: ReplaceDebtCommand,
 ): Promise<ReplacedDebt> {
   const { request } = command;
 
-  return database.transaction(async (tx) => {
-    const lockedDebt = await lockDebtForReplacement(tx, command);
+  const lockedDebt = await lockDebtForReplacement(tx, command);
 
     if (lockedDebt.version !== request.expectedVersion) {
       throw debtException(debtApiErrorCode.debtVersionConflict);
@@ -65,8 +64,7 @@ export function replaceDebt(
 
     const scheduleItems = await loadDebtSchedule(tx, updatedDebt.id);
 
-    return { debt: updatedDebt, scheduleItems };
-  });
+  return { debt: updatedDebt, scheduleItems };
 }
 
 async function lockDebtForReplacement(
