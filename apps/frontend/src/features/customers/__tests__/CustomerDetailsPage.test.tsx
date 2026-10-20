@@ -120,7 +120,7 @@ describe('CustomerDetailsPage', () => {
     ).toHaveTextContent('No financial activity');
     expect(screen.getByRole('region', { name: 'Debts' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Payments' })).toHaveTextContent(
-      'No payments yet.',
+      'Payment history is not available yet.',
     );
     expect(screen.getByRole('button', { name: 'Add debt' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Record payment' })).toBeDisabled();

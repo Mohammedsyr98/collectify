@@ -152,6 +152,20 @@ function InstallmentSummary({
                   </time>
                   <TimingBadge timing={scheduleItem.timing} />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <FinancialMetric
+                    currency={debt.currency}
+                    label={t('debts.card.paid')}
+                    locale={locale}
+                    value={scheduleItem.paidAmount}
+                  />
+                  <FinancialMetric
+                    currency={debt.currency}
+                    label={t('debts.card.remaining')}
+                    locale={locale}
+                    value={scheduleItem.remainingAmount}
+                  />
+                </div>
               </li>
             ))}
           </ol>
@@ -199,8 +213,7 @@ function PaymentProgress({
   locale: string;
 }) {
   const { t } = useTranslation();
-  const paidAmount = '0.00';
-  const paidPercentage = 0;
+  const paidPercentage = resolvePaidPercentage(debt);
 
   return (
     <div className="grid gap-3 border-t border-border pt-3">
@@ -209,13 +222,13 @@ function PaymentProgress({
           currency={debt.currency}
           label={t('debts.card.paid')}
           locale={locale}
-          value={paidAmount}
+          value={debt.paidAmount}
         />
         <FinancialMetric
           currency={debt.currency}
           label={t('debts.card.remaining')}
           locale={locale}
-          value={debt.totalAmount}
+          value={debt.remainingAmount}
         />
       </div>
       <div className="grid grid-cols-[1fr_auto] items-center gap-2">
@@ -237,6 +250,19 @@ function PaymentProgress({
         <span className="text-[0.72rem] font-black text-muted-foreground">{paidPercentage}%</span>
       </div>
     </div>
+  );
+}
+
+function resolvePaidPercentage(debt: DebtResponse): number {
+  const totalAmount = Number(debt.totalAmount);
+  const paidAmount = Number(debt.paidAmount);
+
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    return 0;
+  }
+
+  return Math.round(
+    Math.min(1, Math.max(0, paidAmount / totalAmount)) * 100,
   );
 }
 
