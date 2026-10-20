@@ -63,7 +63,7 @@ describe('debt routes', () => {
     await postgres?.stop();
   });
 
-  it('creates a durable one-payment debt and retrieves it from the customer list', async () => {
+  it('projects an unpaid one-payment debt in create and list responses', async () => {
     const owner = await signUpOwner('debt-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
 
@@ -96,12 +96,20 @@ describe('debt routes', () => {
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
+      paidAmount: '0.00',
+      remainingAmount: '125.50',
+      paymentState: 'unpaid',
+      paymentCount: 0,
       paymentPlanType: 'onePayment',
       scheduleItems: [
         {
           position: 1,
           amount: '125.50',
           dueDate: '2026-09-30',
+          paidAmount: '0.00',
+          remainingAmount: '125.50',
+          paymentState: 'unpaid',
+          paymentCount: 0,
         },
       ],
     });
@@ -185,6 +193,128 @@ describe('debt routes', () => {
           remainingAmount: '74.70',
           paymentState: 'partiallyPaid',
           paymentCount: 2,
+        },
+      ],
+    });
+  });
+
+  it('projects a fully paid one-payment debt with zero remaining balance', async () => {
+    const owner = await signUpOwner('debt-paid-progress-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_paid_progress',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_paid_progress',
+      scheduleItemId: 'debt_paid_progress_schedule',
+      amount: '100.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000007',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+    expect(list.items[0]).toMatchObject({
+      paidAmount: '100.00',
+      remainingAmount: '0.00',
+      paymentState: 'paid',
+      paymentCount: 1,
+      scheduleItems: [
+        {
+          paidAmount: '100.00',
+          remainingAmount: '0.00',
+          paymentState: 'paid',
+          paymentCount: 1,
+        },
+      ],
+    });
+  });
+
+  it('projects mixed payment states for installment schedule items and debt totals', async () => {
+    const owner = await signUpOwner('debt-mixed-progress-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_mixed_progress',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        {
+          id: 'debt_mixed_progress_first',
+          amount: '40.00',
+          dueDate: '2026-09-30',
+        },
+        {
+          id: 'debt_mixed_progress_second',
+          amount: '35.00',
+          dueDate: '2026-10-30',
+        },
+        {
+          id: 'debt_mixed_progress_third',
+          amount: '25.00',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_mixed_progress_first',
+      scheduleItemId: 'debt_mixed_progress_first',
+      amount: '40.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000008',
+    });
+    await insertPayment({
+      id: 'payment_mixed_progress_second',
+      scheduleItemId: 'debt_mixed_progress_second',
+      amount: '10.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000009',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+    expect(list.items[0]).toMatchObject({
+      paidAmount: '50.00',
+      remainingAmount: '50.00',
+      paymentState: 'partiallyPaid',
+      paymentCount: 2,
+      paymentPlanType: 'installment',
+      scheduleItems: [
+        {
+          position: 1,
+          amount: '40.00',
+          paidAmount: '40.00',
+          remainingAmount: '0.00',
+          paymentState: 'paid',
+          paymentCount: 1,
+        },
+        {
+          position: 2,
+          amount: '35.00',
+          paidAmount: '10.00',
+          remainingAmount: '25.00',
+          paymentState: 'partiallyPaid',
+          paymentCount: 1,
+        },
+        {
+          position: 3,
+          amount: '25.00',
+          paidAmount: '0.00',
+          remainingAmount: '25.00',
+          paymentState: 'unpaid',
+          paymentCount: 0,
         },
       ],
     });
