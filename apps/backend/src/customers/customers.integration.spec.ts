@@ -3,6 +3,7 @@ import {
   customerDetailsResponseSchema,
   customerListPageSize,
   customerListResponseSchema,
+  debtResponseSchema,
 } from '@collectify/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -129,6 +130,176 @@ describe('customer routes', () => {
         totalDebtAmount: '125.50',
         totalPaidAmount: '0.00',
         remainingAmount: '125.50',
+      },
+    ]);
+  });
+
+  it('excludes a fully paid overdue debt from customer overdue balance', async () => {
+    const owner = await signUpOwner('customer-paid-overdue-owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-PAID-OVERDUE',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    const created = createCustomerResponseSchema.parse(
+      await createResponse.json(),
+    );
+
+    const debtResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'Paid overdue debt',
+          totalAmount: '100.00',
+          currency: 'USD',
+          scheduleItems: [
+            {
+              amount: '100.00',
+              dueDate: '2000-01-01',
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(debtResponse.status).toBe(201);
+    const debt = debtResponseSchema.parse(await debtResponse.json());
+    await insertPayment({
+      id: 'payment_customer_paid_overdue',
+      scheduleItemId: debt.scheduleItems[0]!.id,
+      amount: '100.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000003',
+    });
+
+    const listResponse = await fetch(`${backend!.baseUrl}/customers`, {
+      headers: {
+        cookie: owner.cookieHeader,
+      },
+    });
+
+    expect(listResponse.status).toBe(200);
+    const list = customerListResponseSchema.parse(await listResponse.json());
+
+    expect(list.items[0]?.financialSummary).toEqual({
+      balancesByCurrency: [
+        {
+          currency: 'USD',
+          remainingAmount: '0.00',
+          overdueAmount: '0.00',
+        },
+      ],
+    });
+  });
+
+  it('aggregates multiple payments into exact balances per currency', async () => {
+    const owner = await signUpOwner('customer-payment-summary-owner@example.com');
+    const createResponse = await createCustomer(owner.cookieHeader, {
+      name: 'Acme Market',
+      code: 'ACME-PAYMENT-SUMMARY',
+      phoneNumber: '+90 555 123 45 67',
+    });
+    const created = createCustomerResponseSchema.parse(
+      await createResponse.json(),
+    );
+
+    const usdDebtResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'USD debt',
+          totalAmount: '100.00',
+          currency: 'USD',
+          scheduleItems: [
+            {
+              amount: '100.00',
+              dueDate: '2999-01-01',
+            },
+          ],
+        }),
+      },
+    );
+    expect(usdDebtResponse.status).toBe(201);
+    const usdDebt = debtResponseSchema.parse(await usdDebtResponse.json());
+
+    const eurDebtResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}/debts`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          description: 'EUR debt',
+          totalAmount: '80.00',
+          currency: 'EUR',
+          scheduleItems: [
+            {
+              amount: '80.00',
+              dueDate: '2999-01-01',
+            },
+          ],
+        }),
+      },
+    );
+    expect(eurDebtResponse.status).toBe(201);
+    const eurDebt = debtResponseSchema.parse(await eurDebtResponse.json());
+
+    await insertPayment({
+      id: 'payment_customer_summary_usd_first',
+      scheduleItemId: usdDebt.scheduleItems[0]!.id,
+      amount: '0.10',
+      idempotencyKey: '00000000-0000-4000-8000-000000000004',
+    });
+    await insertPayment({
+      id: 'payment_customer_summary_usd_second',
+      scheduleItemId: usdDebt.scheduleItems[0]!.id,
+      amount: '25.20',
+      idempotencyKey: '00000000-0000-4000-8000-000000000005',
+    });
+    await insertPayment({
+      id: 'payment_customer_summary_eur',
+      scheduleItemId: eurDebt.scheduleItems[0]!.id,
+      amount: '20.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000006',
+    });
+
+    const detailsResponse = await fetch(
+      `${backend!.baseUrl}/customers/${created.id}`,
+      {
+        headers: {
+          cookie: owner.cookieHeader,
+        },
+      },
+    );
+
+    expect(detailsResponse.status).toBe(200);
+    const details = customerDetailsResponseSchema.parse(
+      await detailsResponse.json(),
+    );
+
+    expect(details.financialSummary).toEqual([
+      {
+        currency: 'USD',
+        totalDebtAmount: '100.00',
+        totalPaidAmount: '25.30',
+        remainingAmount: '74.70',
+      },
+      {
+        currency: 'EUR',
+        totalDebtAmount: '80.00',
+        totalPaidAmount: '20.00',
+        remainingAmount: '60.00',
       },
     ]);
   });
@@ -955,6 +1126,35 @@ describe('customer routes', () => {
         VALUES ($1, $2, $3, $4, $5, $6, $7::timestamp, $7::timestamp)
       `,
       [id, ownerProfileId, name, code, phoneNumber, address ?? null, createdAt],
+    );
+  }
+
+  function insertPayment({
+    id,
+    scheduleItemId,
+    amount,
+    idempotencyKey,
+  }: {
+    id: string;
+    scheduleItemId: string;
+    amount: string;
+    idempotencyKey: string;
+  }): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "payments" (
+          "id",
+          "schedule_item_id",
+          "amount",
+          "payment_date",
+          "idempotency_key",
+          "request_fingerprint",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, '2000-01-02'::date, $4::uuid, $1, now(), now())
+      `,
+      [id, scheduleItemId, amount, idempotencyKey],
     );
   }
 });
