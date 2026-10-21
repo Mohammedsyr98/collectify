@@ -21,6 +21,7 @@ import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { loadPaymentAmountsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
 import { checkDebtPaymentHistoryChange } from './debt-payment-history';
+import { findOwnedDebtForUpdate } from './debt-lock';
 import { loadDebtsWithPaymentDetails } from './debt-read-model';
 import { replaceDebt as replaceDebtInDatabase } from './debt-replacement';
 import { debtException } from './debts.errors';
@@ -131,12 +132,16 @@ export class DebtsService {
     debtId: string,
   ): Promise<void> {
     await this.databaseService.db.transaction(async (tx) => {
-      const ownedDebt = await this.requireOwnedDebtForUpdate(
-        tx,
-        currentOwner.ownerProfile.id,
+      const ownedDebt = await findOwnedDebtForUpdate(tx, {
+        ownerProfileId: currentOwner.ownerProfile.id,
         customerId,
         debtId,
-      );
+      });
+
+      if (!ownedDebt) {
+        throw debtException(debtApiErrorCode.debtNotFound);
+      }
+
       const scheduleItems = await tx
         .select({ id: debtScheduleItems.id })
         .from(debtScheduleItems)
@@ -167,33 +172,6 @@ export class DebtsService {
         throw debtException(debtApiErrorCode.debtNotFound);
       }
     });
-  }
-
-  private async requireOwnedDebtForUpdate(
-    executor: Pick<Database, 'select'>,
-    ownerProfileId: string,
-    customerId: string,
-    debtId: string,
-  ): Promise<DebtRow> {
-    const [ownedDebt] = await executor
-      .select({ debt: debts })
-      .from(debts)
-      .innerJoin(customers, eq(customers.id, debts.customerId))
-      .where(
-        and(
-          eq(debts.id, debtId),
-          eq(debts.customerId, customerId),
-          eq(customers.ownerProfileId, ownerProfileId),
-        ),
-      )
-      .limit(1)
-      .for('update', { of: debts });
-
-    if (!ownedDebt) {
-      throw debtException(debtApiErrorCode.debtNotFound);
-    }
-
-    return ownedDebt.debt;
   }
 
   private async requireOwnedCustomer(

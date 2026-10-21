@@ -3,8 +3,9 @@ import { debtApiErrorCode, type ReplaceDebtRequest } from '@collectify/contracts
 import { randomUUID } from 'node:crypto';
 
 import type { Database } from '../database/database.service';
-import { customers, debtScheduleItems, debts } from '../database/schema';
+import { debtScheduleItems, debts } from '../database/schema';
 import { loadPaymentAmountsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { findOwnedDebtForUpdate } from './debt-lock';
 import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { debtException } from './debts.errors';
 
@@ -30,7 +31,11 @@ export async function replaceDebt(
 ): Promise<ReplacedDebt> {
   const { request } = command;
 
-  const lockedDebt = await lockDebtForReplacement(tx, command);
+  const lockedDebt = await findOwnedDebtForUpdate(tx, command);
+
+  if (!lockedDebt) {
+    throw debtException(debtApiErrorCode.debtNotFound);
+  }
 
   if (lockedDebt.version !== request.expectedVersion) {
     throw debtException(debtApiErrorCode.debtVersionConflict);
@@ -81,31 +86,6 @@ export async function replaceDebt(
   const scheduleItems = await loadDebtSchedule(tx, updatedDebt.id);
 
   return { debt: updatedDebt, scheduleItems };
-}
-
-async function lockDebtForReplacement(
-  tx: Transaction,
-  command: ReplaceDebtCommand,
-): Promise<DebtRow> {
-  const [lockedDebt] = await tx
-    .select({ debt: debts })
-    .from(debts)
-    .innerJoin(customers, eq(customers.id, debts.customerId))
-    .where(
-      and(
-        eq(debts.id, command.debtId),
-        eq(debts.customerId, command.customerId),
-        eq(customers.ownerProfileId, command.ownerProfileId),
-      ),
-    )
-    .limit(1)
-    .for('update', { of: debts });
-
-  if (!lockedDebt) {
-    throw debtException(debtApiErrorCode.debtNotFound);
-  }
-
-  return lockedDebt.debt;
 }
 
 type ScheduleChanges = {
