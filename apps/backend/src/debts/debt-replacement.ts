@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { Database } from '../database/database.service';
 import { debtScheduleItems, debts } from '../database/schema';
-import { loadPaymentAmountsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { loadPaidTotalsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
 import { findOwnedDebtForUpdate } from './debt-lock';
 import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { debtException } from './debts.errors';
@@ -44,7 +44,7 @@ export async function replaceDebt(
   const changedAt = new Date();
 
   const currentSchedule = await loadDebtSchedule(tx, lockedDebt.id, true);
-  const paymentAmountsByScheduleItemId = await loadPaymentAmountsByScheduleItemId(
+  const paidTotalsByScheduleItemId = await loadPaidTotalsByScheduleItemId(
     tx,
     currentSchedule.map(({ id }) => id),
   );
@@ -55,7 +55,7 @@ export async function replaceDebt(
   const conflict = checkDebtPaymentHistoryChange({
     currentDebt: lockedDebt,
     currentScheduleItems: currentSchedule,
-    paymentAmountsByScheduleItemId,
+    paidTotalsByScheduleItemId,
     change: { kind: 'replace', replacement: request },
   });
 

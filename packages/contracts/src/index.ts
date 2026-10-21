@@ -5,4 +5,5 @@ export * from './health/index.js';
 export * from './money.js';
 export * from './owner-profile/index.js';
 export * from './pagination.js';
+export * from './payments/index.js';
 export * from './session/index.js';

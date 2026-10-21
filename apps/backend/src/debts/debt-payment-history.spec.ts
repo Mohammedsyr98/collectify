@@ -7,7 +7,7 @@ const currentDebt = { currency: 'USD' };
 const onePaymentSchedule = [{ id: 'schedule_one' }];
 
 function facts(
-  entries: ReadonlyArray<readonly [string, readonly string[]]>,
+  entries: ReadonlyArray<readonly [string, string]>,
 ) {
   return new Map(entries);
 }
@@ -18,7 +18,7 @@ describe('checkDebtPaymentHistoryChange', () => {
       checkDebtPaymentHistoryChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
-        paymentAmountsByScheduleItemId: facts([]),
+        paidTotalsByScheduleItemId: facts([]),
         change: {
           kind: 'replace',
           replacement: {
@@ -36,7 +36,7 @@ describe('checkDebtPaymentHistoryChange', () => {
       checkDebtPaymentHistoryChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
-        paymentAmountsByScheduleItemId: facts([['schedule_one', ['25.00']]]),
+        paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
         change: { kind: 'delete' },
       }),
     ).toBe(debtApiErrorCode.debtHasPayments);
@@ -47,7 +47,7 @@ describe('checkDebtPaymentHistoryChange', () => {
       checkDebtPaymentHistoryChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
-        paymentAmountsByScheduleItemId: facts([['schedule_one', ['25.00']]]),
+        paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
         change: {
           kind: 'replace',
           replacement: {
@@ -65,7 +65,7 @@ describe('checkDebtPaymentHistoryChange', () => {
       checkDebtPaymentHistoryChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
-        paymentAmountsByScheduleItemId: facts([['schedule_one', ['25.00']]]),
+        paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
         change: {
           kind: 'replace',
           replacement: {
@@ -89,7 +89,7 @@ describe('checkDebtPaymentHistoryChange', () => {
           { id: 'schedule_one' },
           { id: 'schedule_two' },
         ],
-        paymentAmountsByScheduleItemId: facts([['schedule_one', ['25.00']]]),
+        paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
         change: {
           kind: 'replace',
           replacement: {
@@ -110,7 +110,7 @@ describe('checkDebtPaymentHistoryChange', () => {
       checkDebtPaymentHistoryChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
-        paymentAmountsByScheduleItemId: facts([['schedule_one', ['25.30']]]),
+        paidTotalsByScheduleItemId: facts([['schedule_one', '25.30']]),
         change: {
           kind: 'replace',
           replacement: {
@@ -131,9 +131,9 @@ describe('checkDebtPaymentHistoryChange', () => {
           { id: 'schedule_one' },
           { id: 'schedule_two' },
         ],
-        paymentAmountsByScheduleItemId: facts([
-          ['schedule_one', ['30.00']],
-          ['schedule_two', ['30.00']],
+        paidTotalsByScheduleItemId: facts([
+          ['schedule_one', '30.00'],
+          ['schedule_two', '30.00'],
         ]),
         change: {
           kind: 'replace',

@@ -1,14 +1,14 @@
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 
 import type { Database } from '../database/database.service';
 import { payments } from '../database/schema';
 
 type SelectExecutor = Pick<Database, 'select'>;
 
-export async function loadPaymentAmountsByScheduleItemId(
+export async function loadPaidTotalsByScheduleItemId(
   executor: SelectExecutor,
   scheduleItemIds: readonly string[],
-): Promise<ReadonlyMap<string, readonly string[]>> {
+): Promise<ReadonlyMap<string, string>> {
   if (scheduleItemIds.length === 0) {
     return new Map();
   }
@@ -16,18 +16,13 @@ export async function loadPaymentAmountsByScheduleItemId(
   const rows = await executor
     .select({
       scheduleItemId: payments.scheduleItemId,
-      amount: payments.amount,
+      paidAmount: sql<string>`coalesce(sum(${payments.amount}), 0)`,
     })
     .from(payments)
-    .where(inArray(payments.scheduleItemId, scheduleItemIds));
+    .where(inArray(payments.scheduleItemId, scheduleItemIds))
+    .groupBy(payments.scheduleItemId);
 
-  const paymentAmountsByScheduleItemId = new Map<string, string[]>();
-
-  for (const row of rows) {
-    const amounts = paymentAmountsByScheduleItemId.get(row.scheduleItemId) ?? [];
-    amounts.push(row.amount);
-    paymentAmountsByScheduleItemId.set(row.scheduleItemId, amounts);
-  }
-
-  return paymentAmountsByScheduleItemId;
+  return new Map(
+    rows.map(({ scheduleItemId, paidAmount }) => [scheduleItemId, paidAmount]),
+  );
 }

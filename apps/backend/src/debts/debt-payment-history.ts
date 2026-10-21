@@ -27,18 +27,15 @@ type DebtPaymentHistoryInput = {
     currency: string;
   };
   currentScheduleItems: readonly { id: string }[];
-  paymentAmountsByScheduleItemId: ReadonlyMap<string, readonly string[]>;
+  paidTotalsByScheduleItemId: ReadonlyMap<string, string>;
   change: DebtPaymentHistoryChange;
 };
 
 export function checkDebtPaymentHistoryChange(
   input: DebtPaymentHistoryInput,
 ): DebtPaymentHistoryConflictCode | null {
-  const receivedAmountsByScheduleItemId = sumPaymentsByScheduleItem(
-    input.paymentAmountsByScheduleItemId,
-  );
   const totalReceivedAmount = sumMinorUnits([
-    ...receivedAmountsByScheduleItemId.values(),
+    ...[...input.paidTotalsByScheduleItemId.values()].map(toMinorUnits),
   ]);
 
   if (input.change.kind === 'delete') {
@@ -59,7 +56,7 @@ export function checkDebtPaymentHistoryChange(
     return debtApiErrorCode.debtPaymentPlanChangeBlocked;
   }
 
-  for (const [scheduleItemId, receivedAmount] of receivedAmountsByScheduleItemId) {
+  for (const [scheduleItemId, receivedAmount] of input.paidTotalsByScheduleItemId) {
     const replacementItem = input.change.replacement.scheduleItems.find(
       ({ id }) => id === scheduleItemId,
     );
@@ -67,7 +64,7 @@ export function checkDebtPaymentHistoryChange(
       return debtApiErrorCode.debtScheduleItemHasPayments;
     }
 
-    if (toMinorUnits(replacementItem.amount) < receivedAmount) {
+    if (toMinorUnits(replacementItem.amount) < toMinorUnits(receivedAmount)) {
       return debtApiErrorCode.debtScheduleItemAmountBelowPaid;
     }
   }
@@ -77,20 +74,6 @@ export function checkDebtPaymentHistoryChange(
   }
 
   return null;
-}
-
-function sumPaymentsByScheduleItem(
-  paymentAmountsByScheduleItemId: ReadonlyMap<string, readonly string[]>,
-): ReadonlyMap<string, bigint> {
-  return new Map(
-    [...paymentAmountsByScheduleItemId].map(
-      ([scheduleItemId, amounts]) => [scheduleItemId, sumMoney(amounts)] as const,
-    ),
-  );
-}
-
-function sumMoney(amounts: readonly string[]): bigint {
-  return sumMinorUnits(amounts.map(toMinorUnits));
 }
 
 function sumMinorUnits(amounts: readonly bigint[]): bigint {

@@ -19,7 +19,7 @@ import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
-import { loadPaymentAmountsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { loadPaidTotalsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
 import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { findOwnedDebtForUpdate } from './debt-lock';
 import { loadDebtsWithPaymentDetails } from './debt-read-model';
@@ -148,14 +148,14 @@ export class DebtsService {
         .where(eq(debtScheduleItems.debtId, ownedDebt.id))
         .orderBy(asc(debtScheduleItems.id))
         .for('update');
-      const paymentAmountsByScheduleItemId = await loadPaymentAmountsByScheduleItemId(
+      const paidTotalsByScheduleItemId = await loadPaidTotalsByScheduleItemId(
         tx,
         scheduleItems.map(({ id }) => id),
       );
       const conflict = checkDebtPaymentHistoryChange({
         currentDebt: ownedDebt,
         currentScheduleItems: scheduleItems,
-        paymentAmountsByScheduleItemId,
+        paidTotalsByScheduleItemId,
         change: { kind: 'delete' },
       });
 
