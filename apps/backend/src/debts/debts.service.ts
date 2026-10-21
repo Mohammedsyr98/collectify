@@ -19,6 +19,8 @@ import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
+import { loadPaymentAmountsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { loadDebtsWithPaymentDetails } from './debt-read-model';
 import { replaceDebt as replaceDebtInDatabase } from './debt-replacement';
 import { debtException } from './debts.errors';
@@ -129,12 +131,33 @@ export class DebtsService {
     debtId: string,
   ): Promise<void> {
     await this.databaseService.db.transaction(async (tx) => {
-      const ownedDebt = await this.requireOwnedDebt(
+      const ownedDebt = await this.requireOwnedDebtForUpdate(
         tx,
         currentOwner.ownerProfile.id,
         customerId,
         debtId,
       );
+      const scheduleItems = await tx
+        .select({ id: debtScheduleItems.id })
+        .from(debtScheduleItems)
+        .where(eq(debtScheduleItems.debtId, ownedDebt.id))
+        .orderBy(asc(debtScheduleItems.id))
+        .for('update');
+      const paymentAmountsByScheduleItemId = await loadPaymentAmountsByScheduleItemId(
+        tx,
+        scheduleItems.map(({ id }) => id),
+      );
+      const conflict = checkDebtPaymentHistoryChange({
+        currentDebt: ownedDebt,
+        currentScheduleItems: scheduleItems,
+        paymentAmountsByScheduleItemId,
+        change: { kind: 'delete' },
+      });
+
+      if (conflict) {
+        throw debtException(conflict);
+      }
+
       const deletedRows = await tx
         .delete(debts)
         .where(eq(debts.id, ownedDebt.id))
@@ -146,7 +169,7 @@ export class DebtsService {
     });
   }
 
-  private async requireOwnedDebt(
+  private async requireOwnedDebtForUpdate(
     executor: Pick<Database, 'select'>,
     ownerProfileId: string,
     customerId: string,
@@ -163,7 +186,8 @@ export class DebtsService {
           eq(customers.ownerProfileId, ownerProfileId),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for('update', { of: debts });
 
     if (!ownedDebt) {
       throw debtException(debtApiErrorCode.debtNotFound);

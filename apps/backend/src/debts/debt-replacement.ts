@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
+import { loadPaymentAmountsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
@@ -30,39 +32,53 @@ export async function replaceDebt(
 
   const lockedDebt = await lockDebtForReplacement(tx, command);
 
-    if (lockedDebt.version !== request.expectedVersion) {
-      throw debtException(debtApiErrorCode.debtVersionConflict);
-    }
+  if (lockedDebt.version !== request.expectedVersion) {
+    throw debtException(debtApiErrorCode.debtVersionConflict);
+  }
 
-    const changedAt = new Date();
+  const changedAt = new Date();
 
-    const currentSchedule = await loadDebtSchedule(tx, lockedDebt.id);
-    const scheduleChanges = buildScheduleChanges(
-      currentSchedule,
-      request.scheduleItems,
-    );
+  const currentSchedule = await loadDebtSchedule(tx, lockedDebt.id, true);
+  const paymentAmountsByScheduleItemId = await loadPaymentAmountsByScheduleItemId(
+    tx,
+    currentSchedule.map(({ id }) => id),
+  );
+  const scheduleChanges = buildScheduleChanges(
+    currentSchedule,
+    request.scheduleItems,
+  );
+  const conflict = checkDebtPaymentHistoryChange({
+    currentDebt: lockedDebt,
+    currentScheduleItems: currentSchedule,
+    paymentAmountsByScheduleItemId,
+    change: { kind: 'replace', replacement: request },
+  });
 
-    await applyScheduleChanges(tx, {
-      debtId: lockedDebt.id,
-      scheduleChanges,
-      changedAt,
-    });
+  if (conflict) {
+    throw debtException(conflict);
+  }
 
-    const updatedDebt = (
-      await tx
-        .update(debts)
-        .set({
-          description: request.description,
-          totalAmount: request.totalAmount,
-          currency: request.currency,
-          updatedAt: changedAt,
-          version: lockedDebt.version + 1,
-        })
-        .where(eq(debts.id, lockedDebt.id))
-        .returning()
-    )[0]!;
+  await applyScheduleChanges(tx, {
+    debtId: lockedDebt.id,
+    scheduleChanges,
+    changedAt,
+  });
 
-    const scheduleItems = await loadDebtSchedule(tx, updatedDebt.id);
+  const updatedDebt = (
+    await tx
+      .update(debts)
+      .set({
+        description: request.description,
+        totalAmount: request.totalAmount,
+        currency: request.currency,
+        updatedAt: changedAt,
+        version: lockedDebt.version + 1,
+      })
+      .where(eq(debts.id, lockedDebt.id))
+      .returning()
+  )[0]!;
+
+  const scheduleItems = await loadDebtSchedule(tx, updatedDebt.id);
 
   return { debt: updatedDebt, scheduleItems };
 }
@@ -238,10 +254,19 @@ async function updateExistingScheduleRows(
   `);
 }
 
-async function loadDebtSchedule(tx: Transaction, debtId: string): Promise<DebtScheduleItemRow[]> {
-  return tx
+async function loadDebtSchedule(
+  tx: Transaction,
+  debtId: string,
+  lockRows = false,
+): Promise<DebtScheduleItemRow[]> {
+  const query = tx
     .select()
     .from(debtScheduleItems)
-    .where(eq(debtScheduleItems.debtId, debtId))
-    .orderBy(asc(debtScheduleItems.position));
+    .where(eq(debtScheduleItems.debtId, debtId));
+
+  if (lockRows) {
+    return query.orderBy(asc(debtScheduleItems.id)).for('update');
+  }
+
+  return query.orderBy(asc(debtScheduleItems.position));
 }
