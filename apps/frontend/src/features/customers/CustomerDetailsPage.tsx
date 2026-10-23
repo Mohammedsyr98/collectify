@@ -117,7 +117,7 @@ export function CustomerDetailsPage({
             />
             <EmptyLedgerSection
               Icon={CreditCard}
-              emptyText={t('customers.details.paymentsEmpty')}
+              emptyText={t('customers.details.paymentsUnavailable')}
               title={t('customers.details.payments')}
             />
           </section>

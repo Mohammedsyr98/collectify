@@ -63,7 +63,7 @@ describe('debt routes', () => {
     await postgres?.stop();
   });
 
-  it('creates a durable one-payment debt and retrieves it from the customer list', async () => {
+  it('projects an unpaid one-payment debt in create and list responses', async () => {
     const owner = await signUpOwner('debt-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
 
@@ -96,12 +96,20 @@ describe('debt routes', () => {
       description: 'Website redesign',
       totalAmount: '125.50',
       currency: 'USD',
+      paidAmount: '0.00',
+      remainingAmount: '125.50',
+      paymentState: 'unpaid',
+      paymentCount: 0,
       paymentPlanType: 'onePayment',
       scheduleItems: [
         {
           position: 1,
           amount: '125.50',
           dueDate: '2026-09-30',
+          paidAmount: '0.00',
+          remainingAmount: '125.50',
+          paymentState: 'unpaid',
+          paymentCount: 0,
         },
       ],
     });
@@ -142,6 +150,174 @@ describe('debt routes', () => {
         amount: '125.50',
       },
     ]);
+  });
+
+  it('combines multiple payments into exact one-payment debt progress', async () => {
+    const owner = await signUpOwner('debt-payment-progress-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_payment_progress',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_progress_first',
+      scheduleItemId: 'debt_payment_progress_schedule',
+      amount: '0.10',
+      idempotencyKey: '00000000-0000-4000-8000-000000000001',
+    });
+    await insertPayment({
+      id: 'payment_progress_second',
+      scheduleItemId: 'debt_payment_progress_schedule',
+      amount: '25.20',
+      idempotencyKey: '00000000-0000-4000-8000-000000000002',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+    expect(list.items[0]).toMatchObject({
+      paidAmount: '25.30',
+      remainingAmount: '74.70',
+      paymentState: 'partiallyPaid',
+      paymentCount: 2,
+      scheduleItems: [
+        {
+          paidAmount: '25.30',
+          remainingAmount: '74.70',
+          paymentState: 'partiallyPaid',
+          paymentCount: 2,
+        },
+      ],
+    });
+  });
+
+  it('projects a fully paid one-payment debt with zero remaining balance', async () => {
+    const owner = await signUpOwner('debt-paid-progress-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_paid_progress',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_paid_progress',
+      scheduleItemId: 'debt_paid_progress_schedule',
+      amount: '100.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000007',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+    expect(list.items[0]).toMatchObject({
+      paidAmount: '100.00',
+      remainingAmount: '0.00',
+      paymentState: 'paid',
+      paymentCount: 1,
+      scheduleItems: [
+        {
+          paidAmount: '100.00',
+          remainingAmount: '0.00',
+          paymentState: 'paid',
+          paymentCount: 1,
+        },
+      ],
+    });
+  });
+
+  it('projects mixed payment states for installment schedule items and debt totals', async () => {
+    const owner = await signUpOwner('debt-mixed-progress-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_mixed_progress',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        {
+          id: 'debt_mixed_progress_first',
+          amount: '40.00',
+          dueDate: '2026-09-30',
+        },
+        {
+          id: 'debt_mixed_progress_second',
+          amount: '35.00',
+          dueDate: '2026-10-30',
+        },
+        {
+          id: 'debt_mixed_progress_third',
+          amount: '25.00',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_mixed_progress_first',
+      scheduleItemId: 'debt_mixed_progress_first',
+      amount: '40.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000008',
+    });
+    await insertPayment({
+      id: 'payment_mixed_progress_second',
+      scheduleItemId: 'debt_mixed_progress_second',
+      amount: '10.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000009',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts`,
+      {
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const list = debtListResponseSchema.parse(await response.json());
+    expect(list.items[0]).toMatchObject({
+      paidAmount: '50.00',
+      remainingAmount: '50.00',
+      paymentState: 'partiallyPaid',
+      paymentCount: 2,
+      paymentPlanType: 'installment',
+      scheduleItems: [
+        {
+          position: 1,
+          amount: '40.00',
+          paidAmount: '40.00',
+          remainingAmount: '0.00',
+          paymentState: 'paid',
+          paymentCount: 1,
+        },
+        {
+          position: 2,
+          amount: '35.00',
+          paidAmount: '10.00',
+          remainingAmount: '25.00',
+          paymentState: 'partiallyPaid',
+          paymentCount: 1,
+        },
+        {
+          position: 3,
+          amount: '25.00',
+          paidAmount: '0.00',
+          remainingAmount: '25.00',
+          paymentState: 'unpaid',
+          paymentCount: 0,
+        },
+      ],
+    });
   });
 
   it('creates and retrieves a durable installment debt with every schedule item', async () => {
@@ -1095,6 +1271,260 @@ describe('debt routes', () => {
         schedule_count: 0,
       },
     ]);
+  });
+
+  it('rejects deleting a debt with recorded payments without changing its rows', async () => {
+    const owner = await signUpOwner('debt-delete-paid-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_delete_paid',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_delete_paid',
+      scheduleItemId: 'debt_delete_paid_schedule',
+      amount: '25.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000020',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/customer_debt/debts/debt_delete_paid`,
+      {
+        method: 'DELETE',
+        headers: { cookie: owner.cookieHeader },
+      },
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_HAS_PAYMENTS',
+    });
+    expect(await readDebtWithScheduleRows('debt_delete_paid')).toHaveLength(1);
+    expect(
+      await postgres!.query(
+        'SELECT count(*)::int AS count FROM "payments" WHERE "schedule_item_id" = $1',
+        ['debt_delete_paid_schedule'],
+      ),
+    ).toEqual([{ count: 1 }]);
+  });
+
+  it('rejects changing currency after a payment is recorded without changing the debt', async () => {
+    const owner = await signUpOwner('debt-currency-lock-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_currency_lock',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      currency: 'USD',
+    });
+    await insertPayment({
+      id: 'payment_currency_lock',
+      scheduleItemId: 'debt_currency_lock_schedule',
+      amount: '25.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000021',
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_currency_lock', {
+      expectedVersion: 1,
+      description: 'Updated description',
+      totalAmount: '100.00',
+      currency: 'EUR',
+      scheduleItems: [
+        {
+          id: 'debt_currency_lock_schedule',
+          amount: '100.00',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_CURRENCY_CHANGE_BLOCKED',
+    });
+    expect(await readDebtWithScheduleRows('debt_currency_lock')).toMatchObject([
+      {
+        debt_version: 1,
+        currency: 'USD',
+        schedule_amount: '100.00',
+      },
+    ]);
+  });
+
+  it('rejects converting a paid debt between one payment and installments', async () => {
+    const owner = await signUpOwner('debt-plan-lock-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_plan_lock',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        {
+          id: 'debt_plan_lock_schedule',
+          amount: '100.00',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_plan_lock',
+      scheduleItemId: 'debt_plan_lock_schedule',
+      amount: '25.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000022',
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_plan_lock', {
+      expectedVersion: 1,
+      description: 'Split payment',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        { amount: '40.00', dueDate: '2026-10-30' },
+        {
+          id: 'debt_plan_lock_schedule',
+          amount: '60.00',
+          dueDate: '2026-11-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_PAYMENT_PLAN_CHANGE_BLOCKED',
+    });
+    expect(await readDebtWithScheduleRows('debt_plan_lock')).toHaveLength(1);
+  });
+
+  it('rejects removing a paid installment while retaining the unpaid installment', async () => {
+    const owner = await signUpOwner('debt-schedule-lock-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_schedule_lock',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        {
+          id: 'debt_schedule_lock_paid',
+          amount: '50.00',
+          dueDate: '2026-09-30',
+        },
+        {
+          id: 'debt_schedule_lock_unpaid',
+          amount: '50.00',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_schedule_lock',
+      scheduleItemId: 'debt_schedule_lock_paid',
+      amount: '25.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000023',
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_schedule_lock', {
+      expectedVersion: 1,
+      description: 'Retain unpaid installment',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        { amount: '25.00', dueDate: '2026-09-30' },
+        {
+          id: 'debt_schedule_lock_unpaid',
+          amount: '75.00',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_SCHEDULE_ITEM_HAS_PAYMENTS',
+    });
+    expect(await readDebtWithScheduleRows('debt_schedule_lock')).toMatchObject([
+      { schedule_id: 'debt_schedule_lock_paid', schedule_amount: '50.00' },
+      { schedule_id: 'debt_schedule_lock_unpaid', schedule_amount: '50.00' },
+    ]);
+  });
+
+  it('rejects reducing a paid schedule item below its received amount', async () => {
+    const owner = await signUpOwner('debt-amount-lock-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_amount_lock',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_amount_lock',
+      scheduleItemId: 'debt_amount_lock_schedule',
+      amount: '25.30',
+      idempotencyKey: '00000000-0000-4000-8000-000000000024',
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_amount_lock', {
+      expectedVersion: 1,
+      description: 'Too small',
+      totalAmount: '20.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: 'debt_amount_lock_schedule',
+          amount: '20.00',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_SCHEDULE_ITEM_AMOUNT_BELOW_PAID',
+    });
+    expect(await readDebtWithScheduleRows('debt_amount_lock')).toMatchObject([
+      {
+        debt_version: 1,
+        schedule_amount: '100.00',
+      },
+    ]);
+  });
+
+  it('allows increasing a paid schedule item without losing its payment history', async () => {
+    const owner = await signUpOwner('debt-safe-payment-edit-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_safe_payment_edit',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_safe_payment_edit',
+      scheduleItemId: 'debt_safe_payment_edit_schedule',
+      amount: '25.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000025',
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_safe_payment_edit', {
+      expectedVersion: 1,
+      description: 'Increased debt',
+      totalAmount: '125.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: 'debt_safe_payment_edit_schedule',
+          amount: '125.00',
+          dueDate: '2026-10-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      totalAmount: '125.00',
+      paidAmount: '25.00',
+      remainingAmount: '100.00',
+      paymentCount: 1,
+    });
   });
 
   it('does not reveal whether an inaccessible debt exists for replacement or deletion', async () => {
@@ -2084,5 +2514,34 @@ describe('debt routes', () => {
         ],
       );
     }
+  }
+
+  function insertPayment({
+    id,
+    scheduleItemId,
+    amount,
+    idempotencyKey,
+  }: {
+    id: string;
+    scheduleItemId: string;
+    amount: string;
+    idempotencyKey: string;
+  }): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "payments" (
+          "id",
+          "schedule_item_id",
+          "amount",
+          "payment_date",
+          "idempotency_key",
+          "request_fingerprint",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, '2026-09-15'::date, $4::uuid, $1, now(), now())
+      `,
+      [id, scheduleItemId, amount, idempotencyKey],
+    );
   }
 });

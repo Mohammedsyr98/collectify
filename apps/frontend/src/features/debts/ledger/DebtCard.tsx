@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
@@ -15,10 +15,16 @@ export function DebtCard({
   debt,
   onEdit,
   onDelete,
+  onRecordPayment,
 }: {
   debt: DebtResponse;
   onDelete?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
   onEdit?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
+  onRecordPayment: (
+    debt: DebtResponse,
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
@@ -60,9 +66,21 @@ export function DebtCard({
       </header>
 
       {debt.paymentPlanType === 'onePayment' ? (
-        <OnePaymentSummary debt={debt} locale={locale} />
+        <OnePaymentSummary
+          debt={debt}
+          locale={locale}
+          onRecordPayment={(scheduleItemId, trigger) =>
+            onRecordPayment(debt, scheduleItemId, trigger)
+          }
+        />
       ) : (
-        <InstallmentSummary debt={debt} locale={locale} />
+        <InstallmentSummary
+          debt={debt}
+          locale={locale}
+          onRecordPayment={(scheduleItemId, trigger) =>
+            onRecordPayment(debt, scheduleItemId, trigger)
+          }
+        />
       )}
     </article>
   );
@@ -71,9 +89,14 @@ export function DebtCard({
 function InstallmentSummary({
   debt,
   locale,
+  onRecordPayment,
 }: {
   debt: Extract<DebtResponse, { paymentPlanType: 'installment' }>;
   locale: string;
+  onRecordPayment: (
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -152,6 +175,26 @@ function InstallmentSummary({
                   </time>
                   <TimingBadge timing={scheduleItem.timing} />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <FinancialMetric
+                    currency={debt.currency}
+                    label={t('debts.card.paid')}
+                    locale={locale}
+                    value={scheduleItem.paidAmount}
+                  />
+                  <FinancialMetric
+                    currency={debt.currency}
+                    label={t('debts.card.remaining')}
+                    locale={locale}
+                    value={scheduleItem.remainingAmount}
+                  />
+                </div>
+                <RecordPaymentButton
+                  isPaid={scheduleItem.paymentState === 'paid'}
+                  onSelect={(trigger) =>
+                    onRecordPayment(scheduleItem.id, trigger)
+                  }
+                />
               </li>
             ))}
           </ol>
@@ -164,9 +207,14 @@ function InstallmentSummary({
 function OnePaymentSummary({
   debt,
   locale,
+  onRecordPayment,
 }: {
   debt: Extract<DebtResponse, { paymentPlanType: 'onePayment' }>;
   locale: string;
+  onRecordPayment: (
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const scheduleItem = debt.scheduleItems[0];
@@ -187,7 +235,40 @@ function OnePaymentSummary({
           {formatDateOnly(scheduleItem?.dueDate, locale)}
         </time>
       </div>
+
+      {scheduleItem ? (
+        <RecordPaymentButton
+          isPaid={scheduleItem.paymentState === 'paid'}
+          onSelect={(trigger) => onRecordPayment(scheduleItem.id, trigger)}
+        />
+      ) : null}
     </>
+  );
+}
+
+function RecordPaymentButton({
+  isPaid,
+  onSelect,
+}: {
+  isPaid: boolean;
+  onSelect: (trigger: HTMLButtonElement) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      aria-disabled={isPaid}
+      className="inline-flex min-h-9 w-fit items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+      onClick={(event) => {
+        if (!isPaid) {
+          onSelect(event.currentTarget);
+        }
+      }}
+      type="button"
+    >
+      <CreditCard aria-hidden="true" size={15} strokeWidth={2.6} />
+      {t('debts.card.actions.recordPayment')}
+    </button>
   );
 }
 
@@ -199,8 +280,7 @@ function PaymentProgress({
   locale: string;
 }) {
   const { t } = useTranslation();
-  const paidAmount = '0.00';
-  const paidPercentage = 0;
+  const paidPercentage = resolvePaidPercentage(debt);
 
   return (
     <div className="grid gap-3 border-t border-border pt-3">
@@ -209,13 +289,13 @@ function PaymentProgress({
           currency={debt.currency}
           label={t('debts.card.paid')}
           locale={locale}
-          value={paidAmount}
+          value={debt.paidAmount}
         />
         <FinancialMetric
           currency={debt.currency}
           label={t('debts.card.remaining')}
           locale={locale}
-          value={debt.totalAmount}
+          value={debt.remainingAmount}
         />
       </div>
       <div className="grid grid-cols-[1fr_auto] items-center gap-2">
@@ -237,6 +317,19 @@ function PaymentProgress({
         <span className="text-[0.72rem] font-black text-muted-foreground">{paidPercentage}%</span>
       </div>
     </div>
+  );
+}
+
+function resolvePaidPercentage(debt: DebtResponse): number {
+  const totalAmount = Number(debt.totalAmount);
+  const paidAmount = Number(debt.paidAmount);
+
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    return 0;
+  }
+
+  return Math.round(
+    Math.min(1, Math.max(0, paidAmount / totalAmount)) * 100,
   );
 }
 

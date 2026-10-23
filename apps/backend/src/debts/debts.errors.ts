@@ -22,6 +22,48 @@ const debtApiErrors = {
     },
     status: HttpStatus.CONFLICT,
   },
+  [debtApiErrorCode.debtHasPayments]: {
+    response: {
+      code: debtApiErrorCode.debtHasPayments,
+      message: 'A debt with recorded payments cannot be deleted.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
+  [debtApiErrorCode.debtCurrencyChangeBlocked]: {
+    response: {
+      code: debtApiErrorCode.debtCurrencyChangeBlocked,
+      message: 'Currency cannot be changed after a payment is recorded.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
+  [debtApiErrorCode.debtPaymentPlanChangeBlocked]: {
+    response: {
+      code: debtApiErrorCode.debtPaymentPlanChangeBlocked,
+      message: 'Payment plan cannot be changed after a payment is recorded.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
+  [debtApiErrorCode.debtScheduleItemHasPayments]: {
+    response: {
+      code: debtApiErrorCode.debtScheduleItemHasPayments,
+      message: 'A schedule item with recorded payments cannot be removed.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
+  [debtApiErrorCode.debtScheduleItemAmountBelowPaid]: {
+    response: {
+      code: debtApiErrorCode.debtScheduleItemAmountBelowPaid,
+      message: 'A schedule item amount cannot be reduced below payments received.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
+  [debtApiErrorCode.debtTotalAmountBelowPaid]: {
+    response: {
+      code: debtApiErrorCode.debtTotalAmountBelowPaid,
+      message: 'Debt total cannot be reduced below payments received.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
 } as const;
 
 const debtValidationMessages = {
@@ -61,7 +103,13 @@ export function resolveDebtValidationMessage(message: string): string {
 export function debtException(
   code:
     | typeof debtApiErrorCode.debtNotFound
-    | typeof debtApiErrorCode.debtVersionConflict,
+    | typeof debtApiErrorCode.debtVersionConflict
+    | typeof debtApiErrorCode.debtHasPayments
+    | typeof debtApiErrorCode.debtCurrencyChangeBlocked
+    | typeof debtApiErrorCode.debtPaymentPlanChangeBlocked
+    | typeof debtApiErrorCode.debtScheduleItemHasPayments
+    | typeof debtApiErrorCode.debtScheduleItemAmountBelowPaid
+    | typeof debtApiErrorCode.debtTotalAmountBelowPaid,
 ): HttpException {
   const error = debtApiErrors[code];
 

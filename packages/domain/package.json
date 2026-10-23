@@ -8,11 +8,23 @@
       "types": "./src/debt-plan/index.ts",
       "import": "./dist/debt-plan/index.js",
       "default": "./dist/debt-plan/index.js"
+    },
+    "./money": {
+      "types": "./src/money/index.ts",
+      "import": "./dist/money/index.js",
+      "default": "./dist/money/index.js"
+    },
+    "./schedule-item-payment": {
+      "types": "./src/schedule-item-payment/index.ts",
+      "import": "./dist/schedule-item-payment/index.js",
+      "default": "./dist/schedule-item-payment/index.js"
     }
   },
   "typesVersions": {
     "*": {
-      "debt-plan": ["./src/debt-plan/index.ts"]
+      "debt-plan": ["./src/debt-plan/index.ts"],
+      "money": ["./src/money/index.ts"],
+      "schedule-item-payment": ["./src/schedule-item-payment/index.ts"]
     }
   },
   "scripts": {

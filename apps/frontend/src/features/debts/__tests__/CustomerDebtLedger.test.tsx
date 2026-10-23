@@ -93,6 +93,38 @@ describe('CustomerDebtLedger', () => {
     expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
   });
 
+  it('renders server-provided debt payment progress', async () => {
+    renderLedger([
+      createDebtFixture(baseCustomer.id, {
+        totalAmount: '100.00',
+        paidAmount: '25.30',
+        remainingAmount: '74.70',
+        paymentState: 'partiallyPaid',
+        paymentCount: 2,
+        scheduleItems: [
+          {
+            id: 'schedule_123',
+            position: 1,
+            amount: '100.00',
+            paidAmount: '25.30',
+            remainingAmount: '74.70',
+            paymentState: 'partiallyPaid',
+            paymentCount: 2,
+            dueDate: '2026-09-30',
+            timing: 'upcoming',
+          },
+        ],
+      }),
+    ]);
+
+    const debtCard = await getDebtCard('Website redesign');
+    expect(within(debtCard).getByText('$25.30')).toBeInTheDocument();
+    expect(within(debtCard).getByText('$74.70')).toBeInTheDocument();
+    expect(
+      within(debtCard).getByRole('progressbar'),
+    ).toHaveAttribute('aria-valuenow', '25');
+  });
+
   it('renders an installment count and offers editing', async () => {
     const installmentDebt: DebtResponse = {
       ...createdDebt,
@@ -103,6 +135,10 @@ describe('CustomerDebtLedger', () => {
           id: 'schedule_installment_1',
           position: 1,
           amount: '60.00',
+          paidAmount: '0.00',
+          remainingAmount: '60.00',
+          paymentState: 'unpaid',
+          paymentCount: 0,
           dueDate: '2026-09-30',
           timing: 'upcoming',
         },
@@ -110,6 +146,10 @@ describe('CustomerDebtLedger', () => {
           id: 'schedule_installment_2',
           position: 2,
           amount: '65.50',
+          paidAmount: '0.00',
+          remainingAmount: '65.50',
+          paymentState: 'unpaid',
+          paymentCount: 0,
           dueDate: '2026-10-30',
           timing: 'upcoming',
         },
@@ -198,6 +238,60 @@ describe('CustomerDebtLedger', () => {
         name: 'Installment schedule for Website redesign installments',
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it('renders server-provided payment details in expanded installment rows', async () => {
+    const user = userEvent.setup();
+    renderLedger([
+      createInstallmentDebtFixture(baseCustomer.id, {
+        paidAmount: '50.00',
+        remainingAmount: '50.00',
+        paymentState: 'partiallyPaid',
+        paymentCount: 2,
+        scheduleItems: [
+          {
+            id: 'schedule_installment_1',
+            position: 1,
+            amount: '60.00',
+            paidAmount: '40.00',
+            remainingAmount: '20.00',
+            paymentState: 'partiallyPaid',
+            paymentCount: 1,
+            dueDate: '2026-09-30',
+            timing: 'upcoming',
+          },
+          {
+            id: 'schedule_installment_2',
+            position: 2,
+            amount: '40.00',
+            paidAmount: '10.00',
+            remainingAmount: '30.00',
+            paymentState: 'partiallyPaid',
+            paymentCount: 1,
+            dueDate: '2026-10-30',
+            timing: 'upcoming',
+          },
+        ],
+      }),
+    ]);
+
+    const debtCard = await getDebtCard('Website redesign installments');
+    await user.click(
+      within(debtCard).getByRole('button', { name: 'View installments' }),
+    );
+
+    const rows = within(
+      within(debtCard).getByRole('region', {
+        name: 'Installment schedule for Website redesign installments',
+      }),
+    ).getAllByRole('listitem');
+
+    expect(rows[0]).toHaveTextContent('$60.00');
+    expect(rows[0]).toHaveTextContent('$40.00');
+    expect(rows[0]).toHaveTextContent('$20.00');
+    expect(rows[1]).toHaveTextContent('$40.00');
+    expect(rows[1]).toHaveTextContent('$10.00');
+    expect(rows[1]).toHaveTextContent('$30.00');
   });
 
   it.each([
@@ -349,7 +443,7 @@ describe('CustomerDebtLedger', () => {
     expect(within(debtCard).getByText('Tek ödeme')).toBeInTheDocument();
     expect(within(debtCard).getByText('Vadesi bugün')).toBeInTheDocument();
   });
-  it('localizes installment expansion and keeps schedule amounts bidi-isolated in Arabic', async () => {
+  it('localizes installment expansion and isolates all schedule money in Arabic', async () => {
     window.localStorage.setItem(localeStorageKey, 'ar');
     const user = userEvent.setup();
 
@@ -364,7 +458,7 @@ describe('CustomerDebtLedger', () => {
       name: 'جدول الأقساط لـ Website redesign installments',
     });
 
-    expect(schedule.querySelectorAll('bdi[dir="ltr"]')).toHaveLength(4);
+    expect(schedule.querySelectorAll('bdi[dir="ltr"]')).toHaveLength(12);
     expect(within(schedule).getAllByText('متأخر')).toHaveLength(2);
     expect(within(schedule).getByText('مستحق اليوم')).toBeInTheDocument();
   });
