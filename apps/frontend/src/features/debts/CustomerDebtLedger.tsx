@@ -15,6 +15,8 @@ import {
   useReplaceDebtMutation,
 } from './ledger/debtQueries';
 import { useDebtListView } from './ledger/useDebtListView';
+import { PaymentDrawer } from '../payments/editor/PaymentDrawer';
+import { useRecordPaymentMutation } from '../payments/paymentQueries';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 
@@ -22,6 +24,11 @@ type ActiveDebtAction =
   | { kind: 'create'; currency: Currency }
   | { kind: 'delete'; debt: DebtResponse }
   | { kind: 'edit'; debt: DebtResponse }
+  | {
+      kind: 'recordPayment';
+      debt: DebtResponse;
+      scheduleItemId: string;
+    }
   | null;
 
 export function CustomerDebtLedger({
@@ -51,6 +58,10 @@ export function CustomerDebtLedger({
       returnFocusRef.current = addDebtButtonRef.current;
       setActiveDebtAction(null);
     },
+  });
+  const { recordPayment } = useRecordPaymentMutation({
+    customerId,
+    onRecorded: () => setActiveDebtAction(null),
   });
   const debtStatus = debtQuery.status;
   const isRetrying = debtStatus.status === 'error' && debtStatus.isRetrying;
@@ -175,6 +186,14 @@ export function CustomerDebtLedger({
                     kind: 'edit',
                   });
                 }}
+                onRecordPayment={(selectedDebt, scheduleItemId, trigger) => {
+                  returnFocusRef.current = trigger;
+                  setActiveDebtAction({
+                    debt: selectedDebt,
+                    kind: 'recordPayment',
+                    scheduleItemId,
+                  });
+                }}
               />
             ))}
           </div>
@@ -225,6 +244,15 @@ export function CustomerDebtLedger({
             replaceDebt(activeDebtAction.debt.id, request)
           }
           returnFocusRef={returnFocusRef}
+        />
+      ) : null}
+      {activeDebtAction?.kind === 'recordPayment' ? (
+        <PaymentDrawer
+          debt={activeDebtAction.debt}
+          onClose={() => setActiveDebtAction(null)}
+          onSubmit={recordPayment}
+          returnFocusRef={returnFocusRef}
+          targetScheduleItemId={activeDebtAction.scheduleItemId}
         />
       ) : null}
     </>

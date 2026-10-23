@@ -57,6 +57,7 @@ describe('PaymentDrawer', () => {
     expect(within(drawer).getByText('$45.05')).toBeInTheDocument();
     expect(within(drawer).getByText('$85.05')).toBeInTheDocument();
     expect(within(drawer).getByLabelText('Payment amount')).toHaveFocus();
+    expect(within(drawer).getByLabelText('Payment amount')).toHaveValue('');
 
     await user.type(within(drawer).getByLabelText('Payment amount'), '12.30');
 

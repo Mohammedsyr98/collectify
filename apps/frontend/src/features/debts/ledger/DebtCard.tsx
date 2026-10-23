@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
@@ -15,10 +15,16 @@ export function DebtCard({
   debt,
   onEdit,
   onDelete,
+  onRecordPayment,
 }: {
   debt: DebtResponse;
   onDelete?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
   onEdit?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
+  onRecordPayment: (
+    debt: DebtResponse,
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
@@ -60,9 +66,21 @@ export function DebtCard({
       </header>
 
       {debt.paymentPlanType === 'onePayment' ? (
-        <OnePaymentSummary debt={debt} locale={locale} />
+        <OnePaymentSummary
+          debt={debt}
+          locale={locale}
+          onRecordPayment={(scheduleItemId, trigger) =>
+            onRecordPayment(debt, scheduleItemId, trigger)
+          }
+        />
       ) : (
-        <InstallmentSummary debt={debt} locale={locale} />
+        <InstallmentSummary
+          debt={debt}
+          locale={locale}
+          onRecordPayment={(scheduleItemId, trigger) =>
+            onRecordPayment(debt, scheduleItemId, trigger)
+          }
+        />
       )}
     </article>
   );
@@ -71,9 +89,14 @@ export function DebtCard({
 function InstallmentSummary({
   debt,
   locale,
+  onRecordPayment,
 }: {
   debt: Extract<DebtResponse, { paymentPlanType: 'installment' }>;
   locale: string;
+  onRecordPayment: (
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -166,6 +189,12 @@ function InstallmentSummary({
                     value={scheduleItem.remainingAmount}
                   />
                 </div>
+                <RecordPaymentButton
+                  isPaid={scheduleItem.paymentState === 'paid'}
+                  onSelect={(trigger) =>
+                    onRecordPayment(scheduleItem.id, trigger)
+                  }
+                />
               </li>
             ))}
           </ol>
@@ -178,9 +207,14 @@ function InstallmentSummary({
 function OnePaymentSummary({
   debt,
   locale,
+  onRecordPayment,
 }: {
   debt: Extract<DebtResponse, { paymentPlanType: 'onePayment' }>;
   locale: string;
+  onRecordPayment: (
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const scheduleItem = debt.scheduleItems[0];
@@ -201,7 +235,40 @@ function OnePaymentSummary({
           {formatDateOnly(scheduleItem?.dueDate, locale)}
         </time>
       </div>
+
+      {scheduleItem ? (
+        <RecordPaymentButton
+          isPaid={scheduleItem.paymentState === 'paid'}
+          onSelect={(trigger) => onRecordPayment(scheduleItem.id, trigger)}
+        />
+      ) : null}
     </>
+  );
+}
+
+function RecordPaymentButton({
+  isPaid,
+  onSelect,
+}: {
+  isPaid: boolean;
+  onSelect: (trigger: HTMLButtonElement) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      aria-disabled={isPaid}
+      className="inline-flex min-h-9 w-fit items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+      onClick={(event) => {
+        if (!isPaid) {
+          onSelect(event.currentTarget);
+        }
+      }}
+      type="button"
+    >
+      <CreditCard aria-hidden="true" size={15} strokeWidth={2.6} />
+      {t('debts.card.actions.recordPayment')}
+    </button>
   );
 }
 

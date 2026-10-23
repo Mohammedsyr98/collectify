@@ -94,7 +94,7 @@ export function PaymentDrawer({
   const targetLabel = target
     ? debt.paymentPlanType === 'installment'
       ? `${t('payments.drawer.targetLabel')} · ${target.position}`
-      : t('payments.drawer.targetLabel')
+      : t('payments.drawer.onePaymentTarget')
     : t('payments.drawer.targetLabel');
 
   return (

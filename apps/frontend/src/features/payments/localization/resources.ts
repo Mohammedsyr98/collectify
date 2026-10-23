@@ -11,6 +11,7 @@ export const paymentResources = {
           title: 'Record payment',
           description: 'Record a payment for {{description}}.',
           targetLabel: 'Payment target',
+          onePaymentTarget: 'One payment',
           targetRemainingLabel: 'Target remaining',
           debtRemainingLabel: 'Debt remaining',
           amountLabel: 'Payment amount',
@@ -30,7 +31,7 @@ export const paymentResources = {
         toast: {
           record: {
             successTitle: 'Payment recorded',
-            successDescription: 'The payment was recorded successfully.',
+            successDescription: 'The payment was recorded and balances were updated.',
             errorTitle: 'Payment could not be recorded',
           },
         },
@@ -47,6 +48,7 @@ export const paymentResources = {
           title: 'Ödeme kaydet',
           description: '{{description}} için ödeme kaydedin.',
           targetLabel: 'Ödeme hedefi',
+          onePaymentTarget: 'Tek ödeme',
           targetRemainingLabel: 'Hedef kalan',
           debtRemainingLabel: 'Borç kalan',
           amountLabel: 'Ödeme tutarı',
@@ -66,7 +68,7 @@ export const paymentResources = {
         toast: {
           record: {
             successTitle: 'Ödeme kaydedildi',
-            successDescription: 'Ödeme başarıyla kaydedildi.',
+            successDescription: 'Ödeme kaydedildi ve bakiyeler güncellendi.',
             errorTitle: 'Ödeme kaydedilemedi',
           },
         },
@@ -83,6 +85,7 @@ export const paymentResources = {
           title: 'تسجيل دفعة',
           description: 'تسجيل دفعة لـ {{description}}.',
           targetLabel: 'هدف الدفع',
+          onePaymentTarget: 'دفعة واحدة',
           targetRemainingLabel: 'المتبقي من الهدف',
           debtRemainingLabel: 'المتبقي من الدين',
           amountLabel: 'مبلغ الدفع',
@@ -102,7 +105,7 @@ export const paymentResources = {
         toast: {
           record: {
             successTitle: 'تم تسجيل الدفعة',
-            successDescription: 'تم تسجيل الدفعة بنجاح.',
+            successDescription: 'تم تسجيل الدفعة وتحديث الأرصدة.',
             errorTitle: 'تعذر تسجيل الدفعة',
           },
         },
