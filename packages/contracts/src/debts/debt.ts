@@ -171,11 +171,9 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled debt plan value: ${String(value)}`);
 }
 
-export const paymentStateSchema = z.enum([
-  'unpaid',
-  'partiallyPaid',
-  'paid',
-]);
+export const paymentStateSchema = z.enum(['unpaid', 'partiallyPaid', 'paid']);
+
+export const scheduleItemTimingSchema = z.enum(['upcoming', 'dueToday', 'overdue']);
 
 const paymentSummaryFields = {
   paidAmount: moneySchema,
@@ -190,7 +188,7 @@ const onePaymentScheduleItemSchema = z.object({
   amount: moneySchema,
   ...paymentSummaryFields,
   dueDate: dateOnlySyntaxSchema,
-  timing: z.enum(['upcoming', 'dueToday', 'overdue']),
+  timing: scheduleItemTimingSchema,
 });
 
 const installmentScheduleItemSchema = z.object({
@@ -199,7 +197,7 @@ const installmentScheduleItemSchema = z.object({
   amount: moneySchema,
   ...paymentSummaryFields,
   dueDate: dateOnlySyntaxSchema,
-  timing: z.enum(['upcoming', 'dueToday', 'overdue']),
+  timing: scheduleItemTimingSchema,
 });
 
 const installmentScheduleItemsSchema = z
@@ -268,5 +266,6 @@ export type CreateDebtRequest = z.infer<typeof createDebtRequestSchema>;
 export type ReplaceDebtRequest = z.infer<typeof replaceDebtRequestSchema>;
 export type DebtListQuery = z.infer<typeof debtListQuerySchema>;
 export type PaymentState = z.infer<typeof paymentStateSchema>;
+export type ScheduleItemTiming = z.infer<typeof scheduleItemTimingSchema>;
 export type DebtResponse = z.infer<typeof debtResponseSchema>;
 export type DebtListResponse = z.infer<typeof debtListResponseSchema>;
