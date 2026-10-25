@@ -15,7 +15,6 @@ const validOnePaymentTarget = {
   debtDescription: 'Website redesign',
   currency: 'USD',
   debtVersion: 3,
-  debtRemainingAmount: '100.00',
   amount: '125.50',
   remainingAmount: '100.00',
   dueDate: '2026-10-30',
@@ -28,7 +27,7 @@ const validInstallmentTarget = {
   ...validOnePaymentTarget,
   scheduleItemId: 'schedule_target_installment',
   debtId: 'debt_target_installment',
-  plan: { type: 'installment', position: 2, itemCount: 6 },
+  plan: { type: 'installment', position: 2 },
 } as const;
 
 describe('payment target query contract', () => {
@@ -67,7 +66,7 @@ describe('payment target response contract', () => {
     expect(paymentTargetSchema.parse(validOnePaymentTarget)).toEqual(validOnePaymentTarget);
   });
 
-  it('accepts an installment target with its full-plan context', () => {
+  it('accepts an installment target', () => {
     expect(paymentTargetSchema.parse(validInstallmentTarget)).toEqual(validInstallmentTarget);
   });
 

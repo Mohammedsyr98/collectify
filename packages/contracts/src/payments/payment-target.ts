@@ -22,7 +22,6 @@ export const paymentTargetPlanSchema = z.discriminatedUnion('type', [
     .object({
       type: z.literal('installment'),
       position: z.number().int().min(1),
-      itemCount: z.number().int().min(2).max(60),
     })
     .strict(),
 ]);
@@ -47,7 +46,6 @@ export const paymentTargetSchema = z
     debtDescription: z.string().min(1).max(200),
     currency: currencySchema,
     debtVersion: z.number().int().positive(),
-    debtRemainingAmount: moneySchema,
     amount: moneySchema,
     remainingAmount: moneySchema,
     dueDate: dateOnlySchema,
