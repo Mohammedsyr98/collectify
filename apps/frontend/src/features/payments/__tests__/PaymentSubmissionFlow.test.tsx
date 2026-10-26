@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   paymentApiErrorCode,
-  type DebtResponse,
+  type PaymentTarget,
   type RecordPaymentRequest,
   type RecordPaymentResponse,
 } from '@collectify/contracts';
@@ -16,9 +16,9 @@ import { createAppI18nInstance } from '../../../app/localization/i18n';
 import { getBackendUrl } from '../../../shared/api/http';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
-import { createDebtFixture } from '../../debts/__tests__/debtTestData';
 import { PaymentDrawer } from '../editor/PaymentDrawer';
 import { useRecordPaymentMutation } from '../paymentQueries';
+import { createPaymentTargetFixture } from './paymentTestData';
 
 describe('payment submission flow', () => {
   beforeEach(() => {
@@ -32,25 +32,22 @@ describe('payment submission flow', () => {
   it('reuses the same idempotency key when an unchanged payment is retried after an uncertain response', async () => {
     const user = userEvent.setup();
     const requests: RecordPaymentRequest[] = [];
-    const debt = createDebtFixture('customer_123');
+    const target = createPaymentTargetFixture();
 
     server.use(
-      http.post(
-        `${getBackendUrl()}/customers/:customerId/payments`,
-        async ({ request }) => {
-          const body = (await request.json()) as RecordPaymentRequest;
-          requests.push(body);
+      http.post(`${getBackendUrl()}/customers/:customerId/payments`, async ({ request }) => {
+        const body = (await request.json()) as RecordPaymentRequest;
+        requests.push(body);
 
-          if (requests.length === 1) {
-            return HttpResponse.error();
-          }
+        if (requests.length === 1) {
+          return HttpResponse.error();
+        }
 
-          return HttpResponse.json(createPaymentResponse(body));
-        },
-      ),
+        return HttpResponse.json(createPaymentResponse(body));
+      }),
     );
 
-    renderWithAppProviders(<PaymentFlowHarness debt={debt} />);
+    renderWithAppProviders(<PaymentFlowHarness target={target} />);
     const drawer = screen.getByRole('dialog', { name: 'Record payment' });
     const amountInput = within(drawer).getByLabelText('Payment amount');
     await user.type(amountInput, '10.00');
@@ -66,31 +63,26 @@ describe('payment submission flow', () => {
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1]).toEqual(requests[0]);
     expect(screen.queryByRole('dialog', { name: 'Record payment' })).not.toBeInTheDocument();
-    expect(
-      await screen.findByRole('status', { name: 'Payment recorded' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('status', { name: 'Payment recorded' })).toBeInTheDocument();
   });
 
   it('uses a new idempotency key after the failed payment draft changes', async () => {
     const user = userEvent.setup();
     const requests: RecordPaymentRequest[] = [];
-    const debt = createDebtFixture('customer_123');
+    const target = createPaymentTargetFixture();
 
     server.use(
-      http.post(
-        `${getBackendUrl()}/customers/:customerId/payments`,
-        async ({ request }) => {
-          const body = (await request.json()) as RecordPaymentRequest;
-          requests.push(body);
+      http.post(`${getBackendUrl()}/customers/:customerId/payments`, async ({ request }) => {
+        const body = (await request.json()) as RecordPaymentRequest;
+        requests.push(body);
 
-          return requests.length === 1
-            ? HttpResponse.error()
-            : HttpResponse.json(createPaymentResponse(body));
-        },
-      ),
+        return requests.length === 1
+          ? HttpResponse.error()
+          : HttpResponse.json(createPaymentResponse(body));
+      }),
     );
 
-    renderWithAppProviders(<PaymentFlowHarness debt={debt} />);
+    renderWithAppProviders(<PaymentFlowHarness target={target} />);
     const drawer = screen.getByRole('dialog', { name: 'Record payment' });
     const amountInput = within(drawer).getByLabelText('Payment amount');
     await user.type(amountInput, '10.00');
@@ -109,7 +101,7 @@ describe('payment submission flow', () => {
 
   it('shows a version-conflict toast and preserves the payment draft', async () => {
     const user = userEvent.setup();
-    const debt = createDebtFixture('customer_123');
+    const target = createPaymentTargetFixture();
     const backendMessage = 'Backend conflict wording.';
     const i18n = createAppI18nInstance('en');
 
@@ -125,7 +117,7 @@ describe('payment submission flow', () => {
       ),
     );
 
-    renderWithAppProviders(<PaymentFlowHarness debt={debt} />);
+    renderWithAppProviders(<PaymentFlowHarness target={target} />);
     const drawer = screen.getByRole('dialog', { name: 'Record payment' });
     const amountInput = within(drawer).getByLabelText('Payment amount');
     const noteInput = within(drawer).getByLabelText('Note (optional)');
@@ -146,26 +138,24 @@ describe('payment submission flow', () => {
   });
 });
 
-function PaymentFlowHarness({ debt }: { debt: DebtResponse }) {
+function PaymentFlowHarness({ target }: { target: PaymentTarget }) {
   const [isOpen, setIsOpen] = useState(true);
   const { recordPayment } = useRecordPaymentMutation({
-    customerId: debt.customerId,
+    customerId: 'customer_123',
     onRecorded: () => setIsOpen(false),
   });
 
   return isOpen ? (
     <PaymentDrawer
-      debt={debt}
+      customerId="customer_123"
+      initialTarget={target}
       onClose={() => setIsOpen(false)}
       onSubmit={recordPayment}
-      targetScheduleItemId={debt.scheduleItems[0].id}
     />
   ) : null;
 }
 
-function createPaymentResponse(
-  request: RecordPaymentRequest,
-): RecordPaymentResponse {
+function createPaymentResponse(request: RecordPaymentRequest): RecordPaymentResponse {
   return {
     payment: {
       id: 'payment_123',
@@ -179,4 +169,3 @@ function createPaymentResponse(
     },
   };
 }
-

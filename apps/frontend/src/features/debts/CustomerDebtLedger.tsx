@@ -2,7 +2,7 @@ import { ReceiptText, Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { Currency, DebtResponse } from '@collectify/contracts';
+import type { Currency, DebtResponse, PaymentTarget } from '@collectify/contracts';
 
 import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
 import { SearchField } from '../../shared/ui/search/SearchField';
@@ -26,8 +26,7 @@ type ActiveDebtAction =
   | { kind: 'edit'; debt: DebtResponse }
   | {
       kind: 'recordPayment';
-      debt: DebtResponse;
-      scheduleItemId: string;
+      target: PaymentTarget;
     }
   | null;
 
@@ -40,8 +39,7 @@ export function CustomerDebtLedger({
 }) {
   const { t } = useTranslation();
   const debtQuery = useDebtListView(customerId);
-  const [activeDebtAction, setActiveDebtAction] =
-    useState<ActiveDebtAction>(null);
+  const [activeDebtAction, setActiveDebtAction] = useState<ActiveDebtAction>(null);
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const { createDebt, isCreating } = useCreateDebtMutation({
@@ -162,9 +160,7 @@ export function CustomerDebtLedger({
         ) : debtQuery.data?.items.length === 0 ? (
           <div className="grid place-items-center gap-2 self-stretch rounded-[5px] border border-dashed border-border bg-background p-5 text-center text-muted-foreground">
             <ReceiptText aria-hidden="true" size={22} strokeWidth={2.2} />
-            <p className="m-0 text-[0.82rem] font-bold">
-              {t('debts.section.empty')}
-            </p>
+            <p className="m-0 text-[0.82rem] font-bold">{t('debts.section.empty')}</p>
           </div>
         ) : (
           <div className="grid gap-3">
@@ -187,11 +183,36 @@ export function CustomerDebtLedger({
                   });
                 }}
                 onRecordPayment={(selectedDebt, scheduleItemId, trigger) => {
+                  const scheduleItem = selectedDebt.scheduleItems.find(
+                    ({ id }) => id === scheduleItemId,
+                  );
+
+                  if (!scheduleItem || scheduleItem.paymentState === 'paid') {
+                    return;
+                  }
+
                   returnFocusRef.current = trigger;
                   setActiveDebtAction({
-                    debt: selectedDebt,
                     kind: 'recordPayment',
-                    scheduleItemId,
+                    target: {
+                      scheduleItemId: scheduleItem.id,
+                      debtId: selectedDebt.id,
+                      debtDescription: selectedDebt.description,
+                      currency: selectedDebt.currency,
+                      debtVersion: selectedDebt.version,
+                      amount: scheduleItem.amount,
+                      remainingAmount: scheduleItem.remainingAmount,
+                      dueDate: scheduleItem.dueDate,
+                      timing: scheduleItem.timing,
+                      paymentState: scheduleItem.paymentState,
+                      plan:
+                        selectedDebt.paymentPlanType === 'installment'
+                          ? {
+                              type: 'installment',
+                              position: scheduleItem.position,
+                            }
+                          : { type: 'onePayment' },
+                    },
                   });
                 }}
               />
@@ -226,10 +247,7 @@ export function CustomerDebtLedger({
           isDeleting={isDeleting}
           onClose={() => setActiveDebtAction(null)}
           onConfirm={() => {
-            void deleteDebt(
-              activeDebtAction.debt.id,
-              activeDebtAction.debt.description,
-            );
+            void deleteDebt(activeDebtAction.debt.id, activeDebtAction.debt.description);
           }}
           returnFocusRef={returnFocusRef}
         />
@@ -240,19 +258,17 @@ export function CustomerDebtLedger({
           isSubmitting={isReplacing}
           mode="edit"
           onClose={() => setActiveDebtAction(null)}
-          onSubmit={(request) =>
-            replaceDebt(activeDebtAction.debt.id, request)
-          }
+          onSubmit={(request) => replaceDebt(activeDebtAction.debt.id, request)}
           returnFocusRef={returnFocusRef}
         />
       ) : null}
       {activeDebtAction?.kind === 'recordPayment' ? (
         <PaymentDrawer
-          debt={activeDebtAction.debt}
+          customerId={customerId}
+          initialTarget={activeDebtAction.target}
           onClose={() => setActiveDebtAction(null)}
           onSubmit={recordPayment}
           returnFocusRef={returnFocusRef}
-          targetScheduleItemId={activeDebtAction.scheduleItemId}
         />
       ) : null}
     </>
