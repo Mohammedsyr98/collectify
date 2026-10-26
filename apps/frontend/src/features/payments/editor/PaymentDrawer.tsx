@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
-import { useEffect, useId, useState, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { FormProvider, useController, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -59,6 +59,7 @@ export function PaymentDrawer({
   const today = getIstanbulBusinessDate();
   const [target, setTarget] = useState(initialTarget);
   const [view, setView] = useState<'form' | 'selection'>(initialTarget ? 'form' : 'selection');
+  const drawerContentRef = useRef<HTMLDivElement>(null);
   const formSchema = createPaymentFormSchema(target?.remainingAmount ?? '0.00', today);
   const form = useForm<PaymentFormInput, unknown, PaymentFormOutput>({
     defaultValues: {
@@ -74,6 +75,14 @@ export function PaymentDrawer({
   const noteId = useId();
   const noteField = useController({ control: form.control, name: 'note' });
   const noteError = noteField.fieldState.error?.message;
+
+  useEffect(() => {
+    if (view !== 'form' || !target) {
+      return;
+    }
+
+    drawerContentRef.current?.querySelector<HTMLInputElement>('input[name="amount"]')?.focus();
+  }, [target, view]);
 
   const requestClose = () => {
     if (isSubmitting) {
@@ -120,6 +129,7 @@ export function PaymentDrawer({
         <Dialog.Content
           aria-describedby="payment-drawer-description"
           className="fixed inset-y-0 end-0 z-10 grid w-full max-w-[460px] content-start gap-4 overflow-y-auto border-s border-border bg-card p-5 shadow-[var(--shadow-md)]"
+          ref={drawerContentRef}
           onEscapeKeyDown={(event) => {
             if (isSubmitting) {
               event.preventDefault();
@@ -341,6 +351,11 @@ function PaymentTargetSelection({
   const [paymentState, setPaymentState] = useState<PaymentTargetStatusFilter>('');
   const [page, setPage] = useState(1);
   const [pickerMode, setPickerMode] = useState<'unknown' | 'simple' | 'large'>('unknown');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const firstTargetRef = useRef<HTMLButtonElement>(null);
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  const hasFocusedInitialPickerRef = useRef(false);
+  const pendingPageFocusRef = useRef(false);
 
   const targetQuery = usePaymentTargetListQuery(customerId, {
     page,
@@ -368,6 +383,33 @@ function PaymentTargetSelection({
   const isLargePicker =
     pickerMode === 'large' || (!effectiveSearch && (targetQuery.data?.totalItems ?? 0) > 5);
   const isLoadingResults = targetQuery.isPending || targetQuery.isFetching;
+
+  useEffect(() => {
+    if (!targetQuery.data || isLoadingResults || hasFocusedInitialPickerRef.current) {
+      return;
+    }
+
+    hasFocusedInitialPickerRef.current = true;
+    if (isLargePicker) {
+      searchInputRef.current?.focus();
+    } else if (targetQuery.data.totalItems >= 2) {
+      firstTargetRef.current?.focus();
+    }
+  }, [isLargePicker, isLoadingResults, targetQuery.data]);
+
+  useEffect(() => {
+    if (!targetQuery.data || isLoadingResults || !pendingPageFocusRef.current) {
+      return;
+    }
+
+    pendingPageFocusRef.current = false;
+    firstTargetRef.current?.focus();
+
+    if (document.activeElement !== firstTargetRef.current) {
+      resultsHeadingRef.current?.focus();
+    }
+  }, [isLoadingResults, targetQuery.data]);
+
   const loadingState = (
     <>
       <p aria-label={t('payments.drawer.loadingTargets')} className="sr-only" role="status">
@@ -396,10 +438,38 @@ function PaymentTargetSelection({
       </p>
     </div>
   );
+  const errorState = (
+    <section
+      aria-label={t('payments.drawer.targetLoadErrorTitle')}
+      className="grid gap-3 self-start rounded-[5px] border border-border bg-background p-4"
+      role="alert"
+    >
+      <div className="grid gap-1">
+        <h3 className="m-0 text-[0.95rem] font-black tracking-normal">
+          {t('payments.drawer.targetLoadErrorTitle')}
+        </h3>
+        <p className="m-0 text-[0.86rem] text-muted-foreground">{t('errors.genericDescription')}</p>
+      </div>
+      <button
+        className="w-fit rounded-[5px] border border-border bg-card px-3 py-2 text-[0.78rem] font-extrabold text-foreground"
+        disabled={targetQuery.isFetching}
+        onClick={() => {
+          void targetQuery.refetch();
+        }}
+        type="button"
+      >
+        {t('app.error.retry')}
+      </button>
+    </section>
+  );
 
   return (
     <div className="grid gap-3">
-      <h2 className="m-0 text-base font-black text-foreground">
+      <h2
+        className="m-0 text-base font-black text-foreground"
+        ref={resultsHeadingRef}
+        tabIndex={-1}
+      >
         {t('payments.drawer.chooseTargetTitle')}
       </h2>
       {isLargePicker ? (
@@ -420,6 +490,7 @@ function PaymentTargetSelection({
                 setRawSearch(event.target.value);
               }}
               placeholder={t('payments.drawer.searchDebtDescriptions')}
+              ref={searchInputRef}
               type="search"
               value={rawSearch}
             />
@@ -453,19 +524,39 @@ function PaymentTargetSelection({
               </option>
             </select>
           </div>
+          {targetQuery.data && targetQuery.data.items.length > 0 ? (
+            <p aria-live="polite" className="sr-only" role="status">
+              {t('payments.drawer.targetRange', {
+                end:
+                  (targetQuery.data.page - 1) * targetQuery.data.pageSize +
+                  targetQuery.data.items.length,
+                start: (targetQuery.data.page - 1) * targetQuery.data.pageSize + 1,
+                total: targetQuery.data.totalItems,
+              })}
+            </p>
+          ) : null}
           {isLoadingResults ? (
             loadingState
+          ) : targetQuery.isError ? (
+            errorState
           ) : targetQuery.data?.items.length === 0 ? (
             emptyState
           ) : targetQuery.data ? (
             <>
-              <TargetOptions onSelect={onSelect} targets={targetQuery.data.items} />
+              <TargetOptions
+                firstTargetRef={firstTargetRef}
+                onSelect={onSelect}
+                targets={targetQuery.data.items}
+              />
               {targetQuery.data.totalPages > 1 ? (
                 <div className="flex items-center justify-between gap-3">
                   <button
                     className="min-h-9 rounded-[5px] border border-border bg-background px-3 text-[0.76rem] font-extrabold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={isLoadingResults || page === 1}
-                    onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+                    onClick={() => {
+                      pendingPageFocusRef.current = true;
+                      setPage((currentPage) => Math.max(1, currentPage - 1));
+                    }}
                     type="button"
                   >
                     {t('payments.drawer.previousPage')}
@@ -476,11 +567,12 @@ function PaymentTargetSelection({
                   <button
                     className="min-h-9 rounded-[5px] border border-border bg-background px-3 text-[0.76rem] font-extrabold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={isLoadingResults || page >= targetQuery.data.totalPages}
-                    onClick={() =>
+                    onClick={() => {
+                      pendingPageFocusRef.current = true;
                       setPage((currentPage) =>
                         Math.min(targetQuery.data?.totalPages ?? currentPage, currentPage + 1),
-                      )
-                    }
+                      );
+                    }}
                     type="button"
                   >
                     {t('payments.drawer.nextPage')}
@@ -492,21 +584,29 @@ function PaymentTargetSelection({
         </div>
       ) : isLoadingResults ? (
         loadingState
+      ) : targetQuery.isError ? (
+        errorState
       ) : targetQuery.data?.items.length === 0 ? (
         emptyState
       ) : targetQuery.data &&
         targetQuery.data.totalItems >= 2 &&
         targetQuery.data.totalItems <= 5 ? (
-        <TargetOptions onSelect={onSelect} targets={targetQuery.data.items} />
+        <TargetOptions
+          firstTargetRef={firstTargetRef}
+          onSelect={onSelect}
+          targets={targetQuery.data.items}
+        />
       ) : null}
     </div>
   );
 }
 
 function TargetOptions({
+  firstTargetRef,
   onSelect,
   targets,
 }: {
+  firstTargetRef: RefObject<HTMLButtonElement | null>;
   onSelect: (target: PaymentTarget) => void;
   targets: PaymentTarget[];
 }) {
@@ -540,7 +640,7 @@ function TargetOptions({
               {group.debtDescription}
             </h3>
             <div className="grid gap-2">
-              {group.targets.map((target) => {
+              {group.targets.map((target, targetIndex) => {
                 const planLabel =
                   target.plan.type === 'installment'
                     ? t('payments.drawer.installmentLabel', { position: target.plan.position })
@@ -562,6 +662,7 @@ function TargetOptions({
                     className="grid w-full cursor-pointer gap-2 rounded-[5px] border border-border bg-background p-3 text-start text-foreground transition hover:bg-muted"
                     key={target.scheduleItemId}
                     onClick={() => onSelect(target)}
+                    ref={groupIndex === 0 && targetIndex === 0 ? firstTargetRef : undefined}
                     type="button"
                   >
                     <div className="flex items-start justify-between gap-3">

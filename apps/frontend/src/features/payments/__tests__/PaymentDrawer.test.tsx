@@ -266,6 +266,56 @@ describe('PaymentDrawer', () => {
     expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
   });
 
+  it('shows a retryable error when payment targets cannot be loaded', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+    const recoveredTarget = createPaymentTargetFixture({
+      debtDescription: 'Recovered target',
+    });
+    const secondRecoveredTarget = createPaymentTargetFixture({
+      debtDescription: 'Another recovered target',
+      scheduleItemId: 'schedule_recovered_2',
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () => {
+        requestCount += 1;
+
+        if (requestCount === 1) {
+          return HttpResponse.text('Internal server error', { status: 500 });
+        }
+
+        return HttpResponse.json({
+          items: [recoveredTarget, secondRecoveredTarget],
+          page: 1,
+          pageSize: 10,
+          totalItems: 2,
+          totalPages: 1,
+        });
+      }),
+    );
+
+    renderWithAppProviders(
+      <PaymentDrawer
+        customerId="customer_123"
+        onClose={vi.fn()}
+        onSubmit={async () => undefined}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const errorState = await within(drawer).findByRole('alert', {
+      name: 'Could not load payment targets',
+    });
+    expect(errorState).toHaveTextContent('Something went wrong. Try again.');
+
+    await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
+
+    expect(
+      await within(drawer).findByRole('button', { name: /Recovered target/ }),
+    ).toBeInTheDocument();
+  });
+
   it('opens the payment form automatically when only one target is available', async () => {
     const target = createPaymentTargetFixture({ remainingAmount: '42.50' });
 
@@ -290,7 +340,7 @@ describe('PaymentDrawer', () => {
     );
 
     const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    expect(await within(drawer).findByLabelText('Payment amount')).toBeInTheDocument();
+    expect(await within(drawer).findByLabelText('Payment amount')).toHaveFocus();
     expect(within(drawer).getByText('$42.50')).toBeInTheDocument();
   });
 
@@ -326,15 +376,15 @@ describe('PaymentDrawer', () => {
     );
 
     const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    expect(
-      await within(drawer).findByRole('button', { name: /Office equipment/ }),
-    ).toBeInTheDocument();
+    const firstTarget = await within(drawer).findByRole('button', { name: /Office equipment/ });
+    expect(firstTarget).toHaveFocus();
     const rentTargetButton = within(drawer).getByRole('button', { name: /Warehouse rent/ });
     expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
 
     await user.click(rentTargetButton);
 
-    expect(await within(drawer).findByLabelText('Payment amount')).toBeInTheDocument();
+    const amountInput = await within(drawer).findByLabelText('Payment amount');
+    expect(amountInput).toHaveFocus();
     expect(within(drawer).getByText('$30.00')).toBeInTheDocument();
   });
 
@@ -489,9 +539,10 @@ describe('PaymentDrawer', () => {
     );
 
     const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    expect(
-      await within(drawer).findByRole('searchbox', { name: 'Search debt descriptions' }),
-    ).toBeInTheDocument();
+    const searchInput = await within(drawer).findByRole('searchbox', {
+      name: 'Search debt descriptions',
+    });
+    expect(searchInput).toHaveFocus();
     expect(within(drawer).getByRole('combobox', { name: 'Payment status' })).toBeInTheDocument();
     expect(within(drawer).getByRole('option', { name: 'All targets' })).toBeInTheDocument();
     expect(within(drawer).getAllByRole('button', { name: /Debt [1-6]/ })).toHaveLength(6);
@@ -550,7 +601,7 @@ describe('PaymentDrawer', () => {
     expect(requestedSearches).toContain('website');
     expect(
       within(drawer).getByRole('searchbox', { name: 'Search debt descriptions' }),
-    ).toBeInTheDocument();
+    ).toHaveFocus();
     expect(within(drawer).getByRole('combobox', { name: 'Payment status' })).toBeInTheDocument();
     expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
   });
@@ -661,7 +712,11 @@ describe('PaymentDrawer', () => {
 
     await user.click(nextPage);
 
-    expect(await within(drawer).findByRole('button', { name: /Debt 11/ })).toBeInTheDocument();
+    const secondPageButton = await within(drawer).findByRole('button', { name: /Debt 11/ });
+    expect(secondPageButton).toHaveFocus();
+    expect(within(drawer).getByRole('status')).toHaveTextContent(
+      'Showing 11–11 of 11 payment targets',
+    );
     expect(requestedPages).toEqual(['1', '2']);
   });
 
