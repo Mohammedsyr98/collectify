@@ -10,7 +10,10 @@ export function renderCustomerRoutes(initialEntries: string[] = ['/customers']) 
     <>
       <Routes>
         <Route element={<CustomersPage />} path="/customers" />
-        <Route element={<CustomerDetailsPage />} path="/customers/:customerId" />
+        <Route
+          element={<CustomerDetailsPage defaultCurrency="USD" />}
+          path="/customers/:customerId"
+        />
       </Routes>
       <RouterLocationProbe />
     </>,

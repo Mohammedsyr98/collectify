@@ -2,50 +2,35 @@ import { ReceiptText, Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { Currency, DebtResponse, PaymentTarget } from '@collectify/contracts';
+import type { DebtResponse } from '@collectify/contracts';
 
 import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
 import { SearchField } from '../../shared/ui/search/SearchField';
 import { DebtDrawer } from './editor/DebtDrawer';
 import { DebtCard } from './ledger/DebtCard';
 import { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
-import {
-  useCreateDebtMutation,
-  useDeleteDebtMutation,
-  useReplaceDebtMutation,
-} from './ledger/debtQueries';
+import { useDeleteDebtMutation, useReplaceDebtMutation } from './ledger/debtQueries';
 import { useDebtListView } from './ledger/useDebtListView';
-import { PaymentDrawer } from '../payments/editor/PaymentDrawer';
-import { useRecordPaymentMutation } from '../payments/paymentQueries';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 
 type ActiveDebtAction =
-  | { kind: 'create'; currency: Currency }
-  | { kind: 'delete'; debt: DebtResponse }
-  | { kind: 'edit'; debt: DebtResponse }
-  | {
-      kind: 'recordPayment';
-      target: PaymentTarget;
-    }
-  | null;
+  { kind: 'delete'; debt: DebtResponse } | { kind: 'edit'; debt: DebtResponse } | null;
 
 export function CustomerDebtLedger({
   customerId,
-  defaultCurrency,
+  onAddDebt,
+  onRecordPayment,
 }: {
   customerId: string;
-  defaultCurrency?: Currency;
+  onAddDebt: (trigger: HTMLButtonElement) => void;
+  onRecordPayment: (debt: DebtResponse, scheduleItemId: string, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
   const debtQuery = useDebtListView(customerId);
   const [activeDebtAction, setActiveDebtAction] = useState<ActiveDebtAction>(null);
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const { createDebt, isCreating } = useCreateDebtMutation({
-    customerId,
-    onCreated: () => setActiveDebtAction(null),
-  });
   const { isReplacing, replaceDebt } = useReplaceDebtMutation({
     customerId,
     onReplaced: () => setActiveDebtAction(null),
@@ -56,10 +41,6 @@ export function CustomerDebtLedger({
       returnFocusRef.current = addDebtButtonRef.current;
       setActiveDebtAction(null);
     },
-  });
-  const { recordPayment } = useRecordPaymentMutation({
-    customerId,
-    onRecorded: () => setActiveDebtAction(null),
   });
   const debtStatus = debtQuery.status;
   const isRetrying = debtStatus.status === 'error' && debtStatus.isRetrying;
@@ -78,18 +59,7 @@ export function CustomerDebtLedger({
           </h2>
           <button
             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-3 text-[0.78rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!defaultCurrency}
-            onClick={(event) => {
-              if (!defaultCurrency) {
-                return;
-              }
-
-              returnFocusRef.current = event.currentTarget;
-              setActiveDebtAction({
-                currency: defaultCurrency,
-                kind: 'create',
-              });
-            }}
+            onClick={(event) => onAddDebt(event.currentTarget)}
             ref={addDebtButtonRef}
             type="button"
           >
@@ -191,29 +161,7 @@ export function CustomerDebtLedger({
                     return;
                   }
 
-                  returnFocusRef.current = trigger;
-                  setActiveDebtAction({
-                    kind: 'recordPayment',
-                    target: {
-                      scheduleItemId: scheduleItem.id,
-                      debtId: selectedDebt.id,
-                      debtDescription: selectedDebt.description,
-                      currency: selectedDebt.currency,
-                      debtVersion: selectedDebt.version,
-                      amount: scheduleItem.amount,
-                      remainingAmount: scheduleItem.remainingAmount,
-                      dueDate: scheduleItem.dueDate,
-                      timing: scheduleItem.timing,
-                      paymentState: scheduleItem.paymentState,
-                      plan:
-                        selectedDebt.paymentPlanType === 'installment'
-                          ? {
-                              type: 'installment',
-                              position: scheduleItem.position,
-                            }
-                          : { type: 'onePayment' },
-                    },
-                  });
+                  onRecordPayment(selectedDebt, scheduleItem.id, trigger);
                 }}
               />
             ))}
@@ -232,15 +180,6 @@ export function CustomerDebtLedger({
         ) : null}
       </section>
 
-      {activeDebtAction?.kind === 'create' ? (
-        <DebtDrawer
-          defaultCurrency={activeDebtAction.currency}
-          isSubmitting={isCreating}
-          onClose={() => setActiveDebtAction(null)}
-          onSubmit={createDebt}
-          returnFocusRef={returnFocusRef}
-        />
-      ) : null}
       {activeDebtAction?.kind === 'delete' ? (
         <DebtDeletionDialog
           debt={activeDebtAction.debt}
@@ -259,15 +198,6 @@ export function CustomerDebtLedger({
           mode="edit"
           onClose={() => setActiveDebtAction(null)}
           onSubmit={(request) => replaceDebt(activeDebtAction.debt.id, request)}
-          returnFocusRef={returnFocusRef}
-        />
-      ) : null}
-      {activeDebtAction?.kind === 'recordPayment' ? (
-        <PaymentDrawer
-          customerId={customerId}
-          initialTarget={activeDebtAction.target}
-          onClose={() => setActiveDebtAction(null)}
-          onSubmit={recordPayment}
           returnFocusRef={returnFocusRef}
         />
       ) : null}

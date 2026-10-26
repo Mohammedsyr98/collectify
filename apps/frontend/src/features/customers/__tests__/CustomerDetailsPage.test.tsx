@@ -24,6 +24,7 @@ import {
 } from '../../debts/__tests__/debtTestData';
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
 import { CustomersPage } from '../CustomersPage';
+import { createPaymentTargetFixture } from '../../payments/__tests__/paymentTestData';
 import {
   baseCustomer,
   customerList,
@@ -60,7 +61,7 @@ const customerWithFinancialActivity = {
 
 function renderCustomerRoutes(
   initialEntries: string[],
-  { defaultCurrency }: { defaultCurrency?: Currency } = {},
+  { defaultCurrency = 'USD' }: { defaultCurrency?: Currency } = {},
 ) {
   return renderWithAppProviders(
     <>
@@ -129,8 +130,6 @@ describe('CustomerDetailsPage', () => {
     expect(screen.getByRole('region', { name: 'Payments' })).toHaveTextContent(
       'Payment history is not available yet.',
     );
-    expect(screen.getByRole('button', { name: 'Add debt' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Record payment' })).toBeDisabled();
     await waitFor(() => expect(detailsRequestCount).toBe(1));
   });
 
@@ -161,6 +160,159 @@ describe('CustomerDetailsPage', () => {
       await screen.findByRole('heading', { name: baseCustomer.name }),
     ).toBeInTheDocument();
     await waitFor(() => expect(debtRequestCount).toBe(1));
+  });
+
+  it('opens the payment form from the header action through the target workflow', async () => {
+    const user = userEvent.setup();
+    const customer = {
+      ...baseCustomer,
+      financialSummary: [
+        {
+          currency: 'USD' as const,
+          totalDebtAmount: '100.00',
+          totalPaidAmount: '25.00',
+          remainingAmount: '75.00',
+        },
+      ],
+    };
+    const target = createPaymentTargetFixture({
+      debtDescription: 'Header target',
+      remainingAmount: '75.00',
+    });
+    let targetRequestCount = 0;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(customer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () => {
+        targetRequestCount += 1;
+
+        return HttpResponse.json({
+          items: [target],
+          page: 1,
+          pageSize: 10,
+          totalItems: 1,
+          totalPages: 1,
+        });
+      }),
+    );
+
+    renderCustomerRoutes([`/customers/${customer.id}`]);
+
+    const headerPaymentButton = await screen.findByRole('button', {
+      name: 'Record payment',
+    });
+    await user.click(headerPaymentButton);
+
+    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
+    expect(await within(drawer).findByLabelText('Payment amount')).toBeInTheDocument();
+    expect(within(drawer).getByText('$75.00')).toBeInTheDocument();
+    expect(targetRequestCount).toBe(1);
+  });
+
+  it('switches the header action to Add debt after the last eligible payment', async () => {
+    const user = userEvent.setup();
+    const initialCustomer = {
+      ...baseCustomer,
+      financialSummary: [
+        {
+          currency: 'USD' as const,
+          totalDebtAmount: '10.00',
+          totalPaidAmount: '0.00',
+          remainingAmount: '10.00',
+        },
+      ],
+    };
+    const updatedCustomer = {
+      ...initialCustomer,
+      financialSummary: [
+        {
+          currency: 'USD' as const,
+          totalDebtAmount: '10.00',
+          totalPaidAmount: '10.00',
+          remainingAmount: '0.00',
+        },
+      ],
+    };
+    const target = createPaymentTargetFixture({
+      amount: '10.00',
+      remainingAmount: '10.00',
+    });
+    let recordedRequest: RecordPaymentRequest | undefined;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(recordedRequest ? updatedCustomer : initialCustomer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () =>
+        HttpResponse.json({
+          items: [target],
+          page: 1,
+          pageSize: 10,
+          totalItems: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.post(
+        `${getBackendUrl()}/customers/:customerId/payments`,
+        async ({ request }) => {
+          recordedRequest = (await request.json()) as RecordPaymentRequest;
+          return HttpResponse.json(createPaymentResponse(recordedRequest), { status: 201 });
+        },
+      ),
+    );
+
+    renderCustomerRoutes([`/customers/${initialCustomer.id}`]);
+
+    const headerPaymentButton = await screen.findByRole('button', {
+      name: 'Record payment',
+    });
+    await user.click(headerPaymentButton);
+
+    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
+    await user.type(within(drawer).getByLabelText('Payment amount'), '10');
+    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+
+    await waitFor(() =>
+      expect(recordedRequest).toEqual(
+        expect.objectContaining({ targetScheduleItemId: target.scheduleItemId }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Add debt' })[0]).toHaveFocus(),
+    );
+    expect(screen.queryByRole('button', { name: 'Record payment' })).not.toBeInTheDocument();
+  });
+
+  it('opens Add debt from either customer action and restores focus to the trigger', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+
+    const headerAddDebtButton = (await screen.findAllByRole('button', {
+      name: 'Add debt',
+    }))[0]!;
+    const debtSection = await screen.findByRole('region', { name: 'Debts' });
+    const ledgerAddDebtButton = within(debtSection).getByRole('button', {
+      name: 'Add debt',
+    });
+
+    await user.click(headerAddDebtButton);
+    expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(headerAddDebtButton).toHaveFocus());
+
+    await user.click(ledgerAddDebtButton);
+    expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(ledgerAddDebtButton).toHaveFocus());
   });
 
   it('opens a prefilled edit form from loaded details', async () => {

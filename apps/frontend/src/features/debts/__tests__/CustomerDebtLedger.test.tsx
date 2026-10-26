@@ -463,34 +463,17 @@ describe('CustomerDebtLedger', () => {
     expect(within(schedule).getByText('مستحق اليوم')).toBeInTheDocument();
   });
 
-  it('opens the add-debt drawer from the ledger section', async () => {
+  it('calls onAddDebt when the ledger Add debt action is activated', async () => {
     const user = userEvent.setup();
+    const onAddDebt = vi.fn();
 
-    renderLedger([]);
+    renderLedger([], { onAddDebt });
 
     const debtSection = await screen.findByRole('region', { name: 'Debts' });
-    await user.click(within(debtSection).getByRole('button', { name: 'Add debt' }));
-
-    expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
-  });
-
-  it('returns focus to the Add debt trigger after closing the drawer', async () => {
-    const user = userEvent.setup();
-
-    renderLedger([]);
-
-    const addDebtButton = await screen.findByRole('button', { name: 'Add debt' });
+    const addDebtButton = within(debtSection).getByRole('button', { name: 'Add debt' });
     await user.click(addDebtButton);
-    await screen.findByRole('dialog', { name: 'Add debt' });
 
-    await user.keyboard('{Escape}');
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Add debt' }),
-      ).not.toBeInTheDocument(),
-    );
-    expect(addDebtButton).toHaveFocus();
+    expect(onAddDebt).toHaveBeenCalledWith(addDebtButton);
   });
 
   it('opens the selected debt editor with its saved values', async () => {
@@ -593,7 +576,8 @@ describe('CustomerDebtLedger', () => {
     renderWithAppProviders(
       <CustomerDebtLedger
         customerId={baseCustomer.id}
-        defaultCurrency="USD"
+        onAddDebt={vi.fn()}
+        onRecordPayment={vi.fn()}
       />,
       { initialEntries: [`/customers/${baseCustomer.id}`] },
     );
@@ -1500,7 +1484,20 @@ describe('CustomerDebtLedger', () => {
   });
 });
 
-function renderLedger(debts: DebtResponse[]) {
+function renderLedger(
+  debts: DebtResponse[],
+  {
+    onAddDebt = vi.fn(),
+    onRecordPayment = vi.fn(),
+  }: {
+    onAddDebt?: (trigger: HTMLButtonElement) => void;
+    onRecordPayment?: (
+      debt: DebtResponse,
+      scheduleItemId: string,
+      trigger: HTMLButtonElement,
+    ) => void;
+  } = {},
+) {
   server.use(
     http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
       HttpResponse.json({
@@ -1514,7 +1511,11 @@ function renderLedger(debts: DebtResponse[]) {
   );
 
   return renderWithAppProviders(
-    <CustomerDebtLedger customerId={baseCustomer.id} defaultCurrency="USD" />,
+    <CustomerDebtLedger
+      customerId={baseCustomer.id}
+      onAddDebt={onAddDebt}
+      onRecordPayment={onRecordPayment}
+    />,
     { initialEntries: [`/customers/${baseCustomer.id}`] },
   );
 }
@@ -1614,7 +1615,8 @@ async function openAndFillDebtDrawer(
     await screen.findByRole('heading', { name: baseCustomer.name }),
   ).toBeInTheDocument();
 
-  const addDebtButton = screen.getByRole('button', { name: 'Add debt' });
+  const debtSection = screen.getByRole('region', { name: 'Debts' });
+  const addDebtButton = within(debtSection).getByRole('button', { name: 'Add debt' });
   expect(addDebtButton).toBeEnabled();
   await user.click(addDebtButton);
 
