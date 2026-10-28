@@ -2,25 +2,25 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { useState } from 'react';
+import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   paymentApiErrorCode,
+  type CustomerDetailsResponse,
   type PaymentTarget,
   type RecordPaymentRequest,
   type RecordPaymentResponse,
 } from '@collectify/contracts';
 
-import { createAppI18nInstance } from '../../../app/localization/i18n';
 import { getBackendUrl } from '../../../shared/api/http';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
-import { PaymentDrawer } from '../editor/PaymentDrawer';
-import { useRecordPaymentMutation } from '../paymentQueries';
+import { CustomerDetailsPage } from '../../customers/CustomerDetailsPage';
+import { paymentResources } from '../localization/resources';
 import { createPaymentTargetFixture } from './paymentTestData';
 
-describe('payment submission flow', () => {
+describe('payment submission failure handling', () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
@@ -47,9 +47,11 @@ describe('payment submission flow', () => {
       }),
     );
 
-    renderWithAppProviders(<PaymentFlowHarness target={target} />);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amountInput = within(drawer).getByLabelText('Payment amount');
+    renderPaymentSubmissionFailure(target);
+    await user.click(await screen.findByRole('button', { name: 'Record payment' }));
+
+    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
+    const amountInput = await within(drawer).findByLabelText('Payment amount');
     await user.type(amountInput, '10.00');
     await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
 
@@ -82,9 +84,11 @@ describe('payment submission flow', () => {
       }),
     );
 
-    renderWithAppProviders(<PaymentFlowHarness target={target} />);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amountInput = within(drawer).getByLabelText('Payment amount');
+    renderPaymentSubmissionFailure(target);
+    await user.click(await screen.findByRole('button', { name: 'Record payment' }));
+
+    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
+    const amountInput = await within(drawer).findByLabelText('Payment amount');
     await user.type(amountInput, '10.00');
     await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
 
@@ -103,7 +107,7 @@ describe('payment submission flow', () => {
     const user = userEvent.setup();
     const target = createPaymentTargetFixture();
     const backendMessage = 'Backend conflict wording.';
-    const i18n = createAppI18nInstance('en');
+    const messages = paymentResources.en.common.payments;
 
     server.use(
       http.post(`${getBackendUrl()}/customers/:customerId/payments`, () =>
@@ -117,19 +121,21 @@ describe('payment submission flow', () => {
       ),
     );
 
-    renderWithAppProviders(<PaymentFlowHarness target={target} />);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amountInput = within(drawer).getByLabelText('Payment amount');
+    renderPaymentSubmissionFailure(target);
+    await user.click(await screen.findByRole('button', { name: 'Record payment' }));
+
+    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
+    const amountInput = await within(drawer).findByLabelText('Payment amount');
     const noteInput = within(drawer).getByLabelText('Note (optional)');
     await user.type(amountInput, '10.00');
     await user.type(noteInput, 'cash');
     await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
 
     const errorToast = await screen.findByRole('alert', {
-      name: i18n.t('payments.toast.record.errorTitle'),
+      name: messages.toast.record.errorTitle,
     });
     expect(errorToast).toHaveTextContent(
-      i18n.t(`payments.errors.${paymentApiErrorCode.paymentDebtVersionConflict}`),
+      messages.errors[paymentApiErrorCode.paymentDebtVersionConflict],
     );
     expect(errorToast).not.toHaveTextContent(backendMessage);
     expect(drawer).toBeInTheDocument();
@@ -138,21 +144,58 @@ describe('payment submission flow', () => {
   });
 });
 
-function PaymentFlowHarness({ target }: { target: PaymentTarget }) {
-  const [isOpen, setIsOpen] = useState(true);
-  const { recordPayment } = useRecordPaymentMutation({
-    customerId: 'customer_123',
-    onRecorded: () => setIsOpen(false),
-  });
+function renderPaymentSubmissionFailure(target: PaymentTarget) {
+  const customer = {
+    id: 'customer_123',
+    name: 'Acme Market',
+    code: 'ACME-001',
+    phoneNumber: '+90 555 123 45 67',
+    address: null,
+    createdAt: '2026-08-28T12:00:00.000Z',
+    updatedAt: '2026-08-28T12:00:00.000Z',
+    financialSummary: [
+      {
+        currency: target.currency,
+        totalDebtAmount: target.remainingAmount,
+        totalPaidAmount: '0.00',
+        remainingAmount: target.remainingAmount,
+      },
+    ],
+  } satisfies CustomerDetailsResponse;
 
-  return isOpen ? (
-    <PaymentDrawer
-      customerId="customer_123"
-      initialTarget={target}
-      onClose={() => setIsOpen(false)}
-      onSubmit={recordPayment}
-    />
-  ) : null;
+  server.use(
+    http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+      HttpResponse.json(customer),
+    ),
+    http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+      HttpResponse.json({
+        items: [],
+        page: 1,
+        pageSize: 5,
+        totalItems: 0,
+        totalPages: 0,
+      }),
+    ),
+    http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () =>
+      HttpResponse.json({
+        items: [target],
+        page: 1,
+        pageSize: 10,
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    ),
+  );
+
+  return renderWithAppProviders(
+    <Routes>
+      <Route
+        element={<CustomerDetailsPage defaultCurrency="USD" />}
+        path="/customers/:customerId"
+      />
+    </Routes>,
+    { initialEntries: [`/customers/${customer.id}`] },
+  );
 }
 
 function createPaymentResponse(request: RecordPaymentRequest): RecordPaymentResponse {
