@@ -17,6 +17,7 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.25",
     "@collectify/contracts": "workspace:*",
+    "@collectify/domain": "workspace:*",
     "@nestjs/common": "^11.1.5",
     "@nestjs/core": "^11.1.5",
     "@nestjs/platform-express": "^11.1.5",
