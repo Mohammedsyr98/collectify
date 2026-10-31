@@ -6,9 +6,10 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
-import { paymentApiErrorCode, recordPaymentRequestSchema } from '@collectify/contracts';
+import { recordPaymentRequestSchema } from '@collectify/contracts';
 import type { PaymentTarget } from '@collectify/contracts';
 import { formatMoney, parseMoney } from '@collectify/domain/money';
+import { validatePayment } from '@collectify/domain/payment';
 
 import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../shared/localization';
 import { FormInput } from '../../../shared/ui/form/FormInput';
@@ -329,18 +330,23 @@ function SelectedTargetSummary({
 }
 
 function createPaymentFormSchema(targetRemaining: string, today: string) {
-  return paymentFieldsSchema.extend({
-    amount: paymentFieldsSchema.shape.amount.pipe(
-      z.string().refine(
-        (amount) => parseMoney(amount) <= parseMoney(targetRemaining),
-        paymentApiErrorCode.paymentAmountExceedsRemaining,
-      ),
-    ),
-    paymentDate: paymentFieldsSchema.shape.paymentDate.pipe(
-      z
-        .string()
-        .refine((paymentDate) => paymentDate <= today, paymentApiErrorCode.paymentDateInFuture),
-    ),
+  return paymentFieldsSchema.superRefine((values, context) => {
+    const validation = validatePayment({
+      amount: values.amount,
+      remainingAmount: targetRemaining,
+      paymentDate: values.paymentDate,
+      businessDate: today,
+    });
+
+    if (validation.success) return;
+
+    for (const issue of validation.issues) {
+      context.addIssue({
+        code: 'custom',
+        path: [issue.target],
+        message: issue.code,
+      });
+    }
   });
 }
 

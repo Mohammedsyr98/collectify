@@ -5,6 +5,8 @@ import {
   type RecordPaymentRequest,
   type RecordPaymentResponse,
 } from '@collectify/contracts';
+import { formatMoney, parseMoney } from '@collectify/domain/money';
+import { validatePayment } from '@collectify/domain/payment';
 import { and, eq } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 
@@ -31,10 +33,6 @@ export class PaymentsService {
   ): Promise<RecordPaymentResponse> {
     const operationInstant = new Date();
     const businessDate = getIstanbulBusinessDate(operationInstant);
-
-    if (request.paymentDate > businessDate) {
-      throw paymentException(paymentApiErrorCode.paymentDateInFuture);
-    }
 
     return this.databaseService.db.transaction(async (tx) => {
       const targetDebtId = await findPaymentTargetDebtId(tx, {
@@ -96,10 +94,15 @@ export class PaymentsService {
         throw paymentException(paymentApiErrorCode.paymentTargetAlreadyPaid);
       }
 
-      if (parseMoney(request.amount) > remainingAmount) {
-        throw paymentException(
-          paymentApiErrorCode.paymentAmountExceedsRemaining,
-        );
+      const validation = validatePayment({
+        amount: request.amount,
+        remainingAmount: formatMoney(remainingAmount),
+        paymentDate: request.paymentDate,
+        businessDate,
+      });
+
+      if (!validation.success) {
+        throw paymentException(validation.issues[0]!.code);
       }
 
       const payment = await this.insertPayment(tx, {
@@ -278,9 +281,4 @@ function isPaymentIdempotencyUniqueViolation(error: unknown): boolean {
     'constraint' in postgresError &&
     postgresError.constraint === 'payments_idempotency_key_unique'
   );
-}
-
-function parseMoney(value: string): bigint {
-  const [wholeAmount, fractionalAmount = ''] = value.split('.');
-  return BigInt(wholeAmount!) * 100n + BigInt(fractionalAmount.padEnd(2, '0'));
 }

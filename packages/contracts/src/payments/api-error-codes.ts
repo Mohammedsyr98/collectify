@@ -1,24 +1,38 @@
+import { paymentIssueCode } from '@collectify/domain/payment';
+
+type PaymentDomainIssueCode =
+  (typeof paymentIssueCode)[keyof typeof paymentIssueCode];
+
 export const paymentApiErrorCode = {
   validationError: 'VALIDATION_ERROR',
   paymentTargetNotFound: 'PAYMENT_TARGET_NOT_FOUND',
-  paymentDateInFuture: 'PAYMENT_DATE_IN_FUTURE',
+  paymentDateInFuture: paymentIssueCode.paymentDateInFuture,
   paymentTargetAlreadyPaid: 'PAYMENT_TARGET_ALREADY_PAID',
-  paymentAmountExceedsRemaining: 'PAYMENT_AMOUNT_EXCEEDS_REMAINING',
+  paymentAmountExceedsRemaining: paymentIssueCode.paymentAmountExceedsRemaining,
   paymentDebtVersionConflict: 'PAYMENT_DEBT_VERSION_CONFLICT',
   paymentIdempotencyKeyReused: 'PAYMENT_IDEMPOTENCY_KEY_REUSED',
-} as const;
+} as const satisfies
+  Record<keyof typeof paymentIssueCode, PaymentDomainIssueCode> &
+    Record<string, string>;
 
-export const paymentApiErrorCodes = [
-  paymentApiErrorCode.validationError,
-  paymentApiErrorCode.paymentTargetNotFound,
-  paymentApiErrorCode.paymentDateInFuture,
-  paymentApiErrorCode.paymentTargetAlreadyPaid,
-  paymentApiErrorCode.paymentAmountExceedsRemaining,
-  paymentApiErrorCode.paymentDebtVersionConflict,
-  paymentApiErrorCode.paymentIdempotencyKeyReused,
-] as const;
+export type PaymentApiErrorCode =
+  (typeof paymentApiErrorCode)[keyof typeof paymentApiErrorCode];
 
-export type PaymentApiErrorCode = (typeof paymentApiErrorCodes)[number];
+function getNonEmptyObjectValues<T extends Record<string, string>>(
+  object: T,
+): readonly [T[keyof T], ...T[keyof T][]] {
+  const values = Object.values(object) as T[keyof T][];
+  const [firstValue, ...remainingValues] = values;
+
+  if (firstValue === undefined) {
+    throw new Error('Expected at least one object value');
+  }
+
+  return [firstValue, ...remainingValues];
+}
+
+export const paymentApiErrorCodes =
+  getNonEmptyObjectValues(paymentApiErrorCode);
 
 const paymentApiErrorCodeSet = new Set<string>(paymentApiErrorCodes);
 

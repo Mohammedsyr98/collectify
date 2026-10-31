@@ -14,6 +14,11 @@
       "import": "./dist/money/index.js",
       "default": "./dist/money/index.js"
     },
+    "./payment": {
+      "types": "./src/payment/index.ts",
+      "import": "./dist/payment/index.js",
+      "default": "./dist/payment/index.js"
+    },
     "./schedule-item-payment": {
       "types": "./src/schedule-item-payment/index.ts",
       "import": "./dist/schedule-item-payment/index.js",
@@ -24,6 +29,7 @@
     "*": {
       "debt-plan": ["./src/debt-plan/index.ts"],
       "money": ["./src/money/index.ts"],
+      "payment": ["./src/payment/index.ts"],
       "schedule-item-payment": ["./src/schedule-item-payment/index.ts"]
     }
   },
