@@ -206,6 +206,7 @@ function CustomerDetailsContent({
       {paymentSession ? (
         <PaymentDrawer
           customerId={customer.id}
+          customerName={customer.name}
           initialTarget={paymentSession.initialTarget}
           onClose={() => setPaymentSession(null)}
           onSubmit={recordPayment}

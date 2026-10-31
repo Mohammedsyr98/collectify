@@ -793,7 +793,7 @@ describe('CustomerDetailsPage', () => {
     );
 
     const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    expect(within(drawer).getByText('Payment target · 2')).toBeInTheDocument();
+    expect(within(drawer).getByText(/Installment 2/)).toBeInTheDocument();
     await user.type(within(drawer).getByLabelText('Payment amount'), '10');
     await user.click(
       within(drawer).getByRole('button', { name: 'Record payment' }),
@@ -855,7 +855,7 @@ describe('CustomerDetailsPage', () => {
     await user.click(paymentAction);
 
     const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    expect(within(drawer).getByText('One payment')).toBeInTheDocument();
+    expect(within(drawer).getByText(/One payment/)).toBeInTheDocument();
     const paymentAmount = within(drawer).getByLabelText('Payment amount');
     expect(paymentAmount).toHaveFocus();
     await user.type(paymentAmount, '10');

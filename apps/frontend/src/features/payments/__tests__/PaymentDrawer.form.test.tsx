@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -60,30 +60,20 @@ describe('PaymentDrawer', () => {
     expect(within(drawer).queryByText('Debt remaining')).not.toBeInTheDocument();
     expect(within(drawer).getByLabelText('Payment amount')).toHaveFocus();
     expect(within(drawer).getByLabelText('Payment amount')).toHaveValue('');
+    expect(within(drawer).getByLabelText('Payment amount')).toHaveAccessibleDescription(
+      'Remaining after payment: Not calculated',
+    );
+    expect(
+      within(drawer).queryByRole('button', { name: 'Pay full remaining amount' }),
+    ).not.toBeInTheDocument();
 
     await user.type(within(drawer).getByLabelText('Payment amount'), '12.30');
 
     expect(within(drawer).getByText('$32.75')).toBeInTheDocument();
+    expect(within(drawer).getByLabelText('Payment amount')).toHaveAccessibleDescription(
+      'Remaining after payment: $32.75',
+    );
     expect(within(drawer).queryByText('Debt remaining after payment')).not.toBeInTheDocument();
-  });
-
-  it("fills the selected target's remaining amount without submitting", async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn(async () => undefined);
-    const target = createPaymentTargetFixture({
-      amount: '60.00',
-      remainingAmount: '45.05',
-      plan: { type: 'installment', position: 1 },
-    });
-
-    renderPaymentDrawer(target, onSubmit);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-
-    await user.click(within(drawer).getByRole('button', { name: 'Pay full remaining amount' }));
-
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveValue('45.05');
-    expect(within(drawer).getByText('$0.00')).toBeInTheDocument();
-    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('rejects an amount above the selected target and a future payment date before submit', async () => {
@@ -113,6 +103,9 @@ describe('PaymentDrawer', () => {
         'Payment date cannot be in the future.',
       );
     });
+    expect(within(drawer).queryByText('Remaining after payment:', { exact: false })).toBeNull();
+    expect(within(drawer).queryByText('—')).toBeNull();
+    expect(within(drawer).queryByText('Not calculated')).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -146,7 +139,7 @@ describe('PaymentDrawer', () => {
     expect(screen.getByLabelText('Payment date')).toHaveValue('2026-09-11');
   });
 
-  it('allows only one submission while recording', async () => {
+  it('allows only one submission and prevents dismissal while recording', async () => {
     const user = userEvent.setup();
     let resolveSubmit: (() => void) | undefined;
     const onSubmit = vi.fn(
@@ -171,6 +164,11 @@ describe('PaymentDrawer', () => {
     expect(amountInput).toHaveValue('10');
     expect(within(drawer).getByRole('button', { name: 'Recording' })).toBeDisabled();
     expect(within(drawer).getByRole('button', { name: 'Close payment form' })).toBeDisabled();
+
+    await user.keyboard('{Escape}');
+    fireEvent.pointerDown(document.body);
+    expect(drawer).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
 
     resolveSubmit?.();
     await waitFor(() =>

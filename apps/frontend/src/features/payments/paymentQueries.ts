@@ -76,7 +76,7 @@ export function useRecordPaymentMutation({
       try {
         await mutation.mutateAsync(submission);
       } catch {
-        return;
+        // Error presentation is handled by the mutation toast path.
       }
     },
   };

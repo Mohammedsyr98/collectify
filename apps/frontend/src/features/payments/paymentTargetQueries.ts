@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import type { PaymentTargetQuery } from '@collectify/contracts';
 
@@ -14,5 +14,6 @@ export function usePaymentTargetListQuery(customerId: string, query: PaymentTarg
   return useQuery({
     queryKey: paymentTargetListPageQueryKey(customerId, query),
     queryFn: () => listPaymentTargets(customerId, query),
+    placeholderData: keepPreviousData,
   });
 }

@@ -1,26 +1,21 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
-import { FormProvider, useController, useForm, useWatch } from 'react-hook-form';
+import { useId, useState, type RefObject } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { paymentApiErrorCode, recordPaymentRequestSchema } from '@collectify/contracts';
-import type { EligiblePaymentState, PaymentTarget } from '@collectify/contracts';
+import type { PaymentTarget } from '@collectify/contracts';
 import { formatMoney, parseMoney } from '@collectify/domain/money';
 
-import {
-  formatCurrencyAmount,
-  formatDateOnly,
-  useLocalization,
-} from '../../../shared/localization';
-import { FormField } from '../../../shared/ui/form/FormField';
+import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../shared/localization';
 import { FormInput } from '../../../shared/ui/form/FormInput';
-import { useDebouncedValue } from '../../../shared/useDebouncedValue';
+import { FormTextarea } from '../../../shared/ui/form/FormTextarea';
 import type { PaymentSubmissionRequest } from '../api/record-payment';
 import { usePaymentValidationErrorFormatter } from '../localization/usePaymentValidationErrorFormatter';
-import { usePaymentTargetListQuery } from '../paymentTargetQueries';
+import { PaymentTargetPicker } from './PaymentTargetPicker';
 
 const paymentFieldsSchema = recordPaymentRequestSchema.pick({
   amount: true,
@@ -28,18 +23,21 @@ const paymentFieldsSchema = recordPaymentRequestSchema.pick({
   note: true,
 });
 
-const paymentTargetSkeletonCards = [0, 1, 2];
-
-type PaymentPreview = { status: 'available'; targetRemaining: string } | { status: 'unavailable' };
-
 type PaymentFormInput = z.input<typeof paymentFieldsSchema>;
-
 type PaymentFormOutput = z.output<typeof paymentFieldsSchema>;
+type PaymentDrawerScreen =
+  | { kind: 'targetPicker'; target?: PaymentTarget }
+  | { kind: 'paymentForm'; target: PaymentTarget };
 
-type PaymentTargetStatusFilter = '' | EligiblePaymentState;
+const timingLabelKeys = {
+  overdue: 'payments.drawer.timingOverdue',
+  dueToday: 'payments.drawer.timingDueToday',
+  upcoming: 'payments.drawer.timingUpcoming',
+} satisfies Record<PaymentTarget['timing'], string>;
 
 export type PaymentDrawerProps = {
   customerId: string;
+  customerName?: string;
   initialTarget?: PaymentTarget;
   onSubmit: (request: PaymentSubmissionRequest) => Promise<void>;
   onClose: () => void;
@@ -48,6 +46,7 @@ export type PaymentDrawerProps = {
 
 export function PaymentDrawer({
   customerId,
+  customerName,
   initialTarget,
   onSubmit,
   onClose,
@@ -57,110 +56,76 @@ export function PaymentDrawer({
   const { locale } = useLocalization();
   const formatValidationError = usePaymentValidationErrorFormatter();
   const today = getIstanbulBusinessDate();
-  const [target, setTarget] = useState(initialTarget);
-  const [view, setView] = useState<'form' | 'selection'>(initialTarget ? 'form' : 'selection');
-  const drawerContentRef = useRef<HTMLDivElement>(null);
+  const [screen, setScreen] = useState<PaymentDrawerScreen>(
+    initialTarget
+      ? { kind: 'paymentForm', target: initialTarget }
+      : { kind: 'targetPicker' },
+  );
+  const formId = useId();
+  const amountPreviewId = useId();
+  const target = screen.target;
   const formSchema = createPaymentFormSchema(target?.remainingAmount ?? '0.00', today);
   const form = useForm<PaymentFormInput, unknown, PaymentFormOutput>({
-    defaultValues: {
-      amount: '',
-      paymentDate: today,
-      note: '',
-    },
+    defaultValues: { amount: '', paymentDate: today, note: '' },
     criteriaMode: 'all',
     resolver: zodResolver(formSchema),
   });
-  const amount = useWatch({ control: form.control, name: 'amount' });
   const isSubmitting = form.formState.isSubmitting;
-  const noteId = useId();
-  const noteField = useController({ control: form.control, name: 'note' });
-  const noteError = noteField.fieldState.error?.message;
-
-  useEffect(() => {
-    if (view !== 'form' || !target) {
-      return;
-    }
-
-    drawerContentRef.current?.querySelector<HTMLInputElement>('input[name="amount"]')?.focus();
-  }, [target, view]);
 
   const requestClose = () => {
-    if (isSubmitting) {
-      return;
-    }
-
-    onClose();
+    if (!isSubmitting) onClose();
   };
 
-  const submit = form.handleSubmit(async (values) => {
-    if (!target) {
-      return;
-    }
+  const submit = form.handleSubmit((values) => {
+    if (!target) return;
 
-    try {
-      await onSubmit({
-        ...values,
-        expectedDebtVersion: target.debtVersion,
-        targetScheduleItemId: target.scheduleItemId,
-      });
-    } catch {
-      return;
-    }
+    return onSubmit({
+      ...values,
+      expectedDebtVersion: target.debtVersion,
+      targetScheduleItemId: target.scheduleItemId,
+    });
   });
 
-  const preview = getPaymentPreview(amount, target?.remainingAmount);
-  const targetLabel = target
-    ? target.plan.type === 'installment'
-      ? `${t('payments.drawer.targetLabel')} · ${target.plan.position}`
-      : t('payments.drawer.onePaymentTarget')
-    : t('payments.drawer.targetLabel');
+  const selectTarget = (nextTarget: PaymentTarget) => {
+    if (target && target.currency !== nextTarget.currency) {
+      form.resetField('amount');
+    }
+    setScreen({ kind: 'paymentForm', target: nextTarget });
+  };
+
+  const preview = getPaymentPreview(form.watch('amount'), target?.remainingAmount);
+  const amountHasError = Boolean(form.formState.errors.amount);
 
   return (
-    <Dialog.Root
-      onOpenChange={(open) => {
-        if (!open) {
-          requestClose();
-        }
-      }}
-      open
-    >
+    <Dialog.Root onOpenChange={(open) => !open && requestClose()} open>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-10 bg-foreground/25" />
         <Dialog.Content
           aria-describedby="payment-drawer-description"
-          className="fixed inset-y-0 end-0 z-10 grid w-full max-w-[460px] content-start gap-4 overflow-y-auto border-s border-border bg-card p-5 shadow-[var(--shadow-md)]"
-          ref={drawerContentRef}
-          onEscapeKeyDown={(event) => {
-            if (isSubmitting) {
-              event.preventDefault();
-              requestClose();
-            }
-          }}
-          onInteractOutside={(event) => {
-            if (isSubmitting) {
-              event.preventDefault();
-              requestClose();
-            }
-          }}
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            (event.currentTarget as HTMLElement)
-              .querySelector<HTMLInputElement>('input[name="amount"]')
-              ?.focus();
-          }}
+          className="fixed inset-y-0 end-0 z-10 grid w-full max-w-[486px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-s border-border bg-card shadow-[var(--shadow-md)]"
           onCloseAutoFocus={(event) => {
-            if (!returnFocusRef?.current) {
-              return;
+            if (returnFocusRef?.current?.isConnected) {
+              event.preventDefault();
+              returnFocusRef.current.focus();
             }
-
-            event.preventDefault();
-            returnFocusRef.current.focus();
           }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <Dialog.Title className="m-0 text-[1.15rem] font-black leading-tight tracking-normal">
+          <header className="flex min-h-[84px] items-start justify-between gap-4 border-b border-border px-6 py-5 max-[620px]:min-h-[78px] max-[620px]:px-5 max-[620px]:py-4">
+            <Dialog.Title className="sr-only">
               {t('payments.drawer.title')}
             </Dialog.Title>
+            <div className="min-w-0">
+              <h2 className="m-0 text-base font-black leading-tight tracking-normal">
+                {screen.kind === 'targetPicker'
+                  ? t('payments.drawer.chooseTargetTitle')
+                  : t('payments.drawer.title')}
+              </h2>
+              {customerName ? (
+                <p className="mb-0 mt-1 truncate text-[0.75rem] text-muted-foreground">
+                  {customerName}
+                </p>
+              ) : null}
+            </div>
             <button
               aria-label={t('payments.drawer.close')}
               className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-background text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-wait disabled:opacity-70"
@@ -170,536 +135,206 @@ export function PaymentDrawer({
             >
               <X aria-hidden="true" size={16} strokeWidth={2.5} />
             </button>
-          </div>
+          </header>
+
           <Dialog.Description className="sr-only" id="payment-drawer-description">
-            {t('payments.drawer.description', {
-              description: target?.debtDescription ?? '',
-            })}
+            {target
+              ? t('payments.drawer.description', { description: target.debtDescription })
+              : t('payments.drawer.selectionDescription')}
           </Dialog.Description>
 
-          {view === 'selection' ? (
-            <PaymentTargetSelection
-              customerId={customerId}
-              onSelect={(nextTarget) => {
-                if (target && target.currency !== nextTarget.currency) {
-                  form.setValue('amount', '', {
-                    shouldDirty: true,
-                    shouldValidate: false,
-                  });
-                  form.clearErrors('amount');
+          <main className="min-h-0 overflow-y-auto overscroll-contain">
+            {screen.kind === 'targetPicker' ? (
+              <PaymentTargetPicker
+                customerId={customerId}
+                onBack={
+                  target
+                    ? () => setScreen({ kind: 'paymentForm', target })
+                    : undefined
                 }
+                onSelect={selectTarget}
+              />
+            ) : (
+              <div className="mx-auto grid w-full max-w-[520px] gap-5 px-7 py-[22px] max-[620px]:px-5">
+                <SelectedTargetSummary
+                  isSubmitting={isSubmitting}
+                  locale={locale}
+                  onChangeTarget={() =>
+                    setScreen({ kind: 'targetPicker', target: screen.target })
+                  }
+                  target={screen.target}
+                />
 
-                setTarget(nextTarget);
-                setView('form');
-              }}
-            />
-          ) : !target ? (
-            <p className="m-0 text-[0.8rem] font-bold text-status-overdue-foreground" role="alert">
-              {t('payments.drawer.targetUnavailable')}
-            </p>
-          ) : (
-            <>
-              <div className="grid gap-2 rounded-[5px] border border-border bg-background p-3">
-                <div className="flex items-center justify-between gap-3 text-[0.78rem] font-bold text-muted-foreground">
-                  <span>{targetLabel}</span>
-                  <div className="flex items-center gap-2">
-                    <bdi className="font-black text-foreground" dir="ltr">
-                      {formatCurrencyAmount(target.amount, target.currency, locale)}
-                    </bdi>
-                    <button
-                      className="cursor-pointer rounded-[5px] border border-border bg-card px-2 py-1 text-[0.72rem] font-extrabold text-foreground transition hover:bg-muted disabled:cursor-wait disabled:opacity-70"
-                      disabled={isSubmitting}
-                      onClick={() => setView('selection')}
-                      type="button"
-                    >
-                      {t('payments.drawer.changeTarget')}
-                    </button>
-                  </div>
-                </div>
-                <div className="grid gap-3 border-t border-border pt-2">
-                  <PaymentMetric
-                    currency={target.currency}
-                    label={t('payments.drawer.targetRemainingLabel')}
-                    locale={locale}
-                    value={target.remainingAmount}
-                  />
-                </div>
-              </div>
-
-              <FormProvider {...form}>
-                <form className="grid gap-[13px]" noValidate onSubmit={submit}>
-                  <FormInput<PaymentFormInput>
-                    autoComplete="off"
-                    dir="ltr"
-                    endAdornment={
-                      <span className="text-[0.78rem] font-black text-muted-foreground">
-                        {target.currency}
-                      </span>
-                    }
-                    icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
-                    label={t('payments.drawer.amountLabel')}
-                    name="amount"
-                    placeholder={t('payments.drawer.amountPlaceholder')}
-                    type="text"
-                    inputMode="decimal"
-                    formatError={formatValidationError}
-                  />
-                  <button
-                    className="min-h-9 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.76rem] font-extrabold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={isSubmitting || target.remainingAmount === '0.00'}
-                    onClick={() => {
-                      form.setValue('amount', target.remainingAmount, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                    }}
-                    type="button"
-                  >
-                    {t('payments.drawer.payFull')}
-                  </button>
-                  <FormInput<PaymentFormInput>
-                    autoComplete="off"
-                    dir="ltr"
-                    icon={<CalendarDays aria-hidden="true" size={16} strokeWidth={2.2} />}
-                    label={t('payments.drawer.dateLabel')}
-                    max={today}
-                    name="paymentDate"
-                    type="date"
-                    formatError={formatValidationError}
-                  />
-                  <FormField
-                    error={noteError}
-                    formatError={formatValidationError}
-                    htmlFor={noteId}
-                    icon={<FileText aria-hidden="true" size={16} strokeWidth={2.2} />}
-                    label={t('payments.drawer.noteLabel')}
-                  >
-                    <textarea
-                      {...noteField.field}
-                      aria-describedby={noteError ? `${noteId}-error` : undefined}
-                      className="min-h-20 w-full resize-y border-0 bg-transparent px-3.5 py-2.5 text-foreground outline-none placeholder:text-muted-foreground/70"
-                      id={noteId}
-                      maxLength={500}
-                      placeholder={t('payments.drawer.notePlaceholder')}
-                      value={noteField.field.value ?? ''}
-                    />
-                  </FormField>
-
-                  {preview ? (
-                    <div className="grid gap-2 rounded-[5px] border border-border bg-muted/40 p-3">
-                      <h2 className="m-0 text-[0.78rem] font-black text-foreground">
-                        {t('payments.drawer.previewTitle')}
-                      </h2>
-                      {preview.status === 'available' ? (
-                        <div className="grid gap-3">
-                          <PaymentMetric
-                            currency={target.currency}
-                            label={t('payments.drawer.targetAfterLabel')}
-                            locale={locale}
-                            value={preview.targetRemaining}
-                          />
-                        </div>
-                      ) : (
-                        <p
+                <FormProvider {...form}>
+                  <form className="grid gap-[13px]" id={formId} noValidate onSubmit={submit}>
+                    <div className="grid gap-1.5">
+                      <FormInput<PaymentFormInput>
+                        aria-describedby={amountHasError ? undefined : amountPreviewId}
+                        autoFocus
+                        autoComplete="off"
+                        dir="ltr"
+                        endAdornment={
+                          <span className="text-[0.78rem] font-black text-muted-foreground">
+                            {screen.target.currency}
+                          </span>
+                        }
+                        icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
+                        label={t('payments.drawer.amountLabel')}
+                        name="amount"
+                        placeholder={t('payments.drawer.amountPlaceholder')}
+                        type="text"
+                        inputMode="decimal"
+                        formatError={formatValidationError}
+                      />
+                      {!amountHasError ? (
+                        <div
                           aria-live="polite"
-                          className="m-0 text-[0.78rem] font-bold text-status-overdue-foreground"
-                          role="status"
+                          className="min-h-[1.05rem] text-[0.76rem] leading-[1.35] text-muted-foreground"
+                          id={amountPreviewId}
                         >
-                          {t('payments.drawer.previewUnavailable')}
-                        </p>
-                      )}
+                          <span>
+                            {t('payments.drawer.targetAfterLabel')}:{' '}
+                            {preview ? (
+                              <bdi className="font-black text-foreground" dir="ltr">
+                                {formatCurrencyAmount(
+                                  preview,
+                                  screen.target.currency,
+                                  locale,
+                                )}
+                              </bdi>
+                            ) : (
+                              <>
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">
+                                  {t('payments.drawer.previewNotCalculated')}
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
 
-                  <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
-                    <button
-                      className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
-                      disabled={isSubmitting}
-                      onClick={requestClose}
-                      type="button"
-                    >
-                      {t('payments.drawer.cancel')}
-                    </button>
-                    <button
-                      className="min-h-11 cursor-pointer rounded-[5px] border-0 bg-primary px-[18px] text-[0.84rem] font-extrabold text-primary-foreground transition duration-150 hover:-translate-y-px hover:brightness-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
-                      disabled={isSubmitting}
-                      type="submit"
-                    >
-                      {isSubmitting ? t('payments.drawer.submitting') : t('payments.drawer.submit')}
-                    </button>
-                  </div>
-                </form>
-              </FormProvider>
-            </>
-          )}
+                    <FormInput<PaymentFormInput>
+                      autoComplete="off"
+                      dir="ltr"
+                      icon={<CalendarDays aria-hidden="true" size={16} strokeWidth={2.2} />}
+                      label={t('payments.drawer.dateLabel')}
+                      max={today}
+                      name="paymentDate"
+                      type="date"
+                      formatError={formatValidationError}
+                    />
+                    <FormTextarea<PaymentFormInput>
+                      icon={<FileText aria-hidden="true" size={16} strokeWidth={2.2} />}
+                      formatError={formatValidationError}
+                      label={t('payments.drawer.noteLabel')}
+                      maxLength={500}
+                      name="note"
+                      placeholder={t('payments.drawer.notePlaceholder')}
+                    />
+                  </form>
+                </FormProvider>
+              </div>
+            )}
+          </main>
+
+          <footer className="grid grid-cols-2 gap-3 border-t border-border bg-card px-5 py-4 max-[430px]:grid-cols-1">
+            <button
+              className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+              disabled={isSubmitting}
+              onClick={requestClose}
+              type="button"
+            >
+              {t('payments.drawer.cancel')}
+            </button>
+            <button
+              className="min-h-11 cursor-pointer rounded-[5px] border-0 bg-primary px-[18px] text-[0.84rem] font-extrabold text-primary-foreground transition duration-150 hover:-translate-y-px hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              disabled={screen.kind !== 'paymentForm' || isSubmitting}
+              form={formId}
+              type="submit"
+            >
+              {isSubmitting ? t('payments.drawer.submitting') : t('payments.drawer.submit')}
+            </button>
+          </footer>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
 }
 
-function PaymentTargetSelection({
-  customerId,
-  onSelect,
+function SelectedTargetSummary({
+  isSubmitting,
+  locale,
+  onChangeTarget,
+  target,
 }: {
-  customerId: string;
-  onSelect: (target: PaymentTarget) => void;
+  isSubmitting: boolean;
+  locale: string;
+  onChangeTarget: () => void;
+  target: PaymentTarget;
 }) {
   const { t } = useTranslation();
-  const [rawSearch, setRawSearch] = useState('');
-  const effectiveSearch = useDebouncedValue(rawSearch.trim());
-  const [paymentState, setPaymentState] = useState<PaymentTargetStatusFilter>('');
-  const [page, setPage] = useState(1);
-  const [pickerMode, setPickerMode] = useState<'unknown' | 'simple' | 'large'>('unknown');
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const firstTargetRef = useRef<HTMLButtonElement>(null);
-  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
-  const hasFocusedInitialPickerRef = useRef(false);
-  const pendingPageFocusRef = useRef(false);
+  const planLabel =
+    target.plan.type === 'installment'
+      ? t('payments.drawer.installmentLabel', { position: target.plan.position })
+      : t('payments.drawer.onePaymentTarget');
+  const timingLabel = t(timingLabelKeys[target.timing]);
 
-  const targetQuery = usePaymentTargetListQuery(customerId, {
-    page,
-    ...(effectiveSearch ? { search: effectiveSearch } : {}),
-    ...(paymentState ? { paymentState } : {}),
-  });
-
-  useEffect(() => {
-    if (pickerMode !== 'unknown' || effectiveSearch || !targetQuery.data) {
-      return;
-    }
-
-    const nextPickerMode = targetQuery.data.totalItems > 5 ? 'large' : 'simple';
-    setPickerMode(nextPickerMode);
-
-    if (targetQuery.data.totalItems === 1) {
-      const [onlyTarget] = targetQuery.data.items;
-
-      if (onlyTarget) {
-        onSelect(onlyTarget);
-      }
-    }
-  }, [effectiveSearch, onSelect, pickerMode, targetQuery.data]);
-
-  const isLargePicker =
-    pickerMode === 'large' || (!effectiveSearch && (targetQuery.data?.totalItems ?? 0) > 5);
-  const isLoadingResults = targetQuery.isPending || targetQuery.isFetching;
-
-  useEffect(() => {
-    if (!targetQuery.data || isLoadingResults || hasFocusedInitialPickerRef.current) {
-      return;
-    }
-
-    hasFocusedInitialPickerRef.current = true;
-    if (isLargePicker) {
-      searchInputRef.current?.focus();
-    } else if (targetQuery.data.totalItems >= 2) {
-      firstTargetRef.current?.focus();
-    }
-  }, [isLargePicker, isLoadingResults, targetQuery.data]);
-
-  useEffect(() => {
-    if (!targetQuery.data || isLoadingResults || !pendingPageFocusRef.current) {
-      return;
-    }
-
-    pendingPageFocusRef.current = false;
-    firstTargetRef.current?.focus();
-
-    if (document.activeElement !== firstTargetRef.current) {
-      resultsHeadingRef.current?.focus();
-    }
-  }, [isLoadingResults, targetQuery.data]);
-
-  const loadingState = (
-    <>
-      <p aria-label={t('payments.drawer.loadingTargets')} className="sr-only" role="status">
-        {t('payments.drawer.loadingTargets')}
-      </p>
-      <div aria-hidden="true" className="grid gap-2">
-        {paymentTargetSkeletonCards.map((cardIndex) => (
-          <div
-            className="grid gap-2 rounded-[5px] border border-border bg-background p-3"
-            key={cardIndex}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <span className="block h-4 w-2/3 rounded-[4px] bg-muted-foreground/20 motion-safe:animate-pulse" />
-              <span className="block h-4 w-20 rounded-[4px] bg-muted-foreground/20 motion-safe:animate-pulse" />
-            </div>
-            <span className="block h-4 w-1/3 rounded-[4px] bg-muted-foreground/20 motion-safe:animate-pulse" />
-          </div>
-        ))}
+  return (
+    <section className="grid gap-3 rounded-[5px] border border-border bg-background p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[0.72rem] font-black uppercase tracking-wide text-muted-foreground">
+          {t('payments.drawer.payingToward')}
+        </span>
+        <button
+          className="cursor-pointer border-0 bg-transparent p-0 text-[0.74rem] font-extrabold text-primary transition hover:underline disabled:cursor-wait disabled:opacity-70"
+          disabled={isSubmitting}
+          onClick={onChangeTarget}
+          type="button"
+        >
+          {t('payments.drawer.changeTarget')}
+        </button>
       </div>
-    </>
-  );
-  const emptyState = (
-    <div className="rounded-[5px] border border-dashed border-border bg-background p-5 text-center">
-      <p className="m-0 text-[0.82rem] font-bold text-muted-foreground">
-        {t('payments.drawer.noTargets')}
-      </p>
-    </div>
-  );
-  const errorState = (
-    <section
-      aria-label={t('payments.drawer.targetLoadErrorTitle')}
-      className="grid gap-3 self-start rounded-[5px] border border-border bg-background p-4"
-      role="alert"
-    >
       <div className="grid gap-1">
-        <h3 className="m-0 text-[0.95rem] font-black tracking-normal">
-          {t('payments.drawer.targetLoadErrorTitle')}
-        </h3>
-        <p className="m-0 text-[0.86rem] text-muted-foreground">{t('errors.genericDescription')}</p>
+        <h2 className="m-0 text-[0.95rem] font-black text-foreground">
+          {target.debtDescription}
+        </h2>
+        <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.76rem] font-bold text-muted-foreground">
+          <span>{planLabel}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {t('payments.drawer.dueDateLabel')} {formatDateOnly(target.dueDate, locale)}
+          </span>
+          <span aria-hidden="true">·</span>
+          {target.timing === 'overdue' ? (
+            <span className="inline-flex rounded-[3px] bg-status-overdue-background px-1.5 py-px text-[0.66rem] font-extrabold text-status-overdue-foreground">
+              {timingLabel}
+            </span>
+          ) : (
+            <span>{timingLabel}</span>
+          )}
+        </p>
       </div>
-      <button
-        className="w-fit rounded-[5px] border border-border bg-card px-3 py-2 text-[0.78rem] font-extrabold text-foreground"
-        disabled={targetQuery.isFetching}
-        onClick={() => {
-          void targetQuery.refetch();
-        }}
-        type="button"
-      >
-        {t('app.error.retry')}
-      </button>
+      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+        <span className="text-[0.72rem] font-bold text-muted-foreground">
+          {t('payments.drawer.targetRemainingLabel')}
+        </span>
+        <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
+          {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
+        </bdi>
+      </div>
     </section>
-  );
-
-  return (
-    <div className="grid gap-3">
-      <h2
-        className="m-0 text-base font-black text-foreground"
-        ref={resultsHeadingRef}
-        tabIndex={-1}
-      >
-        {t('payments.drawer.chooseTargetTitle')}
-      </h2>
-      {isLargePicker ? (
-        <div className="grid gap-3">
-          <div className="grid gap-2">
-            <label
-              className="text-[0.74rem] font-extrabold text-foreground"
-              htmlFor="payment-target-search"
-            >
-              {t('payments.drawer.searchDebtDescriptions')}
-            </label>
-            <input
-              autoComplete="off"
-              className="min-h-10 rounded-[5px] border border-border bg-background px-3 text-[0.82rem] text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary"
-              id="payment-target-search"
-              onChange={(event) => {
-                setPage(1);
-                setRawSearch(event.target.value);
-              }}
-              placeholder={t('payments.drawer.searchDebtDescriptions')}
-              ref={searchInputRef}
-              type="search"
-              value={rawSearch}
-            />
-          </div>
-          <div className="grid gap-2">
-            <label
-              className="text-[0.74rem] font-extrabold text-foreground"
-              htmlFor="payment-target-status"
-            >
-              {t('payments.drawer.paymentStatus')}
-            </label>
-            <select
-              className="min-h-10 rounded-[5px] border border-border bg-background px-3 text-[0.82rem] text-foreground outline-none transition focus:border-primary"
-              id="payment-target-status"
-              onChange={(event) => {
-                const nextPaymentState = event.target.value;
-
-                setPage(1);
-                setPaymentState(
-                  nextPaymentState === 'unpaid' || nextPaymentState === 'partiallyPaid'
-                    ? nextPaymentState
-                    : '',
-                );
-              }}
-              value={paymentState}
-            >
-              <option value="">{t('payments.drawer.allTargets')}</option>
-              <option value="unpaid">{t('payments.drawer.paymentStateUnpaid')}</option>
-              <option value="partiallyPaid">
-                {t('payments.drawer.paymentStatePartiallyPaid')}
-              </option>
-            </select>
-          </div>
-          {targetQuery.data && targetQuery.data.items.length > 0 ? (
-            <p aria-live="polite" className="sr-only" role="status">
-              {t('payments.drawer.targetRange', {
-                end:
-                  (targetQuery.data.page - 1) * targetQuery.data.pageSize +
-                  targetQuery.data.items.length,
-                start: (targetQuery.data.page - 1) * targetQuery.data.pageSize + 1,
-                total: targetQuery.data.totalItems,
-              })}
-            </p>
-          ) : null}
-          {isLoadingResults ? (
-            loadingState
-          ) : targetQuery.isError ? (
-            errorState
-          ) : targetQuery.data?.items.length === 0 ? (
-            emptyState
-          ) : targetQuery.data ? (
-            <>
-              <TargetOptions
-                firstTargetRef={firstTargetRef}
-                onSelect={onSelect}
-                targets={targetQuery.data.items}
-              />
-              {targetQuery.data.totalPages > 1 ? (
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    className="min-h-9 rounded-[5px] border border-border bg-background px-3 text-[0.76rem] font-extrabold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isLoadingResults || page === 1}
-                    onClick={() => {
-                      pendingPageFocusRef.current = true;
-                      setPage((currentPage) => Math.max(1, currentPage - 1));
-                    }}
-                    type="button"
-                  >
-                    {t('payments.drawer.previousPage')}
-                  </button>
-                  <span className="text-[0.76rem] font-bold text-muted-foreground">
-                    {page} / {targetQuery.data.totalPages}
-                  </span>
-                  <button
-                    className="min-h-9 rounded-[5px] border border-border bg-background px-3 text-[0.76rem] font-extrabold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isLoadingResults || page >= targetQuery.data.totalPages}
-                    onClick={() => {
-                      pendingPageFocusRef.current = true;
-                      setPage((currentPage) =>
-                        Math.min(targetQuery.data?.totalPages ?? currentPage, currentPage + 1),
-                      );
-                    }}
-                    type="button"
-                  >
-                    {t('payments.drawer.nextPage')}
-                  </button>
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      ) : isLoadingResults ? (
-        loadingState
-      ) : targetQuery.isError ? (
-        errorState
-      ) : targetQuery.data?.items.length === 0 ? (
-        emptyState
-      ) : targetQuery.data &&
-        targetQuery.data.totalItems >= 2 &&
-        targetQuery.data.totalItems <= 5 ? (
-        <TargetOptions
-          firstTargetRef={firstTargetRef}
-          onSelect={onSelect}
-          targets={targetQuery.data.items}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function TargetOptions({
-  firstTargetRef,
-  onSelect,
-  targets,
-}: {
-  firstTargetRef: RefObject<HTMLButtonElement | null>;
-  onSelect: (target: PaymentTarget) => void;
-  targets: PaymentTarget[];
-}) {
-  const { t } = useTranslation();
-  const { locale } = useLocalization();
-  const groupIdPrefix = useId();
-  const groups = new Map<string, { debtDescription: string; targets: PaymentTarget[] }>();
-
-  targets.forEach((target) => {
-    const existingGroup = groups.get(target.debtId);
-
-    if (existingGroup) {
-      existingGroup.targets.push(target);
-      return;
-    }
-
-    groups.set(target.debtId, {
-      debtDescription: target.debtDescription,
-      targets: [target],
-    });
-  });
-
-  return (
-    <div className="grid gap-2">
-      {Array.from(groups, ([debtId, group], groupIndex) => {
-        const headingId = `${groupIdPrefix}-debt-${groupIndex}`;
-
-        return (
-          <div aria-labelledby={headingId} className="grid gap-2" key={debtId} role="group">
-            <h3 className="m-0 text-[0.82rem] font-black text-foreground" id={headingId}>
-              {group.debtDescription}
-            </h3>
-            <div className="grid gap-2">
-              {group.targets.map((target, targetIndex) => {
-                const planLabel =
-                  target.plan.type === 'installment'
-                    ? t('payments.drawer.installmentLabel', { position: target.plan.position })
-                    : t('payments.drawer.onePaymentTarget');
-                const timingLabel =
-                  target.timing === 'overdue'
-                    ? t('payments.drawer.timingOverdue')
-                    : target.timing === 'dueToday'
-                      ? t('payments.drawer.timingDueToday')
-                      : t('payments.drawer.timingUpcoming');
-                const paymentStateLabel =
-                  target.paymentState === 'partiallyPaid'
-                    ? t('payments.drawer.paymentStatePartiallyPaid')
-                    : t('payments.drawer.paymentStateUnpaid');
-
-                return (
-                  <button
-                    aria-label={`${target.debtDescription}, ${planLabel}`}
-                    className="grid w-full cursor-pointer gap-2 rounded-[5px] border border-border bg-background p-3 text-start text-foreground transition hover:bg-muted"
-                    key={target.scheduleItemId}
-                    onClick={() => onSelect(target)}
-                    ref={groupIndex === 0 && targetIndex === 0 ? firstTargetRef : undefined}
-                    type="button"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="min-w-0 truncate text-[0.82rem] font-extrabold">
-                        {planLabel}
-                      </span>
-                      <bdi className="shrink-0 text-[0.82rem] font-black" dir="ltr">
-                        {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
-                      </bdi>
-                    </div>
-                    <span className="text-[0.76rem] font-bold text-muted-foreground">
-                      {t('payments.drawer.dueDateLabel')}: {formatDateOnly(target.dueDate, locale)}{' '}
-                      · {timingLabel}
-                    </span>
-                    <span className="text-[0.76rem] font-bold text-muted-foreground">
-                      {paymentStateLabel}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
 function createPaymentFormSchema(targetRemaining: string, today: string) {
   return paymentFieldsSchema.extend({
     amount: paymentFieldsSchema.shape.amount.pipe(
-      z
-        .string()
-        .refine(
-          (amount) => parseMoney(amount) <= parseMoney(targetRemaining),
-          paymentApiErrorCode.paymentAmountExceedsRemaining,
-        ),
+      z.string().refine(
+        (amount) => parseMoney(amount) <= parseMoney(targetRemaining),
+        paymentApiErrorCode.paymentAmountExceedsRemaining,
+      ),
     ),
     paymentDate: paymentFieldsSchema.shape.paymentDate.pipe(
       z
@@ -712,24 +347,15 @@ function createPaymentFormSchema(targetRemaining: string, today: string) {
 function getPaymentPreview(
   amount: string,
   targetRemaining: string | undefined,
-): PaymentPreview | undefined {
+): string | undefined {
   const parsedAmount = paymentFieldsSchema.shape.amount.safeParse(amount);
-
-  if (!targetRemaining || !parsedAmount.success) {
-    return undefined;
-  }
+  if (!targetRemaining || !parsedAmount.success) return undefined;
 
   const paymentAmount = parseMoney(parsedAmount.data);
   const target = parseMoney(targetRemaining);
+  if (paymentAmount > target) return undefined;
 
-  if (paymentAmount > target) {
-    return { status: 'unavailable' };
-  }
-
-  return {
-    status: 'available',
-    targetRemaining: formatMoney(target - paymentAmount),
-  };
+  return formatMoney(target - paymentAmount);
 }
 
 function getIstanbulBusinessDate(at = new Date()): string {
@@ -740,27 +366,5 @@ function getIstanbulBusinessDate(at = new Date()): string {
     day: '2-digit',
   }).formatToParts(at);
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-
   return `${values.year}-${values.month}-${values.day}`;
-}
-
-function PaymentMetric({
-  currency,
-  label,
-  locale,
-  value,
-}: {
-  currency: PaymentTarget['currency'];
-  label: string;
-  locale: string;
-  value: string;
-}) {
-  return (
-    <div className="grid gap-1">
-      <span className="text-[0.68rem] font-black text-muted-foreground">{label}</span>
-      <bdi className="text-[0.9rem] font-black" dir="ltr">
-        {formatCurrencyAmount(value, currency, locale)}
-      </bdi>
-    </div>
-  );
 }
