@@ -330,24 +330,31 @@ function SelectedTargetSummary({
 }
 
 function createPaymentFormSchema(targetRemaining: string, today: string) {
-  return paymentFieldsSchema.superRefine((values, context) => {
-    const validation = validatePayment({
-      amount: values.amount,
-      remainingAmount: targetRemaining,
-      paymentDate: values.paymentDate,
-      businessDate: today,
-    });
-
-    if (validation.success) return;
-
-    for (const issue of validation.issues) {
-      context.addIssue({
-        code: 'custom',
-        path: [issue.target],
-        message: issue.code,
+  return paymentFieldsSchema.superRefine(
+    (values, context) => {
+      const validation = validatePayment({
+        amount: values.amount,
+        remainingAmount: targetRemaining,
+        paymentDate: values.paymentDate,
+        businessDate: today,
       });
-    }
-  });
+
+      if (validation.success) return;
+
+      for (const issue of validation.issues) {
+        context.addIssue({
+          code: 'custom',
+          path: [issue.target],
+          message: issue.code,
+        });
+      }
+    },
+    {
+      when({ value }) {
+        return paymentFieldsSchema.safeParse(value).success;
+      },
+    },
+  );
 }
 
 function getPaymentPreview(
