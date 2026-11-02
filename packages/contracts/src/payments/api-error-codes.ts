@@ -18,21 +18,8 @@ export const paymentApiErrorCode = {
 export type PaymentApiErrorCode =
   (typeof paymentApiErrorCode)[keyof typeof paymentApiErrorCode];
 
-function getNonEmptyObjectValues<T extends Record<string, string>>(
-  object: T,
-): readonly [T[keyof T], ...T[keyof T][]] {
-  const values = Object.values(object) as T[keyof T][];
-  const [firstValue, ...remainingValues] = values;
-
-  if (firstValue === undefined) {
-    throw new Error('Expected at least one object value');
-  }
-
-  return [firstValue, ...remainingValues];
-}
-
-export const paymentApiErrorCodes =
-  getNonEmptyObjectValues(paymentApiErrorCode);
+export const paymentApiErrorCodes: readonly PaymentApiErrorCode[] =
+  Object.values(paymentApiErrorCode);
 
 const paymentApiErrorCodeSet = new Set<string>(paymentApiErrorCodes);
 
