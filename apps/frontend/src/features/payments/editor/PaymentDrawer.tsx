@@ -4,7 +4,7 @@ import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
 import { useId, useState, type RefObject } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { recordPaymentRequestSchema } from '@collectify/contracts';
 import type { PaymentTarget } from '@collectify/contracts';
