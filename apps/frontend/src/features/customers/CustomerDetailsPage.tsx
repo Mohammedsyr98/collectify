@@ -1,25 +1,30 @@
-import { CreditCard, Pencil, type LucideIcon } from 'lucide-react';
+import { CreditCard, Pencil, Plus, type LucideIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 
 import {
   customerApiErrorCode,
+  type CustomerDetailsResponse,
   type Currency,
+  type DebtResponse,
+  type PaymentTarget,
 } from '@collectify/contracts';
+import { parseMoney } from '@collectify/domain/money';
 
 import { isApiError } from '../../shared/api/http';
 import { ErrorStatePage } from '../../shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
+import { DebtDrawer } from '../debts/editor/DebtDrawer';
+import { useCreateDebtMutation } from '../debts/ledger/debtQueries';
+import { PaymentDrawer } from '../payments/editor/PaymentDrawer';
+import { useRecordPaymentMutation } from '../payments/paymentQueries';
 import { useCustomerDetailsQuery } from './customerQueries';
 import { CustomerFinancialSummary } from './CustomerFinancialSummary';
 import { useCustomerEditor } from './useCustomerEditor';
 import { CustomerDebtLedger } from '../debts/CustomerDebtLedger';
 
-export function CustomerDetailsPage({
-  defaultCurrency,
-}: {
-  defaultCurrency?: Currency;
-}) {
+export function CustomerDetailsPage({ defaultCurrency }: { defaultCurrency: Currency }) {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -62,6 +67,67 @@ export function CustomerDetailsPage({
 
   return (
     <>
+      <CustomerDetailsContent
+        customer={customer}
+        defaultCurrency={defaultCurrency}
+        onEditCustomer={(trigger) => customerEditor.open({ customer }, trigger)}
+      />
+      {customerEditor.dialog}
+    </>
+  );
+}
+
+function CustomerDetailsContent({
+  customer,
+  defaultCurrency,
+  onEditCustomer,
+}: {
+  customer: CustomerDetailsResponse;
+  defaultCurrency: Currency;
+  onEditCustomer: (trigger: HTMLButtonElement) => void;
+}) {
+  const { t } = useTranslation();
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
+  const [isDebtCreationOpen, setIsDebtCreationOpen] = useState(false);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const { createDebt, isCreating } = useCreateDebtMutation({
+    customerId: customer.id,
+    onCreated: () => setIsDebtCreationOpen(false),
+  });
+  const { recordPayment } = useRecordPaymentMutation({
+    customerId: customer.id,
+    onRecorded: () => setPaymentSession(null),
+  });
+  const hasEligiblePayment = customer.financialSummary.some(
+    ({ remainingAmount }) => parseMoney(remainingAmount) > 0,
+  );
+
+  const openPayment = (initialTarget: PaymentTarget | undefined, trigger: HTMLElement) => {
+    returnFocusRef.current = trigger;
+    setPaymentSession({ initialTarget });
+  };
+
+  const openDebtCreation = (trigger: HTMLButtonElement) => {
+    returnFocusRef.current = trigger;
+    setIsDebtCreationOpen(true);
+  };
+
+  const openDebtPayment = (
+    debt: DebtResponse,
+    scheduleItemId: string,
+    trigger: HTMLButtonElement,
+  ) => {
+    const target = toPaymentTarget(debt, scheduleItemId);
+
+    if (!target) {
+      return;
+    }
+
+    openPayment(target, trigger);
+  };
+
+  return (
+    <>
       <main
         aria-label={customer.name}
         className="min-h-screen flex-1 bg-background p-6 text-foreground"
@@ -79,21 +145,33 @@ export function CustomerDetailsPage({
             <div className="flex flex-wrap gap-2">
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
-                onClick={(event) =>
-                  customerEditor.open({ customer }, event.currentTarget)
-                }
+                onClick={(event) => onEditCustomer(event.currentTarget)}
                 type="button"
               >
                 <Pencil aria-hidden="true" size={16} strokeWidth={2.6} />
                 {t('customers.actions.edit')}
               </button>
               <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-muted-foreground opacity-65"
-                disabled
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
+                onClick={(event) => {
+                  if (hasEligiblePayment) {
+                    openPayment(undefined, event.currentTarget);
+                  } else {
+                    openDebtCreation(event.currentTarget);
+                  }
+                }}
                 type="button"
               >
-                <CreditCard aria-hidden="true" size={16} strokeWidth={2.6} />
-                {t('customers.actions.recordPayment')}
+                {hasEligiblePayment ? (
+                  <CreditCard aria-hidden="true" size={16} strokeWidth={2.6} />
+                ) : (
+                  <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
+                )}
+                {t(
+                  hasEligiblePayment
+                    ? 'customers.actions.recordPayment'
+                    : 'customers.actions.addDebt',
+                )}
               </button>
             </div>
           </header>
@@ -113,7 +191,8 @@ export function CustomerDetailsPage({
           <section className="grid gap-4 lg:grid-cols-2">
             <CustomerDebtLedger
               customerId={customer.id}
-              defaultCurrency={defaultCurrency}
+              onAddDebt={openDebtCreation}
+              onRecordPayment={openDebtPayment}
             />
             <EmptyLedgerSection
               Icon={CreditCard}
@@ -124,9 +203,54 @@ export function CustomerDetailsPage({
         </div>
       </main>
 
-      {customerEditor.dialog}
+      {paymentSession ? (
+        <PaymentDrawer
+          customerId={customer.id}
+          customerName={customer.name}
+          initialTarget={paymentSession.initialTarget}
+          onClose={() => setPaymentSession(null)}
+          onSubmit={recordPayment}
+          returnFocusRef={returnFocusRef}
+        />
+      ) : null}
+      {isDebtCreationOpen ? (
+        <DebtDrawer
+          defaultCurrency={defaultCurrency}
+          isSubmitting={isCreating}
+          onClose={() => setIsDebtCreationOpen(false)}
+          onSubmit={createDebt}
+          returnFocusRef={returnFocusRef}
+        />
+      ) : null}
     </>
   );
+}
+
+type PaymentSession = { initialTarget?: PaymentTarget };
+
+function toPaymentTarget(debt: DebtResponse, scheduleItemId: string): PaymentTarget | undefined {
+  const scheduleItem = debt.scheduleItems.find(({ id }) => id === scheduleItemId);
+
+  if (!scheduleItem || scheduleItem.paymentState === 'paid') {
+    return undefined;
+  }
+
+  return {
+    scheduleItemId: scheduleItem.id,
+    debtId: debt.id,
+    debtDescription: debt.description,
+    currency: debt.currency,
+    debtVersion: debt.version,
+    amount: scheduleItem.amount,
+    remainingAmount: scheduleItem.remainingAmount,
+    dueDate: scheduleItem.dueDate,
+    timing: scheduleItem.timing,
+    paymentState: scheduleItem.paymentState,
+    plan:
+      debt.paymentPlanType === 'installment'
+        ? { type: 'installment', position: scheduleItem.position }
+        : { type: 'onePayment' },
+  };
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {

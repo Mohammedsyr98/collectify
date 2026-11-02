@@ -2,7 +2,9 @@ import { formatMoney, isMoneyWithinNumeric182Precision, parseMoney } from '@coll
 import { z } from 'zod';
 
 import { moneySchema } from '../money.js';
-import { paymentApiErrorCodes } from './api-error-codes.js';
+import {
+  paymentApiErrorCode,
+} from './api-error-codes.js';
 import { paymentValidationCode } from './validation-codes.js';
 
 const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -47,7 +49,7 @@ export const recordPaymentResponseSchema = z.object({
   payment: paymentSchema,
 });
 
-export const paymentErrorCodeSchema = z.enum(paymentApiErrorCodes);
+export const paymentErrorCodeSchema = z.enum(paymentApiErrorCode);
 
 export const paymentErrorResponseSchema = z.object({
   code: paymentErrorCodeSchema,
