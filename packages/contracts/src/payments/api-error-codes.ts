@@ -1,3 +1,4 @@
+
 import { paymentIssueCode } from '@collectify/domain/payment';
 
 type PaymentDomainIssueCode =
