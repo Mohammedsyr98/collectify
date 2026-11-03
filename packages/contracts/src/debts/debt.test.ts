@@ -5,6 +5,7 @@ import {
   debtListQuerySchema,
   debtListResponseSchema,
   debtResponseSchema,
+  paymentStateSchema,
   replaceDebtRequestSchema,
 } from './debt.js';
 import {
@@ -37,11 +38,44 @@ const validReplacementRequest = {
   ],
 };
 
+const validOnePaymentDebtResponse = {
+  id: 'debt_123',
+  customerId: 'customer_123',
+  description: 'Website redesign',
+  totalAmount: '125.50',
+  paidAmount: '25.50',
+  remainingAmount: '100.00',
+  paymentState: 'partiallyPaid',
+  paymentCount: 2,
+  currency: 'USD',
+  paymentPlanType: 'onePayment',
+  scheduleItems: [
+    {
+      id: 'schedule_123',
+      position: 1,
+      amount: '125.50',
+      paidAmount: '25.50',
+      remainingAmount: '100.00',
+      paymentState: 'partiallyPaid',
+      paymentCount: 2,
+      dueDate: '2026-09-30',
+      timing: 'upcoming',
+    },
+  ],
+  createdAt: '2026-09-10T12:00:00.000Z',
+  updatedAt: '2026-09-10T12:00:00.000Z',
+  version: 3,
+};
+
 const validInstallmentDebtResponse = {
   id: 'debt_123',
   customerId: 'customer_123',
   description: 'Website redesign',
   totalAmount: '125.50',
+  paidAmount: '25.20',
+  remainingAmount: '100.30',
+  paymentState: 'partiallyPaid',
+  paymentCount: 2,
   currency: 'USD',
   paymentPlanType: 'installment',
   scheduleItems: [
@@ -49,6 +83,10 @@ const validInstallmentDebtResponse = {
       id: 'schedule_123',
       position: 1,
       amount: '0.30',
+      paidAmount: '0.00',
+      remainingAmount: '0.30',
+      paymentState: 'unpaid',
+      paymentCount: 0,
       dueDate: '2026-09-30',
       timing: 'upcoming',
     },
@@ -56,6 +94,10 @@ const validInstallmentDebtResponse = {
       id: 'schedule_456',
       position: 2,
       amount: '125.20',
+      paidAmount: '25.20',
+      remainingAmount: '100.00',
+      paymentState: 'partiallyPaid',
+      paymentCount: 2,
       dueDate: '2026-10-30',
       timing: 'upcoming',
     },
@@ -440,53 +482,23 @@ describe('debt contracts', () => {
   });
 
   it('accepts a canonical one-payment debt response', () => {
-    expect(
-      debtResponseSchema.parse({
-        id: 'debt_123',
-        customerId: 'customer_123',
-        description: 'Website redesign',
-        totalAmount: '125.50',
-        currency: 'USD',
-        paymentPlanType: 'onePayment',
-        scheduleItems: [
-          {
-            id: 'schedule_123',
-            position: 1,
-            amount: '125.50',
-            dueDate: '2026-09-30',
-            timing: 'upcoming',
-          },
-        ],
-        createdAt: '2026-09-10T12:00:00.000Z',
-        updatedAt: '2026-09-10T12:00:00.000Z',
-        version: 3,
-      }),
-    ).toEqual({
-      id: 'debt_123',
-      customerId: 'customer_123',
-      description: 'Website redesign',
-      totalAmount: '125.50',
-      currency: 'USD',
-      paymentPlanType: 'onePayment',
-      scheduleItems: [
-        {
-          id: 'schedule_123',
-          position: 1,
-          amount: '125.50',
-          dueDate: '2026-09-30',
-          timing: 'upcoming',
-        },
-      ],
-      createdAt: '2026-09-10T12:00:00.000Z',
-      updatedAt: '2026-09-10T12:00:00.000Z',
-      version: 3,
-    });
+    expect(debtResponseSchema.parse(validOnePaymentDebtResponse)).toEqual(
+      validOnePaymentDebtResponse,
+    );
   });
 
   it('accepts a canonical installment debt response', () => {
     expect(debtResponseSchema.parse(validInstallmentDebtResponse)).toEqual(
       validInstallmentDebtResponse,
     );
+  });
+
+  it('defines the supported payment states', () => {
+    expect(paymentStateSchema.options).toEqual([
+      'unpaid',
+      'partiallyPaid',
+      'paid',
+    ]);
   });
 
   it('rejects a one-payment response with multiple schedule rows', () => {
@@ -512,23 +524,8 @@ describe('debt contracts', () => {
 
   it('rejects a non-canonical amount in a debt response', () => {
     const result = debtResponseSchema.safeParse({
-      id: 'debt_123',
-      customerId: 'customer_123',
-      description: 'Website redesign',
+      ...validInstallmentDebtResponse,
       totalAmount: '125.5',
-      currency: 'USD',
-      paymentPlanType: 'onePayment',
-      scheduleItems: [
-        {
-          id: 'schedule_123',
-          position: 1,
-          amount: '125.50',
-          dueDate: '2026-09-30',
-          timing: 'upcoming',
-        },
-      ],
-      createdAt: '2026-09-10T12:00:00.000Z',
-      updatedAt: '2026-09-10T12:00:00.000Z',
     });
 
     expect(result.success).toBe(false);
@@ -537,28 +534,7 @@ describe('debt contracts', () => {
   it('accepts a first-page debt list with truthful metadata', () => {
     expect(
       debtListResponseSchema.parse({
-        items: [
-          {
-            id: 'debt_123',
-            customerId: 'customer_123',
-            description: 'Website redesign',
-            totalAmount: '125.50',
-            currency: 'USD',
-            paymentPlanType: 'onePayment',
-            scheduleItems: [
-              {
-                id: 'schedule_123',
-                position: 1,
-                amount: '125.50',
-                dueDate: '2026-09-30',
-                timing: 'upcoming',
-              },
-            ],
-            createdAt: '2026-09-10T12:00:00.000Z',
-            updatedAt: '2026-09-10T12:00:00.000Z',
-            version: 3,
-          },
-        ],
+        items: [validOnePaymentDebtResponse],
         page: 1,
         pageSize: 5,
         totalItems: 1,

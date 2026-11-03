@@ -214,6 +214,19 @@ describe('summarizeDebtPlanAmounts', () => {
       difference: { kind: 'excess', amount: '0.03' },
     });
   });
+
+  it('calculates an aggregate beyond one NUMERIC(18,2) column', () => {
+    expect(
+      summarizeDebtPlanAmounts({
+        totalAmount: '9999999999999999.99',
+        scheduleAmounts: ['9999999999999999.99', '0.01'],
+      }),
+    ).toEqual({
+      debtTotal: '9999999999999999.99',
+      scheduleTotal: '10000000000000000.00',
+      difference: { kind: 'excess', amount: '0.01' },
+    });
+  });
 });
 
 describe('getInstallmentDueDateRange', () => {

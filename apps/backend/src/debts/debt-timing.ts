@@ -1,9 +1,6 @@
-export type ScheduleItemTiming = 'upcoming' | 'dueToday' | 'overdue';
+import type { ScheduleItemTiming } from '@collectify/contracts';
 
-export function getScheduleItemTiming(
-  dueDate: string,
-  businessDate: string,
-): ScheduleItemTiming {
+export function getScheduleItemTiming(dueDate: string, businessDate: string): ScheduleItemTiming {
   if (dueDate > businessDate) {
     return 'upcoming';
   }

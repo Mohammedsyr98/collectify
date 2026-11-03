@@ -31,18 +31,24 @@ export function PaginationControls({
     <nav aria-label={ariaLabel} className="flex items-center justify-end gap-2">
       <button
         aria-label={previousPageLabel}
-        className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={isDisabled || !canMoveToPreviousPage}
-        onClick={onPreviousPage}
+        aria-disabled={isDisabled || undefined}
+        className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        disabled={!canMoveToPreviousPage}
+        onClick={() => {
+          if (!isDisabled) onPreviousPage();
+        }}
         type="button"
       >
         <PreviousIcon aria-hidden="true" size={17} strokeWidth={2.5} />
       </button>
       <button
         aria-label={nextPageLabel}
-        className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={isDisabled || !canMoveToNextPage}
-        onClick={onNextPage}
+        aria-disabled={isDisabled || undefined}
+        className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-border bg-card text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        disabled={!canMoveToNextPage}
+        onClick={() => {
+          if (!isDisabled) onNextPage();
+        }}
         type="button"
       >
         <NextIcon aria-hidden="true" size={17} strokeWidth={2.5} />

@@ -10,6 +10,9 @@ import {
   debts,
   ownerLanguageEnum,
   ownerProfiles,
+  paymentConstraints,
+  paymentIndexes,
+  payments,
   session,
   user,
   verification,
@@ -121,5 +124,29 @@ describe('database schema', () => {
     expect(
       scheduleConfig.uniqueConstraints.map((constraint) => constraint.name),
     ).toContain(debtConstraints.debtPositionUnique);
+  });
+
+  it('defines durable payments with stable database names', () => {
+    const paymentConfig = getTableConfig(payments);
+
+    expect(paymentConfig.name).toBe('payments');
+    expect(columnNames(payments)).toEqual([
+      'id',
+      'schedule_item_id',
+      'amount',
+      'payment_date',
+      'note',
+      'idempotency_key',
+      'request_fingerprint',
+      'created_at',
+      'updated_at',
+    ]);
+    expect(paymentConfig.foreignKeys).toHaveLength(1);
+    expect(paymentConfig.indexes.map((index) => index.config.name)).toContain(
+      paymentIndexes.scheduleItemHistory,
+    );
+    expect(
+      paymentConfig.uniqueConstraints.map((constraint) => constraint.name),
+    ).toContain(paymentConstraints.idempotencyKeyUnique);
   });
 });

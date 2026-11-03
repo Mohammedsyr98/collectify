@@ -1,3 +1,5 @@
+import { formatMoney, parseMoney } from '../money/index.js';
+
 export type DebtPlan = {
   readonly totalAmount: string;
   readonly scheduleItems: readonly {
@@ -18,7 +20,7 @@ export type InstallmentScheduleOptions = {
 const maximumInstallmentCount = 60;
 
 export function getMaximumInstallmentCount(totalAmount: string): number {
-  const totalMinorUnits = parseMinorUnits(totalAmount);
+  const totalMinorUnits = parseMoney(totalAmount);
 
   return totalMinorUnits < BigInt(maximumInstallmentCount)
     ? Number(totalMinorUnits)
@@ -37,7 +39,7 @@ export function allocateInstallmentAmounts(
     throw new Error('Installment count exceeds the maximum for this total');
   }
 
-  const totalMinorUnits = parseMinorUnits(totalAmount);
+  const totalMinorUnits = parseMoney(totalAmount);
   const installmentMinorUnits = totalMinorUnits / BigInt(installmentCount);
   const remainderMinorUnits = totalMinorUnits % BigInt(installmentCount);
 
@@ -47,7 +49,7 @@ export function allocateInstallmentAmounts(
         ? installmentMinorUnits + remainderMinorUnits
         : installmentMinorUnits;
 
-    return formatMinorUnits(amount);
+    return formatMoney(amount);
   });
 }
 
@@ -64,19 +66,19 @@ export function summarizeDebtPlanAmounts(input: {
   readonly totalAmount: string;
   readonly scheduleAmounts: readonly string[];
 }): DebtPlanAmountSummary {
-  const debtTotal = parseMinorUnits(input.totalAmount);
+  const debtTotal = parseMoney(input.totalAmount);
   const scheduleTotal = input.scheduleAmounts.reduce(
-    (total, amount) => total + parseMinorUnits(amount),
+    (total, amount) => total + parseMoney(amount),
     0n,
   );
   const difference = debtTotal - scheduleTotal;
 
   return {
-    debtTotal: formatMinorUnits(debtTotal),
-    scheduleTotal: formatMinorUnits(scheduleTotal),
+    debtTotal: formatMoney(debtTotal),
+    scheduleTotal: formatMoney(scheduleTotal),
     difference: {
       kind: difference < 0n ? 'excess' : 'remaining',
-      amount: formatMinorUnits(difference < 0n ? -difference : difference),
+      amount: formatMoney(difference < 0n ? -difference : difference),
     },
   };
 }
@@ -144,7 +146,7 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   const issues: DebtPlanIssue[] = [];
 
   const scheduleItemCount = plan.scheduleItems.length;
-  const totalMinorUnits = parseMinorUnits(plan.totalAmount);
+  const totalMinorUnits = parseMoney(plan.totalAmount);
   const maximumInstallmentCount = getMaximumInstallmentCount(plan.totalAmount);
   const isOnePayment = scheduleItemCount === 1;
   const isMultiRowPlan = scheduleItemCount >= 2;
@@ -161,7 +163,7 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   let previousValidDueDate: string | undefined;
 
   for (const [index, scheduleItem] of plan.scheduleItems.entries()) {
-    const scheduleItemMinorUnits = parseMinorUnits(scheduleItem.amount);
+    const scheduleItemMinorUnits = parseMoney(scheduleItem.amount);
     scheduleTotalMinorUnits += scheduleItemMinorUnits;
 
     if (scheduleItemMinorUnits === 0n) {
@@ -211,22 +213,6 @@ export function validateDebtPlan(plan: DebtPlan): DebtPlanValidationResult {
   }
 
   return issues.length === 0 ? { success: true } : { success: false, issues };
-}
-
-function parseMinorUnits(amount: string): bigint {
-  if (!/^\d+(?:\.\d{0,2})?$/.test(amount)) {
-    throw new Error('Amount must contain only digits and at most two decimal places');
-  }
-
-  const [wholeAmount, fractionalAmount = ''] = amount.split('.');
-  return BigInt(`${wholeAmount}${fractionalAmount.padEnd(2, '0')}`);
-}
-
-function formatMinorUnits(amount: bigint): string {
-  const wholeAmount = amount / 100n;
-  const fractionalAmount = (amount % 100n).toString().padStart(2, '0');
-
-  return `${wholeAmount}.${fractionalAmount}`;
 }
 
 function installmentDueDate(

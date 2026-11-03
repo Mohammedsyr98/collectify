@@ -4,7 +4,13 @@ import {
   startIntegrationPostgres,
   type IntegrationPostgres,
 } from '../test-support/integration-postgres';
-import { customerConstraints, debtConstraints } from './schema';
+import {
+  customerConstraints,
+  debtConstraints,
+  paymentConstraints,
+  paymentIndexes,
+  paymentTriggers,
+} from './schema';
 
 describe('Postgres migrations', () => {
   let postgres: IntegrationPostgres | undefined;
@@ -15,6 +21,283 @@ describe('Postgres migrations', () => {
 
   afterAll(async () => {
     await postgres?.stop();
+  });
+
+  it('stores a payment fact for an existing schedule item', async () => {
+    await insertDebtCustomer('payment_persistence');
+    await insertDebtFixture(
+      'debt_payment_persistence_schema',
+      'customer_payment_persistence',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_payment_persistence_schema',
+      debtId: 'debt_payment_persistence_schema',
+      amount: '100.00',
+    });
+
+    await postgres!.query(
+      `
+        INSERT INTO "payments" (
+          "id",
+          "schedule_item_id",
+          "amount",
+          "payment_date",
+          "note",
+          "idempotency_key",
+          "request_fingerprint",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, $4::date, $5, $6::uuid, $7, now(), now())
+      `,
+      [
+        'payment_persistence_schema',
+        'schedule_payment_persistence_schema',
+        '50.00',
+        '2026-10-16',
+        'Initial payment',
+        '11111111-1111-4111-8111-111111111111',
+        'normalized-payment-request-fingerprint',
+      ],
+    );
+
+    const payments = await postgres!.query<{
+      id: string;
+      schedule_item_id: string;
+      amount: string;
+      payment_date: string;
+      note: string | null;
+      idempotency_key: string;
+      request_fingerprint: string;
+    }>(
+      `
+        SELECT
+          "id",
+          "schedule_item_id",
+          "amount",
+          "payment_date"::text,
+          "note",
+          "idempotency_key"::text,
+          "request_fingerprint"
+        FROM "payments"
+        WHERE "id" = $1
+      `,
+      ['payment_persistence_schema'],
+    );
+
+    expect(payments).toEqual([
+      {
+        id: 'payment_persistence_schema',
+        schedule_item_id: 'schedule_payment_persistence_schema',
+        amount: '50.00',
+        payment_date: '2026-10-16',
+        note: 'Initial payment',
+        idempotency_key: '11111111-1111-4111-8111-111111111111',
+        request_fingerprint: 'normalized-payment-request-fingerprint',
+      },
+    ]);
+  });
+
+  it('rejects a non-positive payment amount at the database boundary', async () => {
+    await insertDebtCustomer('payment_amount_constraint');
+    await insertDebtFixture(
+      'debt_payment_amount_constraint_schema',
+      'customer_payment_amount_constraint',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_payment_amount_constraint_schema',
+      debtId: 'debt_payment_amount_constraint_schema',
+      amount: '100.00',
+    });
+
+    await expect(
+      postgres!.query(
+        `
+          INSERT INTO "payments" (
+            "id",
+            "schedule_item_id",
+            "amount",
+            "payment_date",
+            "idempotency_key",
+            "request_fingerprint",
+            "created_at",
+            "updated_at"
+          )
+          VALUES ($1, $2, $3, $4::date, $5::uuid, $6, now(), now())
+        `,
+        [
+          'payment_amount_constraint_schema',
+          'schedule_payment_amount_constraint_schema',
+          '0.00',
+          '2026-10-16',
+          '22222222-2222-4222-8222-222222222222',
+          'payment-amount-constraint-fingerprint',
+        ],
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: paymentConstraints.amountPositive,
+    });
+  });
+
+  it('rejects a payment note longer than 500 characters', async () => {
+    await insertDebtCustomer('payment_note_constraint');
+    await insertDebtFixture(
+      'debt_payment_note_constraint_schema',
+      'customer_payment_note_constraint',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_payment_note_constraint_schema',
+      debtId: 'debt_payment_note_constraint_schema',
+      amount: '100.00',
+    });
+
+    await expect(
+      postgres!.query(
+        `
+          INSERT INTO "payments" (
+            "id",
+            "schedule_item_id",
+            "amount",
+            "payment_date",
+            "note",
+            "idempotency_key",
+            "request_fingerprint",
+            "created_at",
+            "updated_at"
+          )
+          VALUES ($1, $2, $3, $4::date, $5, $6::uuid, $7, now(), now())
+        `,
+        [
+          'payment_note_constraint_schema',
+          'schedule_payment_note_constraint_schema',
+          '10.00',
+          '2026-10-16',
+          'x'.repeat(501),
+          '33333333-3333-4333-8333-333333333333',
+          'payment-note-constraint-fingerprint',
+        ],
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: paymentConstraints.noteMaxLength,
+    });
+  });
+
+  it('rejects duplicate payment idempotency keys', async () => {
+    await insertDebtCustomer('payment_idempotency_constraint');
+    await insertDebtFixture(
+      'debt_payment_idempotency_constraint_schema',
+      'customer_payment_idempotency_constraint',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_payment_idempotency_constraint_schema',
+      debtId: 'debt_payment_idempotency_constraint_schema',
+      amount: '100.00',
+    });
+
+    await insertPaymentFixture({
+      id: 'payment_idempotency_first_schema',
+      scheduleItemId: 'schedule_payment_idempotency_constraint_schema',
+      amount: '10.00',
+      idempotencyKey: '44444444-4444-4444-8444-444444444444',
+      requestFingerprint: 'payment-idempotency-first-fingerprint',
+    });
+
+    await expect(
+      insertPaymentFixture({
+        id: 'payment_idempotency_duplicate_schema',
+        scheduleItemId: 'schedule_payment_idempotency_constraint_schema',
+        amount: '20.00',
+        idempotencyKey: '44444444-4444-4444-8444-444444444444',
+        requestFingerprint: 'payment-idempotency-duplicate-fingerprint',
+      }),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: paymentConstraints.idempotencyKeyUnique,
+    });
+  });
+
+  it('restricts deleting a schedule item referenced by a payment', async () => {
+    await insertDebtCustomer('payment_schedule_delete_constraint');
+    await insertDebtFixture(
+      'debt_payment_schedule_delete_constraint_schema',
+      'customer_payment_schedule_delete_constraint',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_payment_delete_constraint_schema',
+      debtId: 'debt_payment_schedule_delete_constraint_schema',
+      amount: '100.00',
+    });
+    await insertPaymentFixture({
+      id: 'payment_schedule_delete_constraint_schema',
+      scheduleItemId: 'schedule_payment_delete_constraint_schema',
+      amount: '10.00',
+      idempotencyKey: '55555555-5555-4555-8555-555555555555',
+      requestFingerprint: 'payment-schedule-delete-fingerprint',
+    });
+
+    await expect(
+      postgres!.query(
+        'DELETE FROM "debt_schedule_items" WHERE "id" = $1',
+        ['schedule_payment_delete_constraint_schema'],
+      ),
+    ).rejects.toMatchObject({
+      code: '23503',
+      constraint: paymentConstraints.scheduleItemForeignKey,
+    });
+  });
+
+  it('rejects changing a payment request fingerprint', async () => {
+    await insertDebtCustomer('payment_fingerprint_constraint');
+    await insertDebtFixture(
+      'debt_payment_fingerprint_constraint_schema',
+      'customer_payment_fingerprint_constraint',
+    );
+    await insertScheduleFixture({
+      id: 'schedule_payment_fingerprint_constraint_schema',
+      debtId: 'debt_payment_fingerprint_constraint_schema',
+      amount: '100.00',
+    });
+    await insertPaymentFixture({
+      id: 'payment_fingerprint_constraint_schema',
+      scheduleItemId: 'schedule_payment_fingerprint_constraint_schema',
+      amount: '10.00',
+      idempotencyKey: '66666666-6666-4666-8666-666666666666',
+      requestFingerprint: 'payment-fingerprint-original',
+    });
+
+    await expect(
+      postgres!.query(
+        `
+          UPDATE "payments"
+          SET "request_fingerprint" = $1
+          WHERE "id" = $2
+        `,
+        ['payment-fingerprint-changed', 'payment_fingerprint_constraint_schema'],
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: paymentTriggers.requestFingerprintImmutable,
+    });
+  });
+
+  it('creates the payment history index with ordered keys and included amount', async () => {
+    const indexes = await postgres!.query<{ definition: string }>(`
+      SELECT pg_get_indexdef(index_class.oid) AS definition
+      FROM pg_class index_class
+      JOIN pg_index ON pg_index.indexrelid = index_class.oid
+      JOIN pg_class table_class ON table_class.oid = pg_index.indrelid
+      WHERE table_class.relname = 'payments'
+        AND index_class.relname = '${paymentIndexes.scheduleItemHistory}'
+    `);
+
+    expect(indexes).toHaveLength(1);
+    const definition = indexes[0]!.definition.replace(/\s+/g, ' ');
+    expect(definition).toContain('CREATE INDEX');
+    expect(definition).toContain(
+      '(schedule_item_id, payment_date DESC, created_at DESC, id DESC) INCLUDE (amount)',
+    );
   });
 
   it('creates the auth and owner profile schema with Postgres constraints', async () => {
@@ -44,6 +327,7 @@ describe('Postgres migrations', () => {
       'debt_schedule_items',
       'debts',
       'owner_profiles',
+      'payments',
       'session',
       'user',
       'verification',
@@ -434,6 +718,37 @@ describe('Postgres migrations', () => {
         VALUES ($1, $2, $3, $4, $5::date, now(), now())
       `,
       [id, debtId, position, amount, dueDate],
+    );
+  }
+
+  function insertPaymentFixture({
+    amount,
+    id,
+    idempotencyKey,
+    requestFingerprint,
+    scheduleItemId,
+  }: {
+    amount: string;
+    id: string;
+    idempotencyKey: string;
+    requestFingerprint: string;
+    scheduleItemId: string;
+  }): Promise<unknown[]> {
+    return postgres!.query(
+      `
+        INSERT INTO "payments" (
+          "id",
+          "schedule_item_id",
+          "amount",
+          "payment_date",
+          "idempotency_key",
+          "request_fingerprint",
+          "created_at",
+          "updated_at"
+        )
+        VALUES ($1, $2, $3, '2026-10-16'::date, $4::uuid, $5, now(), now())
+      `,
+      [id, scheduleItemId, amount, idempotencyKey, requestFingerprint],
     );
   }
 });

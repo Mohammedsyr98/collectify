@@ -8,6 +8,7 @@ import { OwnerSignInModule } from './auth/owner/sign-in/owner-sign-in.module';
 import { OwnerSignOutModule } from './auth/owner/sign-out/owner-sign-out.module';
 import { OwnerSignUpModule } from './auth/owner/sign-up/owner-sign-up.module';
 import { SessionModule } from './auth/owner/session/session.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SessionModule } from './auth/owner/session/session.module';
     OwnerSignOutModule,
     OwnerSignUpModule,
     SessionModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
 })

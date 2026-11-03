@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { customerApiErrorCodes } from './api-error-codes.js';
 import { currencySchema } from '../owner-profile/owner-profile.js';
+import { moneySchema } from '../money.js';
 import { oneBasedPageSchema } from '../pagination.js';
 import { customerValidationCode } from './validation-codes.js';
 
@@ -53,15 +54,13 @@ export const customerSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-const moneyAmountSchema = z.string().regex(/^-?\d+(\.\d{2})$/);
-
 export const customerListPageSize = 25;
 
 export const customerCurrencySummarySchema = z.object({
   currency: currencySchema,
-  totalDebtAmount: moneyAmountSchema,
-  totalPaidAmount: moneyAmountSchema,
-  remainingAmount: moneyAmountSchema,
+  totalDebtAmount: moneySchema,
+  totalPaidAmount: moneySchema,
+  remainingAmount: moneySchema,
 });
 
 export const customerFinancialSummarySchema = z.array(
@@ -70,8 +69,8 @@ export const customerFinancialSummarySchema = z.array(
 
 export const customerListCurrencyBalanceSchema = z.object({
   currency: currencySchema,
-  remainingAmount: moneyAmountSchema,
-  overdueAmount: moneyAmountSchema,
+  remainingAmount: moneySchema,
+  overdueAmount: moneySchema,
 });
 
 export const customerListFinancialSummarySchema = z.object({
