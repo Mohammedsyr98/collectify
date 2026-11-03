@@ -3,12 +3,19 @@ import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CreateDebtRequest } from '@collectify/contracts';
+import {
+  debtPlanIssueCode,
+  debtRequestValidationCode,
+  type CreateDebtRequest,
+} from '@collectify/contracts';
 
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { DebtDrawer } from '../editor/DebtDrawer';
+import { debtResources } from '../localization/resources';
 import { createDebtFixture } from './debtTestData';
+
+const debtMessages = debtResources.en.common.debts;
 
 describe('DebtDrawer', () => {
   beforeEach(() => {
@@ -35,7 +42,7 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Description')).toHaveFocus();
+    expect(screen.getByLabelText(debtMessages.form.descriptionLabel)).toHaveFocus();
   });
 
   it('prefills the edit form from the selected debt', () => {
@@ -62,14 +69,14 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Edit debt' });
+    const drawer = screen.getByRole('dialog', { name: debtMessages.drawer.editTitle });
 
-    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toHaveValue(
       'Website redesign',
     );
-    expect(within(drawer).getByLabelText('Total amount')).toHaveValue('275.75');
-    expect(within(drawer).getByLabelText('Currency')).toHaveValue('EUR');
-    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-10-01');
+    expect(within(drawer).getByLabelText(debtMessages.form.totalAmountLabel)).toHaveValue('275.75');
+    expect(within(drawer).getByLabelText(debtMessages.form.currencyLabel)).toHaveValue('EUR');
+    expect(within(drawer).getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2026-10-01');
   });
 
   it('describes edit mode accessibly', () => {
@@ -83,8 +90,8 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toHaveAccessibleDescription(
-      'Edit this one-payment debt for this customer.',
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle })).toHaveAccessibleDescription(
+      debtMessages.drawer.editDescription,
     );
   });
 
@@ -102,13 +109,13 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const dialog = screen.getByRole('dialog', { name: 'Add debt' });
-    const saveButton = within(dialog).getByRole('button', { name: 'Saving' });
+    const dialog = screen.getByRole('dialog', { name: debtMessages.drawer.createTitle });
+    const saveButton = within(dialog).getByRole('button', { name: debtMessages.form.saving });
 
     expect(saveButton).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: debtMessages.form.cancel })).toBeDisabled();
     expect(
-      within(dialog).getByRole('button', { name: 'Close debt form' }),
+      within(dialog).getByRole('button', { name: debtMessages.drawer.close }),
     ).toBeDisabled();
 
     await user.click(saveButton);
@@ -134,18 +141,20 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const description = screen.getByLabelText('Description');
-    const dueDate = screen.getByLabelText('Due date');
+    const description = screen.getByLabelText(debtMessages.form.descriptionLabel);
+    const dueDate = screen.getByLabelText(debtMessages.form.dueDateLabel);
 
     await user.type(description, 'Website redesign');
-    await user.type(screen.getByLabelText('Total amount'), '125.50');
-    await user.click(screen.getByRole('button', { name: 'Save debt' }));
+    await user.type(screen.getByLabelText(debtMessages.form.totalAmountLabel), '125.50');
+    await user.click(screen.getByRole('button', { name: debtMessages.form.save }));
 
-    expect(dueDate).toHaveAccessibleDescription('Due date is required.');
+    expect(dueDate).toHaveAccessibleDescription(
+      debtMessages.validation[debtRequestValidationCode.debtDueDateRequired],
+    );
     expect(dueDate).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(description).toHaveValue('Website redesign');
-    expect(screen.getByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.createTitle })).toBeInTheDocument();
   });
 
   it('shows schedule-item amount errors on the total amount field after submission', async () => {
@@ -161,18 +170,18 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const totalAmount = screen.getByLabelText('Total amount');
-    const dueDate = screen.getByLabelText('Due date');
-    await user.type(screen.getByLabelText('Description'), 'Website redesign');
+    const totalAmount = screen.getByLabelText(debtMessages.form.totalAmountLabel);
+    const dueDate = screen.getByLabelText(debtMessages.form.dueDateLabel);
+    await user.type(screen.getByLabelText(debtMessages.form.descriptionLabel), 'Website redesign');
     await user.type(totalAmount, '0');
     await user.type(dueDate, '2026-09-30');
 
     expect(totalAmount).not.toHaveAccessibleDescription();
 
-    await user.click(screen.getByRole('button', { name: 'Save debt' }));
+    await user.click(screen.getByRole('button', { name: debtMessages.form.save }));
 
     expect(totalAmount).toHaveAccessibleDescription(
-      'Payment amount must be greater than zero.',
+      debtMessages.validation[debtPlanIssueCode.scheduleItemAmountNotPositive],
     );
     expect(totalAmount).toHaveFocus();
     expect(dueDate).not.toHaveAccessibleDescription();
@@ -192,14 +201,14 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const dialog = screen.getByRole('dialog', { name: 'Add debt' });
+    const dialog = screen.getByRole('dialog', { name: debtMessages.drawer.createTitle });
     expect(dialog).toHaveAccessibleDescription(
-      'Create a debt for this customer.',
+      debtMessages.drawer.description,
     );
     const closeButton = within(dialog).getByRole('button', {
-      name: 'Close debt form',
+      name: debtMessages.drawer.close,
     });
-    const saveButton = within(dialog).getByRole('button', { name: 'Save debt' });
+    const saveButton = within(dialog).getByRole('button', { name: debtMessages.form.save });
 
     saveButton.focus();
     await user.tab();

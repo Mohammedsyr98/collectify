@@ -7,7 +7,16 @@ import type { DebtResponse, ReplaceDebtRequest } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { DebtDrawer } from '../editor/DebtDrawer';
+import { debtResources } from '../localization/resources';
 import { createDebtFixture } from './debtTestData';
+
+const debtMessages = debtResources.en.common.debts;
+const installmentAmountLabel = (number: number) =>
+  debtMessages.form.installmentAmountFieldLabel.replace('{{number}}', String(number));
+const installmentDueDateLabel = (number: number) =>
+  debtMessages.form.installmentDueDateFieldLabel.replace('{{number}}', String(number));
+const removeInstallmentLabel = (number: number) =>
+  debtMessages.form.removeInstallment.replace('{{number}}', String(number));
 
 const savedInstallmentDebt: Extract<DebtResponse, { paymentPlanType: 'installment' }> = {
   id: 'debt_installments_123',
@@ -77,11 +86,11 @@ describe('DebtDrawer saved payment plans', () => {
         />,
       );
 
-      await user.clear(screen.getByLabelText('Total amount'));
-      await user.type(screen.getByLabelText('Total amount'), '275.7');
-      await user.clear(screen.getByLabelText('Due date'));
-      await user.type(screen.getByLabelText('Due date'), '2026-10-15');
-      await user.click(screen.getByRole('button', { name: 'Save debt' }));
+      await user.clear(screen.getByLabelText(debtMessages.form.totalAmountLabel));
+      await user.type(screen.getByLabelText(debtMessages.form.totalAmountLabel), '275.7');
+      await user.clear(screen.getByLabelText(debtMessages.form.dueDateLabel));
+      await user.type(screen.getByLabelText(debtMessages.form.dueDateLabel), '2026-10-15');
+      await user.click(screen.getByRole('button', { name: debtMessages.form.save }));
 
       await waitFor(() =>
         expect(onSubmit).toHaveBeenCalledWith({
@@ -125,16 +134,16 @@ describe('DebtDrawer saved payment plans', () => {
         />,
       );
 
-      const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+      const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
 
-      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+      await user.click(drawer.getByRole('button', { name: debtMessages.form.installmentsOption }));
 
-      expect(drawer.getByLabelText('Installment count')).toHaveValue('2');
-      expect(drawer.getByRole('button', { name: 'Monthly' })).toHaveAttribute(
+      expect(drawer.getByLabelText(debtMessages.form.installmentCountLabel)).toHaveValue('2');
+      expect(drawer.getByRole('button', { name: debtMessages.form.monthlyOption })).toHaveAttribute(
         'aria-pressed',
         'true',
       );
-      expect(drawer.getByLabelText('First installment due date')).toHaveValue('2026-09-30');
+      expect(drawer.getByLabelText(debtMessages.form.firstInstallmentDueDateLabel)).toHaveValue('2026-09-30');
     });
 
     it('submits a saved one-payment conversion with fresh schedule identities', async () => {
@@ -165,10 +174,10 @@ describe('DebtDrawer saved payment plans', () => {
         />,
       );
 
-      const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+      const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
 
-      await user.click(drawer.getByRole('button', { name: 'Installments' }));
-      await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+      await user.click(drawer.getByRole('button', { name: debtMessages.form.installmentsOption }));
+      await user.click(drawer.getByRole('button', { name: debtMessages.form.save }));
 
       await waitFor(() =>
         expect(onSubmit).toHaveBeenCalledWith({
@@ -197,17 +206,17 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
 
-    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('40.00');
-    expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('30.00');
-    expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('30.00');
-    expect(drawer.queryByLabelText('Installment count')).not.toBeInTheDocument();
+    expect(drawer.getByLabelText(installmentAmountLabel(1))).toHaveValue('40.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(2))).toHaveValue('30.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(3))).toHaveValue('30.00');
+    expect(drawer.queryByLabelText(debtMessages.form.installmentCountLabel)).not.toBeInTheDocument();
     expect(
-      drawer.queryByRole('button', { name: 'Customize installments' }),
+      drawer.queryByRole('button', { name: debtMessages.form.customizeInstallments }),
     ).not.toBeInTheDocument();
     expect(
-      drawer.queryByRole('button', { name: 'Reset to automatic schedule' }),
+      drawer.queryByRole('button', { name: debtMessages.form.resetToAutomaticSchedule }),
     ).not.toBeInTheDocument();
   });
 
@@ -224,11 +233,11 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
 
-    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.onePaymentOption }));
 
-    expect(drawer.getByLabelText('Due date')).toHaveValue('2026-12-01');
+    expect(drawer.getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2026-12-01');
   });
 
   it('submits an installment conversion with a fresh one-payment identity', async () => {
@@ -247,10 +256,10 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
 
-    await user.click(drawer.getByRole('button', { name: 'One payment' }));
-    await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.onePaymentOption }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.save }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
@@ -287,26 +296,26 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
-    const totalAmount = drawer.getByLabelText('Total amount');
-    const splitButton = drawer.getByRole('button', { name: 'Split amounts equally' });
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
+    const totalAmount = drawer.getByLabelText(debtMessages.form.totalAmountLabel);
+    const splitButton = drawer.getByRole('button', { name: debtMessages.form.splitAmountsEqually });
 
     await user.click(splitButton);
 
-    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('33.00');
-    expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('33.00');
-    expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('33.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(1))).toHaveValue('33.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(2))).toHaveValue('33.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(3))).toHaveValue('33.00');
 
     await user.clear(totalAmount);
     await user.type(totalAmount, '90');
     await user.click(splitButton);
 
-    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('30.00');
-    expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('30.00');
-    expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('30.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(1))).toHaveValue('30.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(2))).toHaveValue('30.00');
+    expect(drawer.getByLabelText(installmentAmountLabel(3))).toHaveValue('30.00');
     expect(onSubmit).not.toHaveBeenCalled();
 
-    await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.save }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
@@ -348,9 +357,9 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
-    const totalAmount = drawer.getByLabelText('Total amount');
-    const splitButton = drawer.getByRole('button', { name: 'Split amounts equally' });
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
+    const totalAmount = drawer.getByLabelText(debtMessages.form.totalAmountLabel);
+    const splitButton = drawer.getByRole('button', { name: debtMessages.form.splitAmountsEqually });
 
     expect(splitButton).toBeEnabled();
 
@@ -381,23 +390,23 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
-    const firstInstallmentAmount = drawer.getByLabelText('Installment 1 amount');
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
+    const firstInstallmentAmount = drawer.getByLabelText(installmentAmountLabel(1));
 
     await user.clear(firstInstallmentAmount);
     await user.type(firstInstallmentAmount, '45');
-    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.onePaymentOption }));
 
-    const onePaymentDueDate = drawer.getByLabelText('Due date');
+    const onePaymentDueDate = drawer.getByLabelText(debtMessages.form.dueDateLabel);
     await user.clear(onePaymentDueDate);
     await user.type(onePaymentDueDate, '2027-01-15');
-    await user.click(drawer.getByRole('button', { name: 'Installments' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.installmentsOption }));
 
-    expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('45');
+    expect(drawer.getByLabelText(installmentAmountLabel(1))).toHaveValue('45');
 
-    await user.click(drawer.getByRole('button', { name: 'One payment' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.onePaymentOption }));
 
-    expect(drawer.getByLabelText('Due date')).toHaveValue('2027-01-15');
+    expect(drawer.getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2027-01-15');
   });
 
   it('replaces saved installment rows while preserving retained ids and omitting new ids', async () => {
@@ -416,16 +425,16 @@ describe('DebtDrawer saved payment plans', () => {
       />,
     );
 
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+    const drawer = within(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle }));
 
-    await user.click(drawer.getByRole('button', { name: 'Remove installment 2' }));
-    await user.clear(drawer.getByLabelText('Installment 2 amount'));
-    await user.type(drawer.getByLabelText('Installment 2 amount'), '35');
-    await user.click(drawer.getByRole('button', { name: 'Add installment' }));
-    await user.type(drawer.getByLabelText('Installment 3 amount'), '25');
-    await user.type(drawer.getByLabelText('Installment 3 due date'), '2027-01-01');
+    await user.click(drawer.getByRole('button', { name: removeInstallmentLabel(2) }));
+    await user.clear(drawer.getByLabelText(installmentAmountLabel(2)));
+    await user.type(drawer.getByLabelText(installmentAmountLabel(2)), '35');
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.addInstallment }));
+    await user.type(drawer.getByLabelText(installmentAmountLabel(3)), '25');
+    await user.type(drawer.getByLabelText(installmentDueDateLabel(3)), '2027-01-01');
 
-    await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+    await user.click(drawer.getByRole('button', { name: debtMessages.form.save }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
