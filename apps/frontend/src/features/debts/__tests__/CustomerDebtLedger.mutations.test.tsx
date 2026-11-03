@@ -5,16 +5,20 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  debtApiErrorCode,
+  debtRequestValidationCode,
   type DebtListResponse,
   type SessionResponse,
 } from '@collectify/contracts';
 
 import App from '../../../App';
 import { getBackendUrl } from '../../../shared/api/http';
+import { sharedLocalizationResources } from '../../../shared/localization/resources';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { baseCustomer, resetCustomerTestEnvironment } from '../../customers/__tests__/customerTestData';
 import { RouterLocationProbe } from '../../customers/__tests__/RouterLocationProbe';
+import { customerResources } from '../../customers/localization/resources';
 import { debtResources } from '../localization/resources';
 import {
   createDebtFixture,
@@ -35,6 +39,9 @@ const ownerSession: SessionResponse = {
 };
 
 const createdDebt = createDebtFixture('customer_123');
+const debtMessages = debtResources.en.common.debts;
+const customerMessages = customerResources.en.common.customers;
+const sharedMessages = sharedLocalizationResources.en.common;
 
 describe('CustomerDebtLedger', () => {
   beforeEach(() => {
@@ -93,10 +100,10 @@ describe('CustomerDebtLedger', () => {
     const firstRender = renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
     const drawer = await openAndFillDebtDrawer(user);
 
-    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
-    expect(screen.getByRole('status', { name: 'Debt created' })).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: debtMessages.toast.create.successTitle })).toBeInTheDocument();
 
     expect(creationRequest).toEqual({
       description: 'Website redesign',
@@ -164,14 +171,14 @@ describe('CustomerDebtLedger', () => {
 
       const { actionsMenu } = await openDebtActionMenu(user, initialDebt.description);
       await user.click(
-        within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+        within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.edit }),
       );
 
-      const drawer = await screen.findByRole('dialog', { name: 'Edit debt' });
-      const descriptionInput = within(drawer).getByLabelText('Description');
+      const drawer = await screen.findByRole('dialog', { name: debtMessages.drawer.editTitle });
+      const descriptionInput = within(drawer).getByLabelText(debtMessages.form.descriptionLabel);
       await user.clear(descriptionInput);
       await user.type(descriptionInput, updatedDebt.description);
-      await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+      await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
       await waitFor(() =>
         expect(replacementRequest).toEqual({
@@ -195,7 +202,7 @@ describe('CustomerDebtLedger', () => {
         }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole('dialog', { name: 'Edit debt' }),
+        screen.queryByRole('dialog', { name: debtMessages.drawer.editTitle }),
       ).not.toBeInTheDocument();
       expect(await screen.findByText(updatedDebt.description)).toBeInTheDocument();
       expect(screen.queryByText(initialDebt.description)).not.toBeInTheDocument();
@@ -224,14 +231,18 @@ describe('CustomerDebtLedger', () => {
     renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
     const drawer = await openAndFillDebtDrawer(user);
 
-    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
     expect(
-      await screen.findByRole('alert', { name: 'Could not create debt' }),
-    ).toHaveTextContent('Check the highlighted fields.');
-    expect(screen.queryByText('Enter a valid due date.')).not.toBeInTheDocument();
-    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-09-30');
-    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+      await screen.findByRole('alert', { name: debtMessages.toast.create.errorTitle }),
+    ).toHaveTextContent(debtMessages.errors[debtApiErrorCode.validationError]);
+    expect(
+      screen.queryByText(
+        debtMessages.validation[debtRequestValidationCode.debtDueDateInvalid],
+      ),
+    ).not.toBeInTheDocument();
+    expect(within(drawer).getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2026-09-30');
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toHaveValue(
       'Website redesign',
     );
     expect(drawer).toBeInTheDocument();
@@ -249,13 +260,13 @@ describe('CustomerDebtLedger', () => {
     renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
     const drawer = await openAndFillDebtDrawer(user);
 
-    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
     expect(
-      await screen.findByRole('alert', { name: 'Could not create debt' }),
-    ).toHaveTextContent('Something went wrong. Try again.');
+      await screen.findByRole('alert', { name: debtMessages.toast.create.errorTitle }),
+    ).toHaveTextContent(sharedMessages.errors.genericDescription);
     expect(drawer).toBeInTheDocument();
-    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toHaveValue(
       'Website redesign',
     );
   }, 10_000);
@@ -278,14 +289,14 @@ async function openDebtActionMenu(
 ): Promise<{ actionsMenu: HTMLElement; actionsTrigger: HTMLElement }> {
   const debtCard = await getDebtCard(description);
   const actionsTrigger = within(debtCard).getByRole('button', {
-    name: `Open actions for ${description}`,
+    name: debtMessages.card.actions.openMenu.replace('{{description}}', description),
   });
 
   await user.click(actionsTrigger);
 
   return {
     actionsMenu: await screen.findByRole('menu', {
-      name: `Actions for ${description}`,
+      name: debtMessages.card.actions.menuLabel.replace('{{description}}', description),
     }),
     actionsTrigger,
   };
@@ -308,15 +319,15 @@ async function openAndFillDebtDrawer(
     await screen.findByRole('heading', { name: baseCustomer.name }),
   ).toBeInTheDocument();
 
-  const addDebtButton = screen.getByRole('button', { name: 'Add debt' });
+  const addDebtButton = screen.getByRole('button', { name: customerMessages.actions.addDebt });
   expect(addDebtButton).toBeEnabled();
   await user.click(addDebtButton);
 
-  const drawer = await screen.findByRole('dialog', { name: 'Add debt' });
-  await user.type(within(drawer).getByLabelText('Description'), 'Website redesign');
-  await user.type(within(drawer).getByLabelText('Total amount'), '125.50');
-  await user.selectOptions(within(drawer).getByLabelText('Currency'), 'USD');
-  await user.type(within(drawer).getByLabelText('Due date'), '2026-09-30');
+  const drawer = await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle });
+  await user.type(within(drawer).getByLabelText(debtMessages.form.descriptionLabel), 'Website redesign');
+  await user.type(within(drawer).getByLabelText(debtMessages.form.totalAmountLabel), '125.50');
+  await user.selectOptions(within(drawer).getByLabelText(debtMessages.form.currencyLabel), 'USD');
+  await user.type(within(drawer).getByLabelText(debtMessages.form.dueDateLabel), '2026-09-30');
 
   return drawer;
 }

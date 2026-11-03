@@ -12,9 +12,11 @@ import {
 
 import { getBackendUrl } from '../../../shared/api/http';
 import { localeStorageKey } from '../../../shared/localization';
+import { sharedLocalizationResources } from '../../../shared/localization/resources';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { baseCustomer, resetCustomerTestEnvironment } from '../../customers/__tests__/customerTestData';
+import { customerResources } from '../../customers/localization/resources';
 import { CustomerDebtLedger } from '../CustomerDebtLedger';
 import { debtResources } from '../localization/resources';
 import {
@@ -37,6 +39,9 @@ const ownerSession: SessionResponse = {
 };
 
 const createdDebt = createDebtFixture('customer_123');
+const debtMessages = debtResources.en.common.debts;
+const customerMessages = customerResources.en.common.customers;
+const sharedMessages = sharedLocalizationResources.en.common;
 
 describe('CustomerDebtLedger', () => {
   beforeEach(() => {
@@ -70,7 +75,7 @@ describe('CustomerDebtLedger', () => {
   it('renders the empty debt state', async () => {
     renderLedger([]);
 
-    expect(await screen.findByText('No debts yet.')).toBeInTheDocument();
+    expect(await screen.findByText(debtMessages.section.empty)).toBeInTheDocument();
   });
 
   it('renders a complete one-payment debt card', async () => {
@@ -79,15 +84,15 @@ describe('CustomerDebtLedger', () => {
     const debtCard = await getDebtCard('Website redesign');
 
     expect(within(debtCard).getAllByText('$125.50')).toHaveLength(2);
-    expect(within(debtCard).getByText('One payment')).toBeInTheDocument();
-    expect(within(debtCard).getByText('Upcoming')).toBeInTheDocument();
-    expect(within(debtCard).getByText('Paid')).toBeInTheDocument();
+    expect(within(debtCard).getByText(debtMessages.card.onePayment)).toBeInTheDocument();
+    expect(within(debtCard).getByText(debtMessages.card.upcoming)).toBeInTheDocument();
+    expect(within(debtCard).getByText(debtMessages.card.paid)).toBeInTheDocument();
     expect(within(debtCard).getByText('$0.00')).toBeInTheDocument();
-    expect(within(debtCard).getByText('Remaining')).toBeInTheDocument();
-    expect(within(debtCard).getByText('Due')).toBeInTheDocument();
+    expect(within(debtCard).getByText(debtMessages.card.remaining)).toBeInTheDocument();
+    expect(within(debtCard).getByText(debtMessages.card.dueDate)).toBeInTheDocument();
     expect(within(debtCard).getByText('September 30, 2026')).toBeInTheDocument();
-    expect(within(debtCard).queryByText('Due today')).not.toBeInTheDocument();
-    expect(within(debtCard).queryByText('Overdue')).not.toBeInTheDocument();
+    expect(within(debtCard).queryByText(debtMessages.card.dueToday)).not.toBeInTheDocument();
+    expect(within(debtCard).queryByText(debtMessages.card.overdue)).not.toBeInTheDocument();
   });
 
   it('renders an installment count and offers editing', async () => {
@@ -117,22 +122,30 @@ describe('CustomerDebtLedger', () => {
     renderLedger([installmentDebt]);
 
     const debtCard = await getDebtCard('Website redesign installments');
-    expect(within(debtCard).getByText('2 installments')).toBeInTheDocument();
+    expect(within(debtCard).getByText(
+      debtMessages.card.installmentCount.replace('{{count}}', '2'),
+    )).toBeInTheDocument();
 
     await user.click(
       within(debtCard).getByRole('button', {
-        name: 'Open actions for Website redesign installments',
+        name: debtMessages.card.actions.openMenu.replace(
+          '{{description}}',
+          'Website redesign installments',
+        ),
       }),
     );
 
     const actionsMenu = await screen.findByRole('menu', {
-      name: 'Actions for Website redesign installments',
+      name: debtMessages.card.actions.menuLabel.replace(
+        '{{description}}',
+        'Website redesign installments',
+      ),
     });
     expect(
-      within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.edit }),
     ).toBeInTheDocument();
     expect(
-      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.delete }),
     ).toBeInTheDocument();
   });
 
@@ -141,10 +154,16 @@ describe('CustomerDebtLedger', () => {
 
     const debtCard = await getDebtCard('Website redesign installments');
 
-    expect(within(debtCard).getByText('4 installments')).toBeInTheDocument();
-    expect(within(debtCard).getByText('2 overdue')).toBeInTheDocument();
-    expect(within(debtCard).getByText('1 due today')).toBeInTheDocument();
-    expect(within(debtCard).queryByText('Upcoming')).not.toBeInTheDocument();
+    expect(within(debtCard).getByText(
+      debtMessages.card.installmentCount.replace('{{count}}', '4'),
+    )).toBeInTheDocument();
+    expect(within(debtCard).getByText(
+      debtMessages.card.overdueInstallmentCount.replace('{{count}}', '2'),
+    )).toBeInTheDocument();
+    expect(within(debtCard).getByText(
+      debtMessages.card.dueTodayInstallmentCount.replace('{{count}}', '1'),
+    )).toBeInTheDocument();
+    expect(within(debtCard).queryByText(debtMessages.card.upcoming)).not.toBeInTheDocument();
     expect(within(debtCard).queryByText('Next installment')).not.toBeInTheDocument();
     expect(within(debtCard).queryByText('$50.00')).not.toBeInTheDocument();
   });
@@ -155,13 +174,16 @@ describe('CustomerDebtLedger', () => {
 
     const debtCard = await getDebtCard('Website redesign installments');
     const expandButton = within(debtCard).getByRole('button', {
-      name: 'View installments',
+      name: debtMessages.card.viewInstallments,
     });
 
     expect(expandButton).toHaveAttribute('aria-expanded', 'false');
     expect(
       within(debtCard).queryByRole('region', {
-        name: 'Installment schedule for Website redesign installments',
+        name: debtMessages.card.installmentScheduleLabel.replace(
+          '{{description}}',
+          'Website redesign installments',
+        ),
       }),
     ).not.toBeInTheDocument();
 
@@ -169,30 +191,36 @@ describe('CustomerDebtLedger', () => {
 
     expect(expandButton).toHaveAttribute('aria-expanded', 'true');
     const schedule = within(debtCard).getByRole('region', {
-      name: 'Installment schedule for Website redesign installments',
+      name: debtMessages.card.installmentScheduleLabel.replace(
+        '{{description}}',
+        'Website redesign installments',
+      ),
     });
     expect(expandButton).toHaveAttribute('aria-controls', schedule.id);
     const rows = within(schedule).getAllByRole('listitem');
 
     expect(rows).toHaveLength(4);
     expect(rows[0]).toHaveTextContent('$20.00');
-    expect(rows[0]).toHaveTextContent('Overdue');
+    expect(rows[0]).toHaveTextContent(debtMessages.card.overdue);
     expect(rows[1]).toHaveTextContent('$30.00');
-    expect(rows[1]).toHaveTextContent('Overdue');
+    expect(rows[1]).toHaveTextContent(debtMessages.card.overdue);
     expect(rows[2]).toHaveTextContent('$25.00');
-    expect(rows[2]).toHaveTextContent('Due today');
+    expect(rows[2]).toHaveTextContent(debtMessages.card.dueToday);
     expect(rows[3]).toHaveTextContent('$25.00');
-    expect(rows[3]).toHaveTextContent('Upcoming');
+    expect(rows[3]).toHaveTextContent(debtMessages.card.upcoming);
     expect(within(schedule).queryByRole('textbox')).not.toBeInTheDocument();
 
     await user.click(
-      within(debtCard).getByRole('button', { name: 'Hide installments' }),
+      within(debtCard).getByRole('button', { name: debtMessages.card.hideInstallments }),
     );
 
     expect(expandButton).toHaveAttribute('aria-expanded', 'false');
     expect(
       within(debtCard).queryByRole('region', {
-        name: 'Installment schedule for Website redesign installments',
+        name: debtMessages.card.installmentScheduleLabel.replace(
+          '{{description}}',
+          'Website redesign installments',
+        ),
       }),
     ).not.toBeInTheDocument();
   });
@@ -231,18 +259,24 @@ describe('CustomerDebtLedger', () => {
 
     const debtCard = await getDebtCard('Website redesign');
     const actionsTrigger = within(debtCard).getByRole('button', {
-      name: 'Open actions for Website redesign',
+      name: debtMessages.card.actions.openMenu.replace(
+        '{{description}}',
+        'Website redesign',
+      ),
     });
 
     actionsTrigger.focus();
     await user.keyboard('{Enter}');
 
     const actionsMenu = await screen.findByRole('menu', {
-      name: 'Actions for Website redesign',
+      name: debtMessages.card.actions.menuLabel.replace(
+        '{{description}}',
+        'Website redesign',
+      ),
     });
 
     expect(
-      within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.edit }),
     ).toBeInTheDocument();
   });
 
@@ -277,12 +311,12 @@ describe('CustomerDebtLedger', () => {
     const dueTodayCard = await getDebtCard('Office supplies');
     const overdueCard = await getDebtCard('Storefront repair');
 
-    expect(within(dueTodayCard).getByText('Due today')).toBeInTheDocument();
-    expect(within(dueTodayCard).queryByText('Overdue')).not.toBeInTheDocument();
-    expect(within(dueTodayCard).queryByText('Upcoming')).not.toBeInTheDocument();
-    expect(within(overdueCard).getByText('Overdue')).toBeInTheDocument();
-    expect(within(overdueCard).queryByText('Due today')).not.toBeInTheDocument();
-    expect(within(overdueCard).queryByText('Upcoming')).not.toBeInTheDocument();
+    expect(within(dueTodayCard).getByText(debtMessages.card.dueToday)).toBeInTheDocument();
+    expect(within(dueTodayCard).queryByText(debtMessages.card.overdue)).not.toBeInTheDocument();
+    expect(within(dueTodayCard).queryByText(debtMessages.card.upcoming)).not.toBeInTheDocument();
+    expect(within(overdueCard).getByText(debtMessages.card.overdue)).toBeInTheDocument();
+    expect(within(overdueCard).queryByText(debtMessages.card.dueToday)).not.toBeInTheDocument();
+    expect(within(overdueCard).queryByText(debtMessages.card.upcoming)).not.toBeInTheDocument();
   });
 
   it('localizes Arabic debt details and isolates the money amount', async () => {
@@ -376,10 +410,10 @@ describe('CustomerDebtLedger', () => {
 
     renderLedger([]);
 
-    const debtSection = await screen.findByRole('region', { name: 'Debts' });
-    await user.click(within(debtSection).getByRole('button', { name: 'Add debt' }));
+    const debtSection = await screen.findByRole('region', { name: debtMessages.section.title });
+    await user.click(within(debtSection).getByRole('button', { name: customerMessages.actions.addDebt }));
 
-    expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle })).toBeInTheDocument();
   });
 
   it('returns focus to the Add debt trigger after closing the drawer', async () => {
@@ -387,15 +421,15 @@ describe('CustomerDebtLedger', () => {
 
     renderLedger([]);
 
-    const addDebtButton = await screen.findByRole('button', { name: 'Add debt' });
+    const addDebtButton = await screen.findByRole('button', { name: customerMessages.actions.addDebt });
     await user.click(addDebtButton);
-    await screen.findByRole('dialog', { name: 'Add debt' });
+    await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle });
 
     await user.keyboard('{Escape}');
 
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Add debt' }),
+        screen.queryByRole('dialog', { name: debtMessages.drawer.createTitle }),
       ).not.toBeInTheDocument(),
     );
     expect(addDebtButton).toHaveFocus();
@@ -405,12 +439,12 @@ describe('CustomerDebtLedger', () => {
     const user = userEvent.setup();
     const { drawer } = await openSelectedDebtEditor(user);
 
-    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toHaveValue(
       'Website redesign',
     );
-    expect(within(drawer).getByLabelText('Total amount')).toHaveValue('275.75');
-    expect(within(drawer).getByLabelText('Currency')).toHaveValue('EUR');
-    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-10-01');
+    expect(within(drawer).getByLabelText(debtMessages.form.totalAmountLabel)).toHaveValue('275.75');
+    expect(within(drawer).getByLabelText(debtMessages.form.currencyLabel)).toHaveValue('EUR');
+    expect(within(drawer).getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2026-10-01');
   });
 
   it('returns focus to the debt menu trigger after closing the editor', async () => {
@@ -421,7 +455,7 @@ describe('CustomerDebtLedger', () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Edit debt' }),
+        screen.queryByRole('dialog', { name: debtMessages.drawer.editTitle }),
       ).not.toBeInTheDocument(),
     );
     expect(actionsTrigger).toHaveFocus();
@@ -453,19 +487,21 @@ describe('CustomerDebtLedger', () => {
       debt.description,
     );
     await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.delete }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+    const dialog = await screen.findByRole('dialog', { name: debtMessages.delete.title });
     expect(dialog).toHaveTextContent(debt.description);
     expect(dialog).toHaveTextContent('Ã¢â€šÂ¬275.75');
-    expect(dialog).toHaveTextContent('This action cannot be undone.');
+    expect(dialog).toHaveTextContent(
+      debtMessages.delete.description.replace('{{description}}', debt.description),
+    );
 
-    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: debtMessages.delete.cancel }));
 
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Delete debt' }),
+        screen.queryByRole('dialog', { name: debtMessages.delete.title }),
       ).not.toBeInTheDocument(),
     );
     expect(deleteRequestCount).toBe(0);
@@ -507,17 +543,17 @@ describe('CustomerDebtLedger', () => {
     );
 
     const addDebtButton = await screen.findByRole('button', {
-      name: 'Add debt',
+      name: customerMessages.actions.addDebt,
     });
     await screen.findByRole('heading', { name: debt.description });
     const { actionsMenu } = await openDebtActionMenu(user, debt.description);
     await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.delete }),
     );
-    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+    const dialog = await screen.findByRole('dialog', { name: debtMessages.delete.title });
 
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete debt' }),
+      within(dialog).getByRole('button', { name: debtMessages.delete.confirm }),
     );
 
     await waitFor(() =>
@@ -539,15 +575,15 @@ describe('CustomerDebtLedger', () => {
     );
 
     const { drawer } = await openSelectedDebtEditor(user);
-    const descriptionInput = within(drawer).getByLabelText('Description');
+    const descriptionInput = within(drawer).getByLabelText(debtMessages.form.descriptionLabel);
     await user.clear(descriptionInput);
     await user.type(descriptionInput, 'Updated website redesign');
-    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
     expect(
-      await screen.findByRole('alert', { name: 'Could not update debt' }),
-    ).toHaveTextContent('Something went wrong. Try again.');
-    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeInTheDocument();
+      await screen.findByRole('alert', { name: debtMessages.toast.edit.errorTitle }),
+    ).toHaveTextContent(sharedMessages.errors.genericDescription);
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle })).toBeInTheDocument();
     expect(descriptionInput).toHaveValue('Updated website redesign');
   });
 
@@ -572,18 +608,18 @@ describe('CustomerDebtLedger', () => {
     );
 
     const { drawer } = await openSelectedDebtEditor(user);
-    const descriptionInput = within(drawer).getByLabelText('Description');
+    const descriptionInput = within(drawer).getByLabelText(debtMessages.form.descriptionLabel);
     await user.clear(descriptionInput);
     await user.type(descriptionInput, 'Updated website redesign');
-    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
     const error = await screen.findByRole('alert', {
-      name: 'Could not update debt',
+      name: debtMessages.toast.edit.errorTitle,
     });
     expect(error).toHaveTextContent(
-      'This debt was changed elsewhere. Review it before saving.',
+      debtMessages.errors[debtApiErrorCode.debtVersionConflict],
     );
-    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle })).toBeInTheDocument();
     expect(descriptionInput).toHaveValue('Updated website redesign');
     expect(replaceRequestCount).toBe(1);
   });
@@ -650,12 +686,12 @@ async function openSelectedDebtEditor(
     debt.description,
   );
   await user.click(
-    within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+    within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.edit }),
   );
 
   return {
     actionsTrigger,
-    drawer: await screen.findByRole('dialog', { name: 'Edit debt' }),
+    drawer: await screen.findByRole('dialog', { name: debtMessages.drawer.editTitle }),
   };
 }
 
@@ -665,14 +701,14 @@ async function openDebtActionMenu(
 ): Promise<{ actionsMenu: HTMLElement; actionsTrigger: HTMLElement }> {
   const debtCard = await getDebtCard(description);
   const actionsTrigger = within(debtCard).getByRole('button', {
-    name: `Open actions for ${description}`,
+    name: debtMessages.card.actions.openMenu.replace('{{description}}', description),
   });
 
   await user.click(actionsTrigger);
 
   return {
     actionsMenu: await screen.findByRole('menu', {
-      name: `Actions for ${description}`,
+      name: debtMessages.card.actions.menuLabel.replace('{{description}}', description),
     }),
     actionsTrigger,
   };

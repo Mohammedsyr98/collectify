@@ -15,10 +15,15 @@ import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { baseCustomer, resetCustomerTestEnvironment } from '../../customers/__tests__/customerTestData';
 import { RouterLocationProbe } from '../../customers/__tests__/RouterLocationProbe';
+import { customerResources } from '../../customers/localization/resources';
+import { debtResources } from '../localization/resources';
 import {
   createDebtFixture,
   emptyDebtList,
 } from './debtTestData';
+
+const customerMessages = customerResources.en.common.customers;
+const debtMessages = debtResources.en.common.debts;
 
 const ownerSession: SessionResponse = {
   authenticated: true,
@@ -110,11 +115,13 @@ describe('CustomerDebtLedger', () => {
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(
+      screen.getByRole('button', { name: debtMessages.list.pagination.nextPage }),
+    );
     await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
 
     try {
-      const debtRegion = screen.getByRole('region', { name: 'Debts' });
+      const debtRegion = screen.getByRole('region', { name: debtMessages.section.title });
 
       expect(within(debtRegion).queryByText('Page one debt')).not.toBeInTheDocument();
       expect(
@@ -122,19 +129,23 @@ describe('CustomerDebtLedger', () => {
       ).toHaveLength(5);
 
       const pagination = within(debtRegion).getByRole('navigation', {
-        name: 'Debt pages',
+        name: debtMessages.list.pagination.label,
       });
 
       expect(
-        within(pagination).getByRole('button', { name: 'Previous page' }),
+        within(pagination).getByRole('button', {
+          name: debtMessages.list.pagination.previousPage,
+        }),
       ).toBeDisabled();
       expect(
-        within(pagination).getByRole('button', { name: 'Next page' }),
+        within(pagination).getByRole('button', {
+          name: debtMessages.list.pagination.nextPage,
+        }),
       ).toBeDisabled();
       expect(
         screen.getByRole('heading', { name: baseCustomer.name }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('region', { name: 'Payments' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: customerMessages.details.payments })).toBeInTheDocument();
     } finally {
       resolveNextPageRequest();
     }
@@ -200,7 +211,9 @@ describe('CustomerDebtLedger', () => {
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(
+      screen.getByRole('button', { name: debtMessages.list.pagination.nextPage }),
+    );
 
     expect(await screen.findByText('Page two debt')).toBeInTheDocument();
     expect(requestedPages).toEqual(['1', '2']);
@@ -240,7 +253,9 @@ describe('CustomerDebtLedger', () => {
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(
+      screen.getByRole('button', { name: debtMessages.list.pagination.nextPage }),
+    );
 
     expect(await screen.findByText('Page two debt')).toBeInTheDocument();
     expect(screen.getByTestId('router-location')).toHaveTextContent(
@@ -323,13 +338,13 @@ describe('CustomerDebtLedger', () => {
     await waitFor(() => expect(requestedPages).toEqual(['99', '2']));
 
     try {
-      const debtRegion = screen.getByRole('region', { name: 'Debts' });
+      const debtRegion = screen.getByRole('region', { name: debtMessages.section.title });
 
       expect(debtRegion).toHaveAttribute('aria-busy', 'true');
       expect(
         within(debtRegion).getAllByTestId('debt-card-skeleton'),
       ).toHaveLength(5);
-      expect(within(debtRegion).queryByText('No debts yet.')).not.toBeInTheDocument();
+      expect(within(debtRegion).queryByText(debtMessages.section.empty)).not.toBeInTheDocument();
     } finally {
       resolveLastPageRequest();
     }
@@ -368,7 +383,9 @@ describe('CustomerDebtLedger', () => {
     renderCustomerDebtRoute([`/customers/${baseCustomer.id}?debtPage=1`]);
 
     expect(await screen.findByText('Page one debt')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(
+      screen.getByRole('button', { name: debtMessages.list.pagination.nextPage }),
+    );
     expect(await screen.findByText('Page two debt')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Go back' }));
