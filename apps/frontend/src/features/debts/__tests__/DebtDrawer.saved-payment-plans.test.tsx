@@ -7,6 +7,7 @@ import type { DebtResponse, ReplaceDebtRequest } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { DebtDrawer } from '../editor/DebtDrawer';
+import { createDebtFixture } from './debtTestData';
 
 const savedInstallmentDebt: Extract<DebtResponse, { paymentPlanType: 'installment' }> = {
   id: 'debt_installments_123',
@@ -43,7 +44,7 @@ const savedInstallmentDebt: Extract<DebtResponse, { paymentPlanType: 'installmen
   version: 3,
 };
 
-describe('DebtDrawer saved installment editing', () => {
+describe('DebtDrawer saved payment plans', () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.lang = '';
@@ -58,6 +59,133 @@ describe('DebtDrawer saved installment editing', () => {
     cleanup();
   });
 
+  describe('saved plan conversions', () => {
+    it('submits an edited one-payment debt with its saved currency and schedule identity', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
+        async () => undefined,
+      );
+      const debt = createDebtFixture('customer_123', { currency: 'EUR' });
+
+      renderWithAppProviders(
+        <DebtDrawer
+          debt={debt}
+          isSubmitting={false}
+          mode="edit"
+          onClose={vi.fn()}
+          onSubmit={onSubmit}
+        />,
+      );
+
+      await user.clear(screen.getByLabelText('Total amount'));
+      await user.type(screen.getByLabelText('Total amount'), '275.7');
+      await user.clear(screen.getByLabelText('Due date'));
+      await user.type(screen.getByLabelText('Due date'), '2026-10-15');
+      await user.click(screen.getByRole('button', { name: 'Save debt' }));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith({
+          description: debt.description,
+          totalAmount: '275.70',
+          currency: 'EUR',
+          expectedVersion: debt.version,
+          scheduleItems: [
+            {
+              id: debt.scheduleItems[0].id,
+              amount: '275.70',
+              dueDate: '2026-10-15',
+            },
+          ],
+        }),
+      );
+    });
+
+    it('starts a saved one-payment conversion with two monthly installments from its due date', async () => {
+      const user = userEvent.setup();
+      const debt = createDebtFixture('customer_123', {
+        totalAmount: '100.00',
+        scheduleItems: [
+          {
+            id: 'schedule_123',
+            position: 1,
+            amount: '100.00',
+            dueDate: '2026-09-30',
+            timing: 'upcoming',
+          },
+        ],
+      });
+
+      renderWithAppProviders(
+        <DebtDrawer
+          debt={debt}
+          isSubmitting={false}
+          mode="edit"
+          onClose={vi.fn()}
+          onSubmit={vi.fn(async () => undefined)}
+        />,
+      );
+
+      const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+
+      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+
+      expect(drawer.getByLabelText('Installment count')).toHaveValue('2');
+      expect(drawer.getByRole('button', { name: 'Monthly' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(drawer.getByLabelText('First installment due date')).toHaveValue('2026-09-30');
+    });
+
+    it('submits a saved one-payment conversion with fresh schedule identities', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
+        async () => undefined,
+      );
+      const debt = createDebtFixture('customer_123', {
+        totalAmount: '100.00',
+        scheduleItems: [
+          {
+            id: 'schedule_123',
+            position: 1,
+            amount: '100.00',
+            dueDate: '2026-09-30',
+            timing: 'upcoming',
+          },
+        ],
+      });
+
+      renderWithAppProviders(
+        <DebtDrawer
+          debt={debt}
+          isSubmitting={false}
+          mode="edit"
+          onClose={vi.fn()}
+          onSubmit={onSubmit}
+        />,
+      );
+
+      const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
+
+      await user.click(drawer.getByRole('button', { name: 'Installments' }));
+      await user.click(drawer.getByRole('button', { name: 'Save debt' }));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith({
+          description: debt.description,
+          totalAmount: '100.00',
+          currency: 'USD',
+          expectedVersion: debt.version,
+          scheduleItems: [
+            { amount: '50.00', dueDate: '2026-09-30' },
+            { amount: '50.00', dueDate: '2026-10-30' },
+          ],
+        }),
+      );
+    });
+  });
+
+  describe('saved installment schedules', () => {
   it('renders saved installments without automatic schedule controls', () => {
     renderWithAppProviders(
       <DebtDrawer
@@ -323,5 +451,6 @@ describe('DebtDrawer saved installment editing', () => {
         ],
       }),
     );
+  });
   });
 });

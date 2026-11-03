@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { useNavigate } from 'react-router';
@@ -20,6 +20,7 @@ import { server } from '../../../shared/test/server';
 import { baseCustomer, resetCustomerTestEnvironment } from '../../customers/__tests__/customerTestData';
 import { RouterLocationProbe } from '../../customers/__tests__/RouterLocationProbe';
 import { CustomerDebtLedger } from '../CustomerDebtLedger';
+import { debtResources } from '../localization/resources';
 import {
   createDebtFixture,
   createInstallmentDebtFixture,
@@ -636,6 +637,95 @@ describe('CustomerDebtLedger', () => {
 
   });
 
+  describe('editing', () => {
+    it('updates an existing debt through customer details and refreshes the ledger', async () => {
+      const user = userEvent.setup();
+      const initialDebt = createDebtFixture(baseCustomer.id, {
+        description: 'Website redesign',
+        totalAmount: '275.75',
+        currency: 'EUR',
+        scheduleItems: [
+          {
+            id: 'schedule_123',
+            position: 1,
+            amount: '275.75',
+            dueDate: '2026-10-01',
+            timing: 'upcoming',
+          },
+        ],
+      });
+      const updatedDebt = {
+        ...initialDebt,
+        description: 'Updated website redesign',
+      };
+      let debtList: DebtListResponse = {
+        items: [initialDebt],
+        page: 1,
+        pageSize: 5,
+        totalItems: 1,
+        totalPages: 1,
+      };
+      let replacementRequest: unknown;
+      let requestedDebtId: string | undefined;
+      const messages = debtResources.en.common.debts;
+
+      server.use(
+        http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+          HttpResponse.json(debtList),
+        ),
+        http.put(
+          `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
+          async ({ params, request }) => {
+            requestedDebtId = String(params.debtId);
+            replacementRequest = await request.json();
+            debtList = { ...debtList, items: [updatedDebt] };
+            return HttpResponse.json(updatedDebt);
+          },
+        ),
+      );
+
+      renderCustomerDebtRoute([`/customers/${baseCustomer.id}`]);
+
+      const { actionsMenu } = await openDebtActionMenu(user, initialDebt.description);
+      await user.click(
+        within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+      );
+
+      const drawer = await screen.findByRole('dialog', { name: 'Edit debt' });
+      const descriptionInput = within(drawer).getByLabelText('Description');
+      await user.clear(descriptionInput);
+      await user.type(descriptionInput, updatedDebt.description);
+      await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+
+      await waitFor(() =>
+        expect(replacementRequest).toEqual({
+          description: updatedDebt.description,
+          totalAmount: '275.75',
+          currency: 'EUR',
+          expectedVersion: 1,
+          scheduleItems: [
+            {
+              id: 'schedule_123',
+              amount: '275.75',
+              dueDate: '2026-10-01',
+            },
+          ],
+        }),
+      );
+      expect(requestedDebtId).toBe(initialDebt.id);
+      expect(
+        await screen.findByRole('status', {
+          name: messages.toast.edit.successTitle,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit debt' }),
+      ).not.toBeInTheDocument();
+      expect(await screen.findByText(updatedDebt.description)).toBeInTheDocument();
+      expect(screen.queryByText(initialDebt.description)).not.toBeInTheDocument();
+    });
+  });
+
   describe('query and URL state', () => {
   it('shows debt loading state without replacing customer details while the initial list loads', async () => {
     let resolveDebtRequest!: () => void;
@@ -715,8 +805,9 @@ describe('CustomerDebtLedger', () => {
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
 
     vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const searchInput = screen.getByRole('searchbox', { name: 'Search debts' });
-    fireEvent.change(searchInput, { target: { value: 'redesign' } });
+    await user.type(searchInput, 'redesign');
 
     expect(searchInput).toHaveValue('redesign');
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
@@ -789,8 +880,9 @@ describe('CustomerDebtLedger', () => {
     expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);
 
     vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const searchInput = screen.getByRole('searchbox', { name: 'Search debts' });
-    fireEvent.change(searchInput, { target: { value: '' } });
+    await user.clear(searchInput);
 
     expect(searchInput).toHaveValue('');
     expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);

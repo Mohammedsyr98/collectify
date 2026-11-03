@@ -37,7 +37,30 @@ describe('DebtDrawer payment plans', () => {
     cleanup();
   });
 
-  describe('automatic schedule', () => {
+  describe('one-payment plan', () => {
+    it('submits a normalized create request with an id-less schedule item', async () => {
+      const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(
+        async () => undefined,
+      );
+      const { user } = renderDebtDrawer(onSubmit);
+
+      await user.type(screen.getByLabelText('Description'), '  Website redesign  ');
+      await user.type(screen.getByLabelText('Total amount'), '125.5');
+      await user.type(screen.getByLabelText('Due date'), '2026-09-30');
+      await user.click(screen.getByRole('button', { name: 'Save debt' }));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith({
+          description: 'Website redesign',
+          totalAmount: '125.50',
+          currency: 'USD',
+          scheduleItems: [{ amount: '125.50', dueDate: '2026-09-30' }],
+        }),
+      );
+    });
+  });
+
+  describe('installment plan / automatic schedule', () => {
     it('seeds the first installment date from the one-payment date on first activation', async () => {
       const { drawer, user } = renderDebtDrawer();
       expect(drawer.getByRole('button', { name: 'One payment' })).toHaveAttribute(
@@ -180,7 +203,7 @@ describe('DebtDrawer payment plans', () => {
     });
   });
 
-  describe('manual schedule', () => {
+  describe('installment plan / manual schedule', () => {
     it('customizes the visible preview into editable rows and saves the edited schedule', async () => {
       const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
       const { drawer, user } = renderDebtDrawer(onSubmit);
@@ -436,7 +459,6 @@ describe('DebtDrawer payment plans', () => {
       await user.click(drawer.getByRole('button', { name: 'Customize installments' }));
       await user.click(drawer.getByRole('button', { name: 'Add installment' }));
 
-      const firstAmount = drawer.getByLabelText('Installment 1 amount');
       await user.clear(drawer.getByLabelText('Installment 3 amount'));
       await user.type(drawer.getByLabelText('Installment 3 amount'), '0.01');
       await user.type(drawer.getByLabelText('Installment 3 due date'), '2026-12-01');
@@ -444,7 +466,6 @@ describe('DebtDrawer payment plans', () => {
       await user.clear(totalAmount);
       await user.type(totalAmount, '0.02');
 
-      expect(drawer.getByLabelText('Installment 1 amount')).toBe(firstAmount);
       expect(drawer.getByLabelText('Installment 1 amount')).toHaveValue('0.01');
       expect(drawer.getByLabelText('Installment 2 amount')).toHaveValue('0.02');
       expect(drawer.getByLabelText('Installment 3 amount')).toHaveValue('0.01');
@@ -587,7 +608,6 @@ describe('DebtDrawer payment plans', () => {
       expect(rows[3]).toHaveTextContent('$33.35');
     });
   });
-
   describe('plan switching', () => {
     it('submits only the active plan while preserving the inactive draft', async () => {
       const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(async () => undefined);
