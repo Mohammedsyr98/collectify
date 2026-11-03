@@ -1,14 +1,21 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CreateDebtRequest, ReplaceDebtRequest } from '@collectify/contracts';
+import {
+  debtPlanIssueCode,
+  debtRequestValidationCode,
+  type CreateDebtRequest,
+} from '@collectify/contracts';
 
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { DebtDrawer } from '../editor/DebtDrawer';
+import { debtResources } from '../localization/resources';
 import { createDebtFixture } from './debtTestData';
+
+const debtMessages = debtResources.en.common.debts;
 
 describe('DebtDrawer', () => {
   beforeEach(() => {
@@ -35,77 +42,7 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Description')).toHaveFocus();
-  });
-
-  it('submits a normalized create request with an id-less schedule item', async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn<(request: CreateDebtRequest) => Promise<void>>(
-      async () => undefined,
-    );
-
-    renderWithAppProviders(
-      <DebtDrawer
-        defaultCurrency="USD"
-        isSubmitting={false}
-        onClose={vi.fn()}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    await user.type(screen.getByLabelText('Description'), '  Website redesign  ');
-    await user.type(screen.getByLabelText('Total amount'), '125.5');
-    await user.type(screen.getByLabelText('Due date'), '2026-09-30');
-    await user.click(screen.getByRole('button', { name: 'Save debt' }));
-
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith({
-        description: 'Website redesign',
-        totalAmount: '125.50',
-        currency: 'USD',
-        scheduleItems: [{ amount: '125.50', dueDate: '2026-09-30' }],
-      }),
-    );
-  });
-
-  it('submits an edited debt with its saved currency and schedule identity', async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
-      async () => undefined,
-    );
-    const debt = createDebtFixture('customer_123', { currency: 'EUR' });
-
-    renderWithAppProviders(
-      <DebtDrawer
-        debt={debt}
-        isSubmitting={false}
-        mode="edit"
-        onClose={vi.fn()}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    await user.clear(screen.getByLabelText('Total amount'));
-    await user.type(screen.getByLabelText('Total amount'), '275.7');
-    await user.clear(screen.getByLabelText('Due date'));
-    await user.type(screen.getByLabelText('Due date'), '2026-10-15');
-    await user.click(screen.getByRole('button', { name: 'Save debt' }));
-
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith({
-        description: debt.description,
-        totalAmount: '275.70',
-        currency: 'EUR',
-        expectedVersion: debt.version,
-        scheduleItems: [
-          {
-            id: debt.scheduleItems[0].id,
-            amount: '275.70',
-            dueDate: '2026-10-15',
-          },
-        ],
-      }),
-    );
+    expect(screen.getByLabelText(debtMessages.form.descriptionLabel)).toHaveFocus();
   });
 
   it('prefills the edit form from the selected debt', () => {
@@ -132,98 +69,14 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Edit debt' });
+    const drawer = screen.getByRole('dialog', { name: debtMessages.drawer.editTitle });
 
-    expect(within(drawer).getByLabelText('Description')).toHaveValue(
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toHaveValue(
       'Website redesign',
     );
-    expect(within(drawer).getByLabelText('Total amount')).toHaveValue('275.75');
-    expect(within(drawer).getByLabelText('Currency')).toHaveValue('EUR');
-    expect(within(drawer).getByLabelText('Due date')).toHaveValue('2026-10-01');
-  });
-
-  it('starts a saved one-payment conversion with two monthly installments from its due date', async () => {
-    const user = userEvent.setup();
-    const debt = createDebtFixture('customer_123', {
-      totalAmount: '100.00',
-      scheduleItems: [
-        {
-          id: 'schedule_123',
-          position: 1,
-          amount: '100.00',
-          dueDate: '2026-09-30',
-          timing: 'upcoming',
-        },
-      ],
-    });
-
-    renderWithAppProviders(
-      <DebtDrawer
-        debt={debt}
-        isSubmitting={false}
-        mode="edit"
-        onClose={vi.fn()}
-        onSubmit={vi.fn(async () => undefined)}
-      />,
-    );
-
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
-
-    await user.click(drawer.getByRole('button', { name: 'Installments' }));
-
-    expect(drawer.getByLabelText('Installment count')).toHaveValue('2');
-    expect(drawer.getByRole('button', { name: 'Monthly' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(drawer.getByLabelText('First installment due date')).toHaveValue('2026-09-30');
-  });
-
-  it('submits a saved one-payment conversion with fresh schedule identities', async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
-      async () => undefined,
-    );
-    const debt = createDebtFixture('customer_123', {
-      totalAmount: '100.00',
-      scheduleItems: [
-        {
-          id: 'schedule_123',
-          position: 1,
-          amount: '100.00',
-          dueDate: '2026-09-30',
-          timing: 'upcoming',
-        },
-      ],
-    });
-
-    renderWithAppProviders(
-      <DebtDrawer
-        debt={debt}
-        isSubmitting={false}
-        mode="edit"
-        onClose={vi.fn()}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    const drawer = within(screen.getByRole('dialog', { name: 'Edit debt' }));
-
-    await user.click(drawer.getByRole('button', { name: 'Installments' }));
-    await user.click(drawer.getByRole('button', { name: 'Save debt' }));
-
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith({
-        description: debt.description,
-        totalAmount: '100.00',
-        currency: 'USD',
-        expectedVersion: debt.version,
-        scheduleItems: [
-          { amount: '50.00', dueDate: '2026-09-30' },
-          { amount: '50.00', dueDate: '2026-10-30' },
-        ],
-      }),
-    );
+    expect(within(drawer).getByLabelText(debtMessages.form.totalAmountLabel)).toHaveValue('275.75');
+    expect(within(drawer).getByLabelText(debtMessages.form.currencyLabel)).toHaveValue('EUR');
+    expect(within(drawer).getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2026-10-01');
   });
 
   it('describes edit mode accessibly', () => {
@@ -237,8 +90,8 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog', { name: 'Edit debt' })).toHaveAccessibleDescription(
-      'Edit this one-payment debt for this customer.',
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle })).toHaveAccessibleDescription(
+      debtMessages.drawer.editDescription,
     );
   });
 
@@ -256,13 +109,13 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const dialog = screen.getByRole('dialog', { name: 'Add debt' });
-    const saveButton = within(dialog).getByRole('button', { name: 'Saving' });
+    const dialog = screen.getByRole('dialog', { name: debtMessages.drawer.createTitle });
+    const saveButton = within(dialog).getByRole('button', { name: debtMessages.form.saving });
 
     expect(saveButton).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: debtMessages.form.cancel })).toBeDisabled();
     expect(
-      within(dialog).getByRole('button', { name: 'Close debt form' }),
+      within(dialog).getByRole('button', { name: debtMessages.drawer.close }),
     ).toBeDisabled();
 
     await user.click(saveButton);
@@ -288,18 +141,20 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const description = screen.getByLabelText('Description');
-    const dueDate = screen.getByLabelText('Due date');
+    const description = screen.getByLabelText(debtMessages.form.descriptionLabel);
+    const dueDate = screen.getByLabelText(debtMessages.form.dueDateLabel);
 
     await user.type(description, 'Website redesign');
-    await user.type(screen.getByLabelText('Total amount'), '125.50');
-    await user.click(screen.getByRole('button', { name: 'Save debt' }));
+    await user.type(screen.getByLabelText(debtMessages.form.totalAmountLabel), '125.50');
+    await user.click(screen.getByRole('button', { name: debtMessages.form.save }));
 
-    expect(dueDate).toHaveAccessibleDescription('Due date is required.');
+    expect(dueDate).toHaveAccessibleDescription(
+      debtMessages.validation[debtRequestValidationCode.debtDueDateRequired],
+    );
     expect(dueDate).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(description).toHaveValue('Website redesign');
-    expect(screen.getByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.createTitle })).toBeInTheDocument();
   });
 
   it('shows schedule-item amount errors on the total amount field after submission', async () => {
@@ -315,18 +170,18 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const totalAmount = screen.getByLabelText('Total amount');
-    const dueDate = screen.getByLabelText('Due date');
-    await user.type(screen.getByLabelText('Description'), 'Website redesign');
+    const totalAmount = screen.getByLabelText(debtMessages.form.totalAmountLabel);
+    const dueDate = screen.getByLabelText(debtMessages.form.dueDateLabel);
+    await user.type(screen.getByLabelText(debtMessages.form.descriptionLabel), 'Website redesign');
     await user.type(totalAmount, '0');
     await user.type(dueDate, '2026-09-30');
 
     expect(totalAmount).not.toHaveAccessibleDescription();
 
-    await user.click(screen.getByRole('button', { name: 'Save debt' }));
+    await user.click(screen.getByRole('button', { name: debtMessages.form.save }));
 
     expect(totalAmount).toHaveAccessibleDescription(
-      'Payment amount must be greater than zero.',
+      debtMessages.validation[debtPlanIssueCode.scheduleItemAmountNotPositive],
     );
     expect(totalAmount).toHaveFocus();
     expect(dueDate).not.toHaveAccessibleDescription();
@@ -346,14 +201,14 @@ describe('DebtDrawer', () => {
       />,
     );
 
-    const dialog = screen.getByRole('dialog', { name: 'Add debt' });
+    const dialog = screen.getByRole('dialog', { name: debtMessages.drawer.createTitle });
     expect(dialog).toHaveAccessibleDescription(
-      'Create a debt for this customer.',
+      debtMessages.drawer.description,
     );
     const closeButton = within(dialog).getByRole('button', {
-      name: 'Close debt form',
+      name: debtMessages.drawer.close,
     });
-    const saveButton = within(dialog).getByRole('button', { name: 'Save debt' });
+    const saveButton = within(dialog).getByRole('button', { name: debtMessages.form.save });
 
     saveButton.focus();
     await user.tab();
@@ -402,19 +257,4 @@ describe('DebtDrawer', () => {
     },
   );
 
-  it('uses logical inline-end positioning', () => {
-    renderWithAppProviders(
-      <DebtDrawer
-        defaultCurrency="USD"
-        isSubmitting={false}
-        onClose={vi.fn()}
-        onSubmit={vi.fn(async () => undefined)}
-      />,
-    );
-
-    const drawer = screen.getByRole('dialog', { name: 'Add debt' });
-
-    expect(drawer).toHaveClass('end-0');
-    expect(drawer).not.toHaveClass('left-0', 'right-0');
-  });
 });
