@@ -319,7 +319,10 @@ async function openAndFillDebtDrawer(
     await screen.findByRole('heading', { name: baseCustomer.name }),
   ).toBeInTheDocument();
 
-  const addDebtButton = screen.getByRole('button', { name: customerMessages.actions.addDebt });
+  const debtRegion = screen.getByRole('region', { name: debtMessages.section.title });
+  const addDebtButton = within(debtRegion).getByRole('button', {
+    name: customerMessages.actions.addDebt,
+  });
   expect(addDebtButton).toBeEnabled();
   await user.click(addDebtButton);
 

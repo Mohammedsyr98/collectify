@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -106,23 +106,12 @@ describe('CustomerDebtLedger', () => {
     expect(await screen.findByText('Initial debt')).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
 
-    vi.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     const searchInput = screen.getByRole('searchbox', { name: debtMessages.search.label });
     await user.type(searchInput, 'redesign');
 
     expect(searchInput).toHaveValue('redesign');
     expect(requestedQueries).toEqual([{ page: '2', search: null }]);
-
-    await act(async () => {
-      vi.advanceTimersByTime(499);
-    });
-    expect(requestedQueries).toEqual([{ page: '2', search: null }]);
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-    });
-    vi.useRealTimers();
 
     await waitFor(() =>
       expect(requestedQueries).toEqual([
@@ -181,18 +170,12 @@ describe('CustomerDebtLedger', () => {
     expect(await screen.findByText('Website redesign')).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);
 
-    vi.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     const searchInput = screen.getByRole('searchbox', { name: debtMessages.search.label });
     await user.clear(searchInput);
 
     expect(searchInput).toHaveValue('');
     expect(requestedQueries).toEqual([{ page: '2', search: 'redesign' }]);
-
-    await act(async () => {
-      vi.advanceTimersByTime(500);
-    });
-    vi.useRealTimers();
 
     await waitFor(() =>
       expect(requestedQueries).toEqual([

@@ -107,6 +107,10 @@ describe('CustomerDebtLedger', () => {
           amount: '60.00',
           dueDate: '2026-09-30',
           timing: 'upcoming',
+          paidAmount: '0.00',
+          remainingAmount: '60.00',
+          paymentState: 'unpaid',
+          paymentCount: 0,
         },
         {
           id: 'schedule_installment_2',
@@ -114,6 +118,10 @@ describe('CustomerDebtLedger', () => {
           amount: '65.50',
           dueDate: '2026-10-30',
           timing: 'upcoming',
+          paidAmount: '0.00',
+          remainingAmount: '65.50',
+          paymentState: 'unpaid',
+          paymentCount: 0,
         },
       ],
     };
@@ -400,39 +408,24 @@ describe('CustomerDebtLedger', () => {
       ),
     });
 
-    expect(schedule.querySelectorAll('bdi[dir="ltr"]')).toHaveLength(4);
+    expect(schedule.querySelectorAll('bdi[dir="ltr"]')).toHaveLength(12);
     expect(within(schedule).getAllByText(messages.overdue)).toHaveLength(2);
     expect(within(schedule).getByText(messages.dueToday)).toBeInTheDocument();
   });
 
-  it('opens the add-debt drawer from the ledger section', async () => {
+  it('calls onAddDebt when the ledger Add debt action is activated', async () => {
     const user = userEvent.setup();
+    const onAddDebt = vi.fn();
 
-    renderLedger([]);
+    renderLedger([], { onAddDebt });
 
     const debtSection = await screen.findByRole('region', { name: debtMessages.section.title });
-    await user.click(within(debtSection).getByRole('button', { name: customerMessages.actions.addDebt }));
-
-    expect(await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle })).toBeInTheDocument();
-  });
-
-  it('returns focus to the Add debt trigger after closing the drawer', async () => {
-    const user = userEvent.setup();
-
-    renderLedger([]);
-
-    const addDebtButton = await screen.findByRole('button', { name: customerMessages.actions.addDebt });
+    const addDebtButton = within(debtSection).getByRole('button', {
+      name: customerMessages.actions.addDebt,
+    });
     await user.click(addDebtButton);
-    await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle });
 
-    await user.keyboard('{Escape}');
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: debtMessages.drawer.createTitle }),
-      ).not.toBeInTheDocument(),
-    );
-    expect(addDebtButton).toHaveFocus();
+    expect(onAddDebt).toHaveBeenCalledWith(addDebtButton);
   });
 
   it('opens the selected debt editor with its saved values', async () => {
@@ -492,7 +485,7 @@ describe('CustomerDebtLedger', () => {
 
     const dialog = await screen.findByRole('dialog', { name: debtMessages.delete.title });
     expect(dialog).toHaveTextContent(debt.description);
-    expect(dialog).toHaveTextContent('Ã¢â€šÂ¬275.75');
+    expect(dialog).toHaveTextContent('€275.75');
     expect(dialog).toHaveTextContent(
       debtMessages.delete.description.replace('{{description}}', debt.description),
     );
@@ -537,7 +530,8 @@ describe('CustomerDebtLedger', () => {
     renderWithAppProviders(
       <CustomerDebtLedger
         customerId={baseCustomer.id}
-        defaultCurrency="USD"
+        onAddDebt={vi.fn()}
+        onRecordPayment={vi.fn()}
       />,
       { initialEntries: [`/customers/${baseCustomer.id}`] },
     );
@@ -629,7 +623,20 @@ describe('CustomerDebtLedger', () => {
 
 });
 
-function renderLedger(debts: DebtResponse[]) {
+function renderLedger(
+  debts: DebtResponse[],
+  {
+    onAddDebt = vi.fn(),
+    onRecordPayment = vi.fn(),
+  }: {
+    onAddDebt?: (trigger: HTMLButtonElement) => void;
+    onRecordPayment?: (
+      debt: DebtResponse,
+      scheduleItemId: string,
+      trigger: HTMLButtonElement,
+    ) => void;
+  } = {},
+) {
   server.use(
     http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
       HttpResponse.json({
@@ -643,7 +650,11 @@ function renderLedger(debts: DebtResponse[]) {
   );
 
   return renderWithAppProviders(
-    <CustomerDebtLedger customerId={baseCustomer.id} defaultCurrency="USD" />,
+    <CustomerDebtLedger
+      customerId={baseCustomer.id}
+      onAddDebt={onAddDebt}
+      onRecordPayment={onRecordPayment}
+    />,
     { initialEntries: [`/customers/${baseCustomer.id}`] },
   );
 }
