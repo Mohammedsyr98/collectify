@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
+import { emptyDebtList } from '../../debts/__tests__/debtTestData';
 import {
   baseCustomer,
   customerList,
@@ -20,6 +21,9 @@ describe('CustomersPage row actions', () => {
     resetCustomerTestEnvironment();
     server.use(
       http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(emptyDebtList),
+      ),
     );
   });
 

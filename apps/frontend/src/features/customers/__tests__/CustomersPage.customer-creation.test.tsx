@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
+import { emptyDebtList } from '../../debts/__tests__/debtTestData';
 import {
   baseCustomer,
   emptyCustomerList,
@@ -17,6 +18,9 @@ describe('CustomersPage customer creation', () => {
     resetCustomerTestEnvironment();
     server.use(
       http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json(emptyDebtList),
+      ),
     );
   });
 
