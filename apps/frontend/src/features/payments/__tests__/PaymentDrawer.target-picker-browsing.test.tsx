@@ -22,8 +22,8 @@ describe('PaymentDrawer', () => {
     vi.useRealTimers();
   });
 
-  it('shows large-picker controls when more than five targets are available', async () => {
-    const targets = Array.from({ length: 6 }, (_, index) =>
+  it('shows picker controls when multiple targets are available', async () => {
+    const targets = Array.from({ length: 2 }, (_, index) =>
       createPaymentTargetFixture({
         scheduleItemId: `schedule_${index + 1}`,
         debtId: `debt_${index + 1}`,
@@ -38,7 +38,7 @@ describe('PaymentDrawer', () => {
           items: targets,
           page: 1,
           pageSize: 10,
-          totalItems: 6,
+          totalItems: 2,
           totalPages: 1,
         }),
       ),
@@ -62,7 +62,7 @@ describe('PaymentDrawer', () => {
       'aria-pressed',
       'true',
     );
-    expect(within(drawer).getAllByRole('button', { name: /Debt [1-6]/ })).toHaveLength(6);
+    expect(within(drawer).getAllByRole('button', { name: /Debt [1-2]/ })).toHaveLength(2);
   });
 
   it('keeps controls available when searching finds no targets', async () => {
@@ -120,7 +120,7 @@ describe('PaymentDrawer', () => {
     expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
   });
 
-  it('filters large-picker targets by payment status', async () => {
+  it('filters payment targets by payment status', async () => {
     const user = userEvent.setup();
     const initialTargets = Array.from({ length: 6 }, (_, index) =>
       createPaymentTargetFixture({
