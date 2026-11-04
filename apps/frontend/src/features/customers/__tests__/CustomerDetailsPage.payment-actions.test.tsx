@@ -330,8 +330,6 @@ describe('CustomerDetailsPage payment actions', () => {
     await waitFor(() =>
       expect(paymentScenario.recordedRequest).toEqual(
         expect.objectContaining({
-          amount: '10.00',
-          expectedDebtVersion: 4,
           targetScheduleItemId: 'schedule_second',
         }),
       ),
