@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -75,6 +76,7 @@ describe('CustomersPage search and URL state', () => {
   });
 
   it('restores customer search from browser history navigation', async () => {
+    const user = userEvent.setup();
     const requestedQueries: Array<{
       page: string | null;
       search: string | null;
@@ -102,7 +104,7 @@ describe('CustomersPage search and URL state', () => {
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '1', search: 'north' }]));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go back' }));
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
 
     await waitFor(() => expect(searchInput).toHaveValue('acme'));
     expect(screen.getByTestId('router-location')).toHaveTextContent(
@@ -118,6 +120,7 @@ describe('CustomersPage search and URL state', () => {
   });
 
   it('debounces customer search URL updates without overwriting continued typing', async () => {
+    const user = userEvent.setup();
     const requestedQueries: Array<{
       page: string | null;
       search: string | null;
@@ -144,7 +147,7 @@ describe('CustomersPage search and URL state', () => {
     const searchInput = await screen.findByLabelText('Search customers');
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '2', search: null }]));
 
-    fireEvent.change(searchInput, { target: { value: 'a' } });
+    await user.type(searchInput, 'a');
 
     expect(searchInput).toHaveValue('a');
     expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
@@ -160,8 +163,7 @@ describe('CustomersPage search and URL state', () => {
       '/customers?page=1&search=a',
     );
 
-    fireEvent.change(searchInput, { target: { value: 'ah' } });
-    fireEvent.change(searchInput, { target: { value: 'ahm' } });
+    await user.type(searchInput, 'hm');
 
     expect(searchInput).toHaveValue('ahm');
     expect(screen.getByTestId('router-location')).toHaveTextContent(
@@ -185,6 +187,7 @@ describe('CustomersPage search and URL state', () => {
   });
 
   it('clears customer search from the URL and requests the unfiltered first page', async () => {
+    const user = userEvent.setup();
     const requestedQueries: Array<{
       page: string | null;
       search: string | null;
@@ -219,7 +222,8 @@ describe('CustomersPage search and URL state', () => {
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
 
-    fireEvent.change(searchInput, { target: { value: '   ' } });
+    await user.clear(searchInput);
+    await user.type(searchInput, '   ');
 
     expect(searchInput).toHaveValue('   ');
 

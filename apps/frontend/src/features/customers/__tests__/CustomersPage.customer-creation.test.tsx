@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -29,6 +30,7 @@ describe('CustomersPage customer creation', () => {
   });
 
   it('creates a customer, shows a success toast, and navigates to durable details', async () => {
+    const user = userEvent.setup();
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(baseCustomer, { status: 201 }),
@@ -50,13 +52,13 @@ describe('CustomersPage customer creation', () => {
 
     renderCustomerRoutes();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Create customer' }));
-    fillCreateCustomerForm({
+    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
+    await fillCreateCustomerForm(user, {
       code: 'ACME-001',
       name: 'Acme Market',
       phoneNumber: '+90 555 123 45 67',
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
+    await user.click(screen.getByRole('button', { name: 'Save customer' }));
 
     expect(await screen.findByRole('status', { name: 'Customer created' })).toHaveTextContent(
       'Acme Market is ready for debt tracking.',
@@ -66,6 +68,7 @@ describe('CustomersPage customer creation', () => {
   });
 
   it('shows a duplicate-code create error toast and keeps the create modal open', async () => {
+    const user = userEvent.setup();
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(
@@ -83,13 +86,13 @@ describe('CustomersPage customer creation', () => {
 
     renderCustomerRoutes();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Create customer' }));
-    fillCreateCustomerForm({
+    await user.click(await screen.findByRole('button', { name: 'Create customer' }));
+    await fillCreateCustomerForm(user, {
       code: 'ACME-001',
       name: 'Acme Market',
       phoneNumber: '+90 555 123 45 67',
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
+    await user.click(screen.getByRole('button', { name: 'Save customer' }));
 
     expect(
       await screen.findByRole('alert', { name: 'Could not create customer' }),
@@ -99,30 +102,29 @@ describe('CustomersPage customer creation', () => {
   });
 });
 
-function fillCreateCustomerForm({
-  address,
-  code,
-  name,
-  phoneNumber,
-}: {
-  address?: string;
-  code: string;
-  name: string;
-  phoneNumber: string;
-}) {
-  fireEvent.change(screen.getByLabelText('Name'), {
-    target: { value: name },
-  });
-  fireEvent.change(screen.getByLabelText('Code'), {
-    target: { value: code },
-  });
-  fireEvent.change(screen.getByLabelText('Phone number'), {
-    target: { value: phoneNumber },
-  });
+async function fillCreateCustomerForm(
+  user: ReturnType<typeof userEvent.setup>,
+  {
+    address,
+    code,
+    name,
+    phoneNumber,
+  }: {
+    address?: string;
+    code: string;
+    name: string;
+    phoneNumber: string;
+  },
+) {
+  await user.clear(screen.getByLabelText('Name'));
+  await user.type(screen.getByLabelText('Name'), name);
+  await user.clear(screen.getByLabelText('Code'));
+  await user.type(screen.getByLabelText('Code'), code);
+  await user.clear(screen.getByLabelText('Phone number'));
+  await user.type(screen.getByLabelText('Phone number'), phoneNumber);
 
   if (address !== undefined) {
-    fireEvent.change(screen.getByLabelText('Address'), {
-      target: { value: address },
-    });
+    await user.clear(screen.getByLabelText('Address'));
+    await user.type(screen.getByLabelText('Address'), address);
   }
 }
