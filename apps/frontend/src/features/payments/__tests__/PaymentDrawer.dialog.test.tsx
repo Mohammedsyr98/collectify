@@ -9,8 +9,11 @@ import type { PaymentTarget } from '@collectify/contracts';
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { PaymentDrawer } from '../editor/PaymentDrawer';
+import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';
 import { createPaymentTargetFixture } from './paymentTestData';
+
+const paymentMessages = paymentResources.en.common.payments;
 
 describe('PaymentDrawer', () => {
   beforeEach(() => {
@@ -32,10 +35,14 @@ describe('PaymentDrawer', () => {
     const openButton = screen.getByRole('button', { name: 'Open payment' });
     await user.click(openButton);
 
-    expect(screen.getByRole('dialog', { name: 'Record payment' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: paymentMessages.drawer.title }),
+    ).toBeInTheDocument();
     await user.keyboard('{Escape}');
 
-    expect(screen.queryByRole('dialog', { name: 'Record payment' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: paymentMessages.drawer.title }),
+    ).not.toBeInTheDocument();
     expect(openButton).toHaveFocus();
   });
 
@@ -45,7 +52,11 @@ describe('PaymentDrawer', () => {
     renderPaymentDrawer(createPaymentTargetFixture());
 
     expect(document.documentElement).toHaveAttribute('dir', 'rtl');
-    expect(screen.getByRole('dialog', { name: 'تسجيل دفعة' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', {
+        name: paymentResources.ar.common.payments.drawer.title,
+      }),
+    ).toBeInTheDocument();
   });
 });
 

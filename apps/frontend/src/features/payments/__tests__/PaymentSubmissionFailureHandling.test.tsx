@@ -20,6 +20,8 @@ import { CustomerDetailsPage } from '../../customers/CustomerDetailsPage';
 import { paymentResources } from '../localization/resources';
 import { createPaymentTargetFixture } from './paymentTestData';
 
+const paymentMessages = paymentResources.en.common.payments;
+
 describe('payment submission failure handling', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -48,24 +50,34 @@ describe('payment submission failure handling', () => {
     );
 
     renderPaymentSubmissionFailure(target);
-    await user.click(await screen.findByRole('button', { name: 'Record payment' }));
+    await user.click(
+      await screen.findByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    const amountInput = await within(drawer).findByLabelText('Payment amount');
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     await user.type(amountInput, '10.00');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     expect(
-      await screen.findByRole('alert', { name: 'Payment could not be recorded' }),
+      await screen.findByRole('alert', { name: paymentMessages.toast.record.errorTitle }),
     ).toBeInTheDocument();
     expect(amountInput).toHaveValue('10.00');
 
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1]).toEqual(requests[0]);
-    expect(screen.queryByRole('dialog', { name: 'Record payment' })).not.toBeInTheDocument();
-    expect(await screen.findByRole('status', { name: 'Payment recorded' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: paymentMessages.drawer.title }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('status', { name: paymentMessages.toast.record.successTitle }),
+    ).toBeInTheDocument();
   });
 
   it('uses a new idempotency key after the failed payment draft changes', async () => {
@@ -85,17 +97,23 @@ describe('payment submission failure handling', () => {
     );
 
     renderPaymentSubmissionFailure(target);
-    await user.click(await screen.findByRole('button', { name: 'Record payment' }));
+    await user.click(
+      await screen.findByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    const amountInput = await within(drawer).findByLabelText('Payment amount');
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     await user.type(amountInput, '10.00');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
-    await screen.findByRole('alert', { name: 'Payment could not be recorded' });
+    await screen.findByRole('alert', { name: paymentMessages.toast.record.errorTitle });
     await user.clear(amountInput);
     await user.type(amountInput, '11.00');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[0].amount).toBe('10.00');
@@ -107,7 +125,6 @@ describe('payment submission failure handling', () => {
     const user = userEvent.setup();
     const target = createPaymentTargetFixture();
     const backendMessage = 'Backend conflict wording.';
-    const messages = paymentResources.en.common.payments;
 
     server.use(
       http.post(`${getBackendUrl()}/customers/:customerId/payments`, () =>
@@ -122,20 +139,24 @@ describe('payment submission failure handling', () => {
     );
 
     renderPaymentSubmissionFailure(target);
-    await user.click(await screen.findByRole('button', { name: 'Record payment' }));
+    await user.click(
+      await screen.findByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    const amountInput = await within(drawer).findByLabelText('Payment amount');
-    const noteInput = within(drawer).getByLabelText('Note (optional)');
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
+    const noteInput = within(drawer).getByLabelText(paymentMessages.drawer.noteLabel);
     await user.type(amountInput, '10.00');
     await user.type(noteInput, 'cash');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     const errorToast = await screen.findByRole('alert', {
-      name: messages.toast.record.errorTitle,
+      name: paymentMessages.toast.record.errorTitle,
     });
     expect(errorToast).toHaveTextContent(
-      messages.errors[paymentApiErrorCode.paymentDebtVersionConflict],
+      paymentMessages.errors[paymentApiErrorCode.paymentDebtVersionConflict],
     );
     expect(errorToast).not.toHaveTextContent(backendMessage);
     expect(drawer).toBeInTheDocument();
