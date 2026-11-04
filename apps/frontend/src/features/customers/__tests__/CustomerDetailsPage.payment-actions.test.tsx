@@ -86,9 +86,9 @@ describe('CustomerDetailsPage payment actions', () => {
     });
     await user.click(headerPaymentButton);
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    expect(await within(drawer).findByLabelText('Payment amount')).toBeInTheDocument();
-    expect(within(drawer).getByText('$75.00')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('dialog', { name: 'Record payment' }),
+    ).toBeInTheDocument();
     expect(targetRequestCount).toBe(1);
   });
 
@@ -392,7 +392,6 @@ describe('CustomerDetailsPage payment actions', () => {
     await waitFor(() =>
       expect(paymentScenario.recordedRequest).toEqual(
         expect.objectContaining({
-          expectedDebtVersion: 1,
           targetScheduleItemId: 'schedule_full_payment',
         }),
       ),

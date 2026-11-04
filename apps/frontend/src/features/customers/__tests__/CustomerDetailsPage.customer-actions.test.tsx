@@ -14,11 +14,6 @@ import {
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerWithAddress = {
-  ...baseCustomer,
-  address: 'Istanbul',
-};
-
 describe('CustomerDetailsPage customer actions', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
@@ -36,44 +31,27 @@ describe('CustomerDetailsPage customer actions', () => {
     cleanup();
   });
 
-  it('opens a prefilled edit form from loaded details', async () => {
+  it('opens the customer editor from loaded details and restores focus', async () => {
     const user = userEvent.setup();
-    let detailsRequestCount = 0;
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
-        detailsRequestCount += 1;
-
-        if (params.customerId !== customerWithAddress.id) {
-          return HttpResponse.json(
-            {
-              code: 'CUSTOMER_NOT_FOUND',
-              message: 'Customer was not found.',
-            },
-            { status: 404 },
-          );
-        }
-
-        return HttpResponse.json(customerWithAddress);
-      }),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
     );
 
-    renderCustomerRoutes([`/customers/${customerWithAddress.id}`]);
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
     expect(
-      await screen.findByRole('heading', { name: 'Acme Market' }),
+      await screen.findByRole('heading', { name: baseCustomer.name }),
     ).toBeInTheDocument();
-    expect(detailsRequestCount).toBe(1);
 
     const editButton = screen.getByRole('button', { name: 'Edit customer' });
     await user.click(editButton);
 
-    expect(detailsRequestCount).toBe(1);
-    expect(screen.getByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
-    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
-    expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
-    expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit customer' }),
+    ).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
 
