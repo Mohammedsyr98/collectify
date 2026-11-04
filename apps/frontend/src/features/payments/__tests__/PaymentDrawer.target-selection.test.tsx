@@ -4,12 +4,21 @@ import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { paymentApiErrorCode } from '@collectify/contracts';
+
+import { appShellResources } from '../../../app/localization/appShellResources';
 import { getBackendUrl } from '../../../shared/api/http';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { PaymentDrawer } from '../editor/PaymentDrawer';
+import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';
 import { createPaymentTargetFixture } from './paymentTestData';
+
+const paymentMessages = paymentResources.en.common.payments;
+const appMessages = appShellResources.en.common.app;
+const installmentLabel = (position: number) =>
+  paymentMessages.drawer.installmentLabel.replace('{{position}}', String(position));
 
 describe('PaymentDrawer', () => {
   beforeEach(() => {
@@ -43,9 +52,9 @@ describe('PaymentDrawer', () => {
     );
 
     renderPaymentDrawer(target);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     const changeTarget = await within(drawer).findByRole('button', {
-      name: 'Change target',
+      name: paymentMessages.drawer.changeTarget,
     });
 
     expect(targetListRequestCount).toBe(0);
@@ -54,7 +63,7 @@ describe('PaymentDrawer', () => {
 
     expect(
       await within(drawer).findByRole('heading', {
-        name: 'Choose payment target',
+        name: paymentMessages.drawer.chooseTargetTitle,
       }),
     ).toBeInTheDocument();
     await waitFor(() => expect(targetListRequestCount).toBe(1));
@@ -93,26 +102,32 @@ describe('PaymentDrawer', () => {
 
     renderPaymentDrawer(initialTarget, onSubmit);
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amount = within(drawer).getByLabelText('Payment amount');
-    const paymentDate = within(drawer).getByLabelText('Payment date');
-    const note = within(drawer).getByLabelText('Note (optional)');
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const amount = within(drawer).getByLabelText(paymentMessages.drawer.amountLabel);
+    const paymentDate = within(drawer).getByLabelText(paymentMessages.drawer.dateLabel);
+    const note = within(drawer).getByLabelText(paymentMessages.drawer.noteLabel);
 
     await user.type(amount, '25.00');
     await user.clear(paymentDate);
     await user.type(paymentDate, '2026-10-01');
     await user.type(note, 'keep');
-    await user.click(within(drawer).getByRole('button', { name: 'Change target' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.changeTarget }),
+    );
     await user.click(await within(drawer).findByRole('button', { name: /Replacement equipment/ }));
 
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveValue('25.00');
-    expect(within(drawer).getByLabelText('Payment date')).toHaveValue('2026-10-01');
-    expect(within(drawer).getByLabelText('Note (optional)')).toHaveValue('keep');
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel)).toHaveValue('25.00');
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.dateLabel)).toHaveValue('2026-10-01');
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.noteLabel)).toHaveValue('keep');
 
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     expect(
-      within(drawer).getByText('Payment exceeds the target remaining amount.'),
+      within(drawer).getByText(
+        paymentMessages.errors[paymentApiErrorCode.paymentAmountExceedsRemaining],
+      ),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   }, 10_000);
@@ -149,23 +164,25 @@ describe('PaymentDrawer', () => {
 
     renderPaymentDrawer(initialTarget);
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amount = within(drawer).getByLabelText('Payment amount');
-    const paymentDate = within(drawer).getByLabelText('Payment date');
-    const note = within(drawer).getByLabelText('Note (optional)');
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const amount = within(drawer).getByLabelText(paymentMessages.drawer.amountLabel);
+    const paymentDate = within(drawer).getByLabelText(paymentMessages.drawer.dateLabel);
+    const note = within(drawer).getByLabelText(paymentMessages.drawer.noteLabel);
 
     await user.type(amount, '25.00');
     await user.clear(paymentDate);
     await user.type(paymentDate, '2026-10-01');
     await user.type(note, 'keep this note');
-    await user.click(within(drawer).getByRole('button', { name: 'Change target' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.changeTarget }),
+    );
     await user.click(
       await within(drawer).findByRole('button', { name: /European office expense/ }),
     );
 
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveValue('');
-    expect(within(drawer).getByLabelText('Payment date')).toHaveValue('2026-10-01');
-    expect(within(drawer).getByLabelText('Note (optional)')).toHaveValue('keep this note');
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel)).toHaveValue('');
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.dateLabel)).toHaveValue('2026-10-01');
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.noteLabel)).toHaveValue('keep this note');
   });
 
   it('shows target-selection loading feedback when opened without an initial target', async () => {
@@ -184,23 +201,25 @@ describe('PaymentDrawer', () => {
     );
 
     renderWithAppProviders(
-      <PaymentDrawer
+        <PaymentDrawer
         customerId="customer_123"
         onClose={vi.fn()}
         onSubmit={async () => undefined}
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     expect(
-      within(drawer).getByRole('heading', { name: 'Choose payment target' }),
+      within(drawer).getByRole('heading', { name: paymentMessages.drawer.chooseTargetTitle }),
     ).toBeInTheDocument();
     expect(
       await within(drawer).findByRole('status', {
-        name: 'Loading payment targets',
+        name: paymentMessages.drawer.loadingTargets,
       }),
     ).toBeInTheDocument();
-    expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByLabelText(paymentMessages.drawer.amountLabel),
+    ).not.toBeInTheDocument();
   });
 
   it('announces when no payment targets are available', async () => {
@@ -224,22 +243,26 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     await waitFor(() =>
       expect(within(drawer).getByRole('status')).toHaveTextContent(
-        'No payment targets available.',
+        paymentMessages.drawer.noTargets,
       ),
     );
     expect(
-      within(drawer).queryByRole('status', { name: 'Loading payment targets' }),
+      within(drawer).queryByRole('status', { name: paymentMessages.drawer.loadingTargets }),
     ).not.toBeInTheDocument();
     expect(
-      within(drawer).queryByRole('searchbox', { name: 'Search debts' }),
+      within(drawer).queryByRole('searchbox', {
+        name: paymentMessages.drawer.searchDebtDescriptions,
+      }),
     ).not.toBeInTheDocument();
     expect(
-      within(drawer).queryByRole('group', { name: 'Payment status' }),
+      within(drawer).queryByRole('group', { name: paymentMessages.drawer.paymentStatus }),
     ).not.toBeInTheDocument();
-    expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByLabelText(paymentMessages.drawer.amountLabel),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a retryable error when payment targets cannot be loaded', async () => {
@@ -281,17 +304,17 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     const errorState = await within(drawer).findByRole('alert', {
-      name: 'Couldn’t load payment targets',
+      name: paymentMessages.drawer.targetLoadErrorTitle,
     });
     expect(errorState).not.toHaveTextContent('Something went wrong.');
 
-    await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
+    await user.click(within(errorState).getByRole('button', { name: appMessages.error.retry }));
 
     expect(within(drawer).queryByRole('alert')).not.toBeInTheDocument();
     expect(
-      within(drawer).getByRole('status', { name: 'Loading payment targets' }),
+      within(drawer).getByRole('status', { name: paymentMessages.drawer.loadingTargets }),
     ).toBeInTheDocument();
 
     expect(
@@ -322,8 +345,8 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amountInput = await within(drawer).findByLabelText('Payment amount');
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     await waitFor(() => expect(amountInput).toHaveFocus());
     expect(within(drawer).getByText('$42.50')).toBeInTheDocument();
   });
@@ -359,23 +382,29 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     const search = await within(drawer).findByRole('searchbox', {
-      name: 'Search debts',
+      name: paymentMessages.drawer.searchDebtDescriptions,
     });
     expect(search).toHaveFocus();
-    expect(within(drawer).getByRole('group', { name: 'Payment status' })).toBeInTheDocument();
-    expect(within(drawer).getByRole('button', { name: 'All targets' })).toHaveAttribute(
+    expect(
+      within(drawer).getByRole('group', { name: paymentMessages.drawer.paymentStatus }),
+    ).toBeInTheDocument();
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.allTargets }),
+    ).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     expect(within(drawer).getByRole('button', { name: /Office equipment/ })).toBeInTheDocument();
     const rentTargetButton = within(drawer).getByRole('button', { name: /Warehouse rent/ });
-    expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByLabelText(paymentMessages.drawer.amountLabel),
+    ).not.toBeInTheDocument();
 
     await user.click(rentTargetButton);
 
-    const amountInput = await within(drawer).findByLabelText('Payment amount');
+    const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     await waitFor(() => expect(amountInput).toHaveFocus());
     expect(within(drawer).getByText('$30.00')).toBeInTheDocument();
   });
@@ -422,19 +451,27 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const firstRow = await within(drawer).findByRole('button', { name: /Installment 1/ });
-    const secondRow = within(drawer).getByRole('button', { name: /Installment 2/ });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const firstRow = await within(drawer).findByRole('button', {
+      name: new RegExp(installmentLabel(1)),
+    });
+    const secondRow = within(drawer).getByRole('button', {
+      name: new RegExp(installmentLabel(2)),
+    });
 
-    expect(firstRow).toHaveAccessibleName(/Website redesign, Installment 1/);
+    expect(firstRow).toHaveAccessibleName(
+      new RegExp(`Website redesign, ${installmentLabel(1)}`),
+    );
     expect(firstRow).toHaveTextContent('October 1, 2026');
-    expect(firstRow).toHaveTextContent('Overdue');
-    expect(firstRow).toHaveTextContent('Partially paid');
+    expect(firstRow).toHaveTextContent(paymentMessages.drawer.timingOverdue);
+    expect(firstRow).toHaveTextContent(paymentMessages.drawer.paymentStatePartiallyPaid);
     expect(firstRow).toHaveTextContent('$20.00');
-    expect(secondRow).toHaveAccessibleName(/Website redesign, Installment 2/);
+    expect(secondRow).toHaveAccessibleName(
+      new RegExp(`Website redesign, ${installmentLabel(2)}`),
+    );
     expect(secondRow).toHaveTextContent('November 1, 2026');
-    expect(secondRow).toHaveTextContent('Upcoming');
-    expect(secondRow).toHaveTextContent('Unpaid');
+    expect(secondRow).toHaveTextContent(paymentMessages.drawer.timingUpcoming);
+    expect(secondRow).toHaveTextContent(paymentMessages.drawer.paymentStateUnpaid);
     expect(secondRow).toHaveTextContent('$50.00');
   });
 
@@ -478,7 +515,7 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     const websiteGroup = await within(drawer).findByRole('group', {
       name: 'Website redesign',
     });
@@ -486,17 +523,25 @@ describe('PaymentDrawer', () => {
     expect(within(drawer).getAllByRole('heading', { name: 'Website redesign' })).toHaveLength(1);
     expect(within(websiteGroup).getAllByRole('button')).toHaveLength(2);
     expect(
-      within(websiteGroup).getByRole('button', { name: /Website redesign.*Installment 1/ }),
+      within(websiteGroup).getByRole('button', {
+        name: new RegExp(`Website redesign.*${installmentLabel(1)}`),
+      }),
     ).toBeInTheDocument();
     expect(
-      within(websiteGroup).getByRole('button', { name: /Website redesign.*Installment 2/ }),
+      within(websiteGroup).getByRole('button', {
+        name: new RegExp(`Website redesign.*${installmentLabel(2)}`),
+      }),
     ).toBeInTheDocument();
     expect(within(drawer).getByRole('group', { name: 'Office equipment' })).toBeInTheDocument();
 
     await user.click(
-      within(websiteGroup).getByRole('button', { name: /Website redesign.*Installment 1/ }),
+      within(websiteGroup).getByRole('button', {
+        name: new RegExp(`Website redesign.*${installmentLabel(1)}`),
+      }),
     );
 
-    expect(await within(drawer).findByLabelText('Payment amount')).toBeInTheDocument();
+    expect(
+      await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel),
+    ).toBeInTheDocument();
   });
 });

@@ -4,11 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { appShellResources } from '../../../app/localization/appShellResources';
 import { getBackendUrl } from '../../../shared/api/http';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { PaymentDrawer } from '../editor/PaymentDrawer';
+import { paymentResources } from '../localization/resources';
 import { createPaymentTargetFixture } from './paymentTestData';
+
+const appMessages = appShellResources.en.common.app;
+const paymentMessages = paymentResources.en.common.payments;
 
 describe('PaymentDrawer', () => {
   beforeEach(() => {
@@ -52,13 +57,17 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     const searchInput = await within(drawer).findByRole('searchbox', {
-      name: 'Search debts',
+      name: paymentMessages.drawer.searchDebtDescriptions,
     });
     expect(searchInput).toHaveFocus();
-    expect(within(drawer).getByRole('group', { name: 'Payment status' })).toBeInTheDocument();
-    expect(within(drawer).getByRole('button', { name: 'All targets' })).toHaveAttribute(
+    expect(
+      within(drawer).getByRole('group', { name: paymentMessages.drawer.paymentStatus }),
+    ).toBeInTheDocument();
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.allTargets }),
+    ).toHaveAttribute(
       'aria-pressed',
       'true',
     );
@@ -100,24 +109,30 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     const searchInput = await within(drawer).findByRole('searchbox', {
-      name: 'Search debts',
+      name: paymentMessages.drawer.searchDebtDescriptions,
     });
 
     await user.type(searchInput, 'website');
 
     await waitFor(() =>
       expect(within(drawer).getByRole('status')).toHaveTextContent(
-        'No payment targets available.',
+        paymentMessages.drawer.noTargets,
       ),
     );
     expect(requestedSearches).toContain('website');
     expect(
-      within(drawer).getByRole('searchbox', { name: 'Search debts' }),
+      within(drawer).getByRole('searchbox', {
+        name: paymentMessages.drawer.searchDebtDescriptions,
+      }),
     ).toHaveFocus();
-    expect(within(drawer).getByRole('group', { name: 'Payment status' })).toBeInTheDocument();
-    expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
+    expect(
+      within(drawer).getByRole('group', { name: paymentMessages.drawer.paymentStatus }),
+    ).toBeInTheDocument();
+    expect(
+      within(drawer).queryByLabelText(paymentMessages.drawer.amountLabel),
+    ).not.toBeInTheDocument();
   });
 
   it('filters payment targets by payment status', async () => {
@@ -161,8 +176,10 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const unpaidFilter = await within(drawer).findByRole('button', { name: 'Unpaid' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const unpaidFilter = await within(drawer).findByRole('button', {
+      name: paymentMessages.drawer.paymentStateUnpaid,
+    });
 
     await user.click(unpaidFilter);
 
@@ -171,13 +188,19 @@ describe('PaymentDrawer', () => {
     ).toBeInTheDocument();
     expect(requestedPaymentStates).toContain('unpaid');
     expect(
-      within(drawer).getByRole('searchbox', { name: 'Search debts' }),
+      within(drawer).getByRole('searchbox', {
+        name: paymentMessages.drawer.searchDebtDescriptions,
+      }),
     ).toBeInTheDocument();
-    expect(within(drawer).getByRole('button', { name: 'Unpaid' })).toHaveAttribute(
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.paymentStateUnpaid }),
+    ).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(within(drawer).queryByLabelText('Payment amount')).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByLabelText(paymentMessages.drawer.amountLabel),
+    ).not.toBeInTheDocument();
   });
 
   it('shows cached filter results while refreshing them in the background', async () => {
@@ -234,19 +257,23 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     expect(await within(drawer).findByRole('button', { name: /Debt 1/ })).toBeInTheDocument();
 
-    await user.click(within(drawer).getByRole('button', { name: 'Unpaid' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.paymentStateUnpaid }),
+    );
     expect(
       await within(drawer).findByRole('button', { name: /Unpaid website invoice/ }),
     ).toBeInTheDocument();
 
-    await user.click(within(drawer).getByRole('button', { name: 'All targets' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.allTargets }),
+    );
 
     expect(within(drawer).getByRole('button', { name: /Debt 1/ })).toBeInTheDocument();
     expect(
-      within(drawer).queryByRole('status', { name: 'Loading payment targets' }),
+      within(drawer).queryByRole('status', { name: paymentMessages.drawer.loadingTargets }),
     ).not.toBeInTheDocument();
     expect(allTargetsRequestCount).toBe(2);
   });
@@ -306,28 +333,36 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const unpaidFilter = await within(drawer).findByRole('button', { name: 'Unpaid' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const unpaidFilter = await within(drawer).findByRole('button', {
+      name: paymentMessages.drawer.paymentStateUnpaid,
+    });
     await user.click(unpaidFilter);
 
     const errorState = await within(drawer).findByRole('alert', {
-      name: 'Couldn’t load payment targets',
+      name: paymentMessages.drawer.targetLoadErrorTitle,
     });
     expect(errorState).not.toHaveTextContent('Something went wrong.');
     expect(
-      within(drawer).getByRole('searchbox', { name: 'Search debts' }),
+      within(drawer).getByRole('searchbox', {
+        name: paymentMessages.drawer.searchDebtDescriptions,
+      }),
     ).toBeInTheDocument();
-    expect(within(drawer).getByRole('button', { name: 'Unpaid' })).toHaveAttribute(
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.paymentStateUnpaid }),
+    ).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(within(errorState).getByRole('button', { name: 'Try again' })).toHaveFocus();
+    expect(
+      within(errorState).getByRole('button', { name: appMessages.error.retry }),
+    ).toHaveFocus();
 
-    await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
+    await user.click(within(errorState).getByRole('button', { name: appMessages.error.retry }));
 
     expect(within(drawer).queryByRole('alert')).not.toBeInTheDocument();
     expect(
-      within(drawer).getByRole('status', { name: 'Loading payment targets' }),
+      within(drawer).getByRole('status', { name: paymentMessages.drawer.loadingTargets }),
     ).toBeInTheDocument();
     await waitFor(() => expect(unpaidFilter).toHaveFocus());
     expect(
@@ -372,23 +407,30 @@ describe('PaymentDrawer', () => {
       />,
     );
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     expect(await within(drawer).findByRole('heading', { name: 'Debt 1' })).toBeInTheDocument();
-    const nextPage = within(drawer).getByRole('button', { name: 'Next page' });
+    const nextPage = within(drawer).getByRole('button', { name: paymentMessages.drawer.nextPage });
 
     await user.click(nextPage);
 
     expect(
-      await within(drawer).findByRole('status', { name: 'Loading payment targets' }),
+      await within(drawer).findByRole('status', { name: paymentMessages.drawer.loadingTargets }),
     ).toBeInTheDocument();
-    const nextPageWhileLoading = within(drawer).getByRole('button', { name: 'Next page' });
+    const nextPageWhileLoading = within(drawer).getByRole('button', {
+      name: paymentMessages.drawer.nextPage,
+    });
     expect(nextPageWhileLoading).toHaveFocus();
     expect(nextPageWhileLoading).toHaveAttribute('aria-disabled', 'true');
 
     expect(await within(drawer).findByRole('button', { name: /Debt 11/ })).toBeInTheDocument();
-    expect(within(drawer).getByRole('button', { name: 'Next page' })).toHaveFocus();
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.nextPage }),
+    ).toHaveFocus();
     expect(within(drawer).getByRole('status')).toHaveTextContent(
-      '11–20 of 21 targets',
+      paymentMessages.drawer.targetRange
+        .replace('{{start}}', '11')
+        .replace('{{end}}', '20')
+        .replace('{{total}}', '21'),
     );
     expect(
       within(drawer).queryByRole('heading', { name: 'Debt 1' }),

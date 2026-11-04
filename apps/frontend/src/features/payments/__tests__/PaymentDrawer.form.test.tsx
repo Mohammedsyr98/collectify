@@ -3,8 +3,13 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { paymentApiErrorCode } from '@collectify/contracts';
+
+import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';
 import { createPaymentTargetFixture } from './paymentTestData';
+
+const paymentMessages = paymentResources.en.common.payments;
 
 describe('PaymentDrawer', () => {
   beforeEach(() => {
@@ -28,12 +33,17 @@ describe('PaymentDrawer', () => {
 
     renderPaymentDrawer(target, onSubmit);
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    await user.type(within(drawer).getByLabelText('Payment amount'), '25.20');
-    await user.clear(within(drawer).getByLabelText('Payment date'));
-    await user.type(within(drawer).getByLabelText('Payment date'), '2026-10-01');
-    await user.type(within(drawer).getByLabelText('Note (optional)'), 'cash');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '25.20');
+    await user.clear(within(drawer).getByLabelText(paymentMessages.drawer.dateLabel));
+    await user.type(
+      within(drawer).getByLabelText(paymentMessages.drawer.dateLabel),
+      '2026-10-01',
+    );
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.noteLabel), 'cash');
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith({
@@ -55,25 +65,31 @@ describe('PaymentDrawer', () => {
 
     renderPaymentDrawer(target);
 
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
     expect(within(drawer).getByText('$45.05')).toBeInTheDocument();
-    expect(within(drawer).queryByText('Debt remaining')).not.toBeInTheDocument();
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveFocus();
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveValue('');
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveAccessibleDescription(
-      'Remaining after payment: Not calculated',
+    expect(
+      within(drawer).queryByText(paymentMessages.drawer.debtRemainingLabel),
+    ).not.toBeInTheDocument();
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel)).toHaveFocus();
+    expect(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel)).toHaveValue('');
+    expect(
+      within(drawer).getByLabelText(paymentMessages.drawer.amountLabel),
+    ).toHaveAccessibleDescription(
+      `${paymentMessages.drawer.targetAfterLabel}: ${paymentMessages.drawer.previewNotCalculated}`,
     );
     expect(
       within(drawer).queryByRole('button', { name: 'Pay full remaining amount' }),
     ).not.toBeInTheDocument();
 
-    await user.type(within(drawer).getByLabelText('Payment amount'), '12.30');
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '12.30');
 
     expect(within(drawer).getByText('$32.75')).toBeInTheDocument();
-    expect(within(drawer).getByLabelText('Payment amount')).toHaveAccessibleDescription(
-      'Remaining after payment: $32.75',
-    );
-    expect(within(drawer).queryByText('Debt remaining after payment')).not.toBeInTheDocument();
+    expect(
+      within(drawer).getByLabelText(paymentMessages.drawer.amountLabel),
+    ).toHaveAccessibleDescription(`${paymentMessages.drawer.targetAfterLabel}: $32.75`);
+    expect(
+      within(drawer).queryByText(paymentMessages.drawer.debtAfterLabel),
+    ).not.toBeInTheDocument();
   });
 
   it('rejects an amount above the selected target and a future payment date before submit', async () => {
@@ -87,25 +103,33 @@ describe('PaymentDrawer', () => {
     });
 
     renderPaymentDrawer(target, onSubmit);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    const amountInput = within(drawer).getByLabelText('Payment amount');
-    const paymentDateInput = within(drawer).getByLabelText('Payment date');
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    const amountInput = within(drawer).getByLabelText(paymentMessages.drawer.amountLabel);
+    const paymentDateInput = within(drawer).getByLabelText(paymentMessages.drawer.dateLabel);
     await user.type(amountInput, '40.01');
     await user.clear(paymentDateInput);
     await user.type(paymentDateInput, '9999-01-01');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     await waitFor(() => {
       expect(amountInput).toHaveAccessibleDescription(
-        'Payment exceeds the target remaining amount.',
+        paymentMessages.errors[paymentApiErrorCode.paymentAmountExceedsRemaining],
       );
       expect(paymentDateInput).toHaveAccessibleDescription(
-        'Payment date cannot be in the future.',
+        paymentMessages.errors[paymentApiErrorCode.paymentDateInFuture],
       );
     });
-    expect(within(drawer).queryByText('Remaining after payment:', { exact: false })).toBeNull();
+    expect(
+      within(drawer).queryByText(`${paymentMessages.drawer.targetAfterLabel}:`, {
+        exact: false,
+      }),
+    ).toBeNull();
     expect(within(drawer).queryByText('—')).toBeNull();
-    expect(within(drawer).queryByText('Not calculated')).toBeNull();
+    expect(
+      within(drawer).queryByText(paymentMessages.drawer.previewNotCalculated),
+    ).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -114,11 +138,16 @@ describe('PaymentDrawer', () => {
     const onSubmit = vi.fn(async () => undefined);
 
     renderPaymentDrawer(createPaymentTargetFixture(), onSubmit);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    await user.type(within(drawer).getByLabelText('Payment amount'), '10');
-    await user.clear(within(drawer).getByLabelText('Payment date'));
-    await user.type(within(drawer).getByLabelText('Payment date'), '2000-01-01');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '10');
+    await user.clear(within(drawer).getByLabelText(paymentMessages.drawer.dateLabel));
+    await user.type(
+      within(drawer).getByLabelText(paymentMessages.drawer.dateLabel),
+      '2000-01-01',
+    );
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ paymentDate: '2000-01-01' })),
@@ -131,12 +160,12 @@ describe('PaymentDrawer', () => {
 
     vi.setSystemTime(new Date('2026-09-10T20:59:59Z'));
     const firstRender = renderPaymentDrawer(target);
-    expect(screen.getByLabelText('Payment date')).toHaveValue('2026-09-10');
+    expect(screen.getByLabelText(paymentMessages.drawer.dateLabel)).toHaveValue('2026-09-10');
 
     firstRender.unmount();
     vi.setSystemTime(new Date('2026-09-10T21:00:00Z'));
     renderPaymentDrawer(target);
-    expect(screen.getByLabelText('Payment date')).toHaveValue('2026-09-11');
+    expect(screen.getByLabelText(paymentMessages.drawer.dateLabel)).toHaveValue('2026-09-11');
   });
 
   it('allows only one submission and prevents dismissal while recording', async () => {
@@ -151,19 +180,25 @@ describe('PaymentDrawer', () => {
     const onClose = vi.fn();
 
     renderPaymentDrawer(createPaymentTargetFixture(), onSubmit, onClose);
-    const drawer = screen.getByRole('dialog', { name: 'Record payment' });
-    await user.type(within(drawer).getByLabelText('Payment amount'), '10');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    const drawer = screen.getByRole('dialog', { name: paymentMessages.drawer.title });
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '10');
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const amountInput = within(drawer).getByLabelText('Payment amount');
+    const amountInput = within(drawer).getByLabelText(paymentMessages.drawer.amountLabel);
     await user.click(amountInput);
     await user.keyboard('{Enter}');
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(amountInput).toHaveValue('10');
-    expect(within(drawer).getByRole('button', { name: 'Recording' })).toBeDisabled();
-    expect(within(drawer).getByRole('button', { name: 'Close payment form' })).toBeDisabled();
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submitting }),
+    ).toBeDisabled();
+    expect(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.close }),
+    ).toBeDisabled();
 
     await user.keyboard('{Escape}');
     fireEvent.pointerDown(document.body);
@@ -172,7 +207,9 @@ describe('PaymentDrawer', () => {
 
     resolveSubmit?.();
     await waitFor(() =>
-      expect(within(drawer).getByRole('button', { name: 'Record payment' })).toBeEnabled(),
+      expect(
+        within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+      ).toBeEnabled(),
     );
     expect(onClose).not.toHaveBeenCalled();
   });
