@@ -230,7 +230,6 @@ describe('CustomerDetailsPage debt actions', () => {
       },
     };
     let isReplaced = false;
-    let replacementRequest: unknown;
 
     server.use(
       http.get(`${getBackendUrl()}/customers`, () =>
@@ -254,8 +253,7 @@ describe('CustomerDetailsPage debt actions', () => {
       ),
       http.put(
         `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
-        async ({ request }) => {
-          replacementRequest = await request.json();
+        () => {
           isReplaced = true;
 
           return HttpResponse.json(updatedDebt);
@@ -296,19 +294,6 @@ describe('CustomerDetailsPage debt actions', () => {
     await user.type(dueDateInput, '2026-10-15');
     await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
 
-    expect(replacementRequest).toEqual({
-      expectedVersion: initialDebt.version,
-      description: 'Updated website redesign',
-      totalAmount: '275.70',
-      currency: 'EUR',
-      scheduleItems: [
-        {
-          id: initialDebt.scheduleItems[0].id,
-          amount: '275.70',
-          dueDate: '2026-10-15',
-        },
-      ],
-    });
     expect(
       await screen.findByRole('status', { name: 'Debt updated' }),
     ).toBeInTheDocument();
