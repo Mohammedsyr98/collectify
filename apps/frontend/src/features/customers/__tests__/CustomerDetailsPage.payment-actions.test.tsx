@@ -19,12 +19,23 @@ import {
   emptyDebtList,
 } from '../../debts/__tests__/debtTestData';
 import { createPaymentTargetFixture } from '../../payments/__tests__/paymentTestData';
+import { debtResources } from '../../debts/localization/resources';
+import { paymentResources } from '../../payments/localization/resources';
+import { customerResources } from '../localization/resources';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const debtMessages = debtResources.en.common.debts;
+const paymentMessages = paymentResources.en.common.payments;
+const installmentScheduleLabel = (description: string) =>
+  debtMessages.card.installmentScheduleLabel.replace('{{description}}', description);
+const installmentLabel = (position: number) =>
+  paymentMessages.drawer.installmentLabel.replace('{{position}}', String(position));
 
 describe('CustomerDetailsPage payment actions', () => {
   beforeEach(() => {
@@ -82,12 +93,12 @@ describe('CustomerDetailsPage payment actions', () => {
     renderCustomerRoutes([`/customers/${customer.id}`]);
 
     const headerPaymentButton = await screen.findByRole('button', {
-      name: 'Record payment',
+      name: paymentMessages.drawer.title,
     });
     await user.click(headerPaymentButton);
 
     expect(
-      await screen.findByRole('dialog', { name: 'Record payment' }),
+      await screen.findByRole('dialog', { name: paymentMessages.drawer.title }),
     ).toBeInTheDocument();
     expect(targetRequestCount).toBe(1);
   });
@@ -147,13 +158,13 @@ describe('CustomerDetailsPage payment actions', () => {
     renderCustomerRoutes([`/customers/${initialCustomer.id}`]);
 
     const headerPaymentButton = await screen.findByRole('button', {
-      name: 'Record payment',
+      name: paymentMessages.drawer.title,
     });
     await user.click(headerPaymentButton);
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    await user.type(within(drawer).getByLabelText('Payment amount'), '10');
-    await user.click(within(drawer).getByRole('button', { name: 'Record payment' }));
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '10');
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await waitFor(() =>
       expect(recordedRequest).toEqual(
@@ -161,9 +172,13 @@ describe('CustomerDetailsPage payment actions', () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: 'Add debt' })[0]).toHaveFocus(),
+      expect(
+        screen.getAllByRole('button', { name: customerMessages.actions.addDebt })[0],
+      ).toHaveFocus(),
     );
-    expect(screen.queryByRole('button', { name: 'Record payment' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: paymentMessages.drawer.title }),
+    ).not.toBeInTheDocument();
   });
 
   it('refreshes the selected installment, debt, and customer balances after recording a payment', async () => {
@@ -238,22 +253,22 @@ describe('CustomerDetailsPage payment actions', () => {
 
     const debtCard = await findDebtCard(initialDebt.description);
     await user.click(
-      within(debtCard).getByRole('button', { name: 'View installments' }),
+      within(debtCard).getByRole('button', { name: debtMessages.card.viewInstallments }),
     );
     const schedule = within(debtCard).getByRole('region', {
-      name: `Installment schedule for ${initialDebt.description}`,
+      name: installmentScheduleLabel(initialDebt.description),
     });
     const firstInstallmentRow = within(schedule).getAllByRole('listitem')[0]!;
     await user.click(
       within(firstInstallmentRow).getByRole('button', {
-        name: 'Record payment',
+        name: paymentMessages.drawer.title,
       }),
     );
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    await user.type(within(drawer).getByLabelText('Payment amount'), '25');
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '25');
     await user.click(
-      within(drawer).getByRole('button', { name: 'Record payment' }),
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
     );
 
     await waitFor(() =>
@@ -269,7 +284,7 @@ describe('CustomerDetailsPage payment actions', () => {
       within(refreshedDebtCard).getByRole('progressbar'),
     ).toHaveAttribute('aria-valuenow', '25');
     const refreshedSchedule = within(refreshedDebtCard).getByRole('region', {
-      name: `Installment schedule for ${updatedDebt.description}`,
+      name: installmentScheduleLabel(updatedDebt.description),
     });
     const refreshedInstallmentRow = within(refreshedSchedule).getAllByRole(
       'listitem',
@@ -277,7 +292,9 @@ describe('CustomerDetailsPage payment actions', () => {
     expect(refreshedInstallmentRow).toHaveTextContent('$25.00');
     expect(refreshedInstallmentRow).toHaveTextContent('$35.00');
 
-    const summary = screen.getByRole('region', { name: 'Financial summary' });
+    const summary = screen.getByRole('region', {
+      name: customerMessages.details.financialSummary,
+    });
     expect(summary).toHaveTextContent('$25.00');
     expect(summary).toHaveTextContent('$75.00');
   });
@@ -309,22 +326,26 @@ describe('CustomerDetailsPage payment actions', () => {
 
     const debtCard = await findDebtCard(debt.description);
     await user.click(
-      within(debtCard).getByRole('button', { name: 'View installments' }),
+      within(debtCard).getByRole('button', { name: debtMessages.card.viewInstallments }),
     );
     const schedule = within(debtCard).getByRole('region', {
-      name: `Installment schedule for ${debt.description}`,
+      name: installmentScheduleLabel(debt.description),
     });
     const rows = within(schedule).getAllByRole('listitem');
 
     await user.click(
-      within(rows[1]!).getByRole('button', { name: 'Record payment' }),
+      within(rows[1]!).getByRole('button', { name: paymentMessages.drawer.title }),
     );
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    expect(within(drawer).getByText(/Installment 2/)).toBeInTheDocument();
-    await user.type(within(drawer).getByLabelText('Payment amount'), '10');
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    expect(
+      within(drawer).getByText(
+        installmentLabel(2),
+      ),
+    ).toBeInTheDocument();
+    await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '10');
     await user.click(
-      within(drawer).getByRole('button', { name: 'Record payment' }),
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
     );
 
     await waitFor(() =>
@@ -376,17 +397,19 @@ describe('CustomerDetailsPage payment actions', () => {
 
     const debtCard = await findDebtCard(initialDebt.description);
     const paymentAction = within(debtCard).getByRole('button', {
-      name: 'Record payment',
+      name: paymentMessages.drawer.title,
     });
     await user.click(paymentAction);
 
-    const drawer = await screen.findByRole('dialog', { name: 'Record payment' });
-    expect(within(drawer).getByText(/One payment/)).toBeInTheDocument();
-    const paymentAmount = within(drawer).getByLabelText('Payment amount');
+    const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
+    expect(
+      within(drawer).getByText(paymentMessages.drawer.onePaymentTarget),
+    ).toBeInTheDocument();
+    const paymentAmount = within(drawer).getByLabelText(paymentMessages.drawer.amountLabel);
     expect(paymentAmount).toHaveFocus();
     await user.type(paymentAmount, '10');
     await user.click(
-      within(drawer).getByRole('button', { name: 'Record payment' }),
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
     );
 
     await waitFor(() =>
@@ -397,13 +420,17 @@ describe('CustomerDetailsPage payment actions', () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'Record payment' })).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('dialog', { name: paymentMessages.drawer.title }),
+      ).not.toBeInTheDocument(),
     );
     expect(paymentAction).toHaveAttribute('aria-disabled', 'true');
     expect(paymentAction).toHaveFocus();
 
     await user.click(paymentAction);
-    expect(screen.queryByRole('dialog', { name: 'Record payment' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: paymentMessages.drawer.title }),
+    ).not.toBeInTheDocument();
   });
 });
 

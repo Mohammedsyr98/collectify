@@ -4,14 +4,21 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { appShellResources } from '../../../app/localization/appShellResources';
 import { getBackendUrl } from '../../../shared/api/http';
+import { sharedLocalizationResources } from '../../../shared/localization/resources';
 import { server } from '../../../shared/test/server';
+import { customerResources } from '../localization/resources';
 import {
   customerList,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const appMessages = appShellResources.en.common.app;
+const sharedMessages = sharedLocalizationResources.en.common;
 
 describe('CustomersPage list states', () => {
   beforeEach(() => {
@@ -48,9 +55,11 @@ describe('CustomersPage list states', () => {
 
     renderCustomerRoutes();
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading customers');
+    expect(await screen.findByRole('status')).toHaveTextContent(customerMessages.list.loading);
     expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: customerMessages.list.columns.name }),
+    ).toBeInTheDocument();
 
     resolveCustomerListRequest();
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
@@ -61,11 +70,13 @@ describe('CustomersPage list states', () => {
 
     await waitFor(() =>
       expect(
-        screen.getAllByText('Create your first customer to start tracking debts.'),
+        screen.getAllByText(customerMessages.page.empty),
       ).toHaveLength(2),
     );
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: customerMessages.list.columns.name }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a recoverable error and reloads customers on retry', async () => {
@@ -86,17 +97,19 @@ describe('CustomersPage list states', () => {
     renderCustomerRoutes();
 
     const errorState = await screen.findByRole('alert', {
-      name: 'Could not load customers',
+      name: customerMessages.list.error.title,
     });
-    expect(errorState).toHaveTextContent('Something went wrong. Try again.');
+    expect(errorState).toHaveTextContent(sharedMessages.errors.genericDescription);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
 
-    await user.click(within(errorState).getByRole('button', { name: 'Try again' }));
+    await user.click(
+      within(errorState).getByRole('button', { name: appMessages.error.retry }),
+    );
 
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'NSC-002' })).toBeInTheDocument();
     expect(
-      screen.queryByRole('alert', { name: 'Could not load customers' }),
+      screen.queryByRole('alert', { name: customerMessages.list.error.title }),
     ).not.toBeInTheDocument();
     expect(customerListRequestCount).toBe(2);
   });

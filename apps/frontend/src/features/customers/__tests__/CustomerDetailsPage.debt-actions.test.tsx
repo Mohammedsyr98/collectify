@@ -10,6 +10,8 @@ import {
   createDebtFixture,
   emptyDebtList,
 } from '../../debts/__tests__/debtTestData';
+import { debtResources } from '../../debts/localization/resources';
+import { customerResources } from '../localization/resources';
 import {
   baseCustomer,
   customerList,
@@ -17,6 +19,15 @@ import {
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const debtMessages = debtResources.en.common.debts;
+const debtDeleteSuccessDescription = (description: string) =>
+  debtMessages.toast.delete.successDescription.replace('{{description}}', description);
+const debtOpenMenuLabel = (description: string) =>
+  debtMessages.card.actions.openMenu.replace('{{description}}', description);
+const debtActionsMenuLabel = (description: string) =>
+  debtMessages.card.actions.menuLabel.replace('{{description}}', description);
 
 describe('CustomerDetailsPage debt actions', () => {
   beforeEach(() => {
@@ -47,20 +58,26 @@ describe('CustomerDetailsPage debt actions', () => {
     renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
     const headerAddDebtButton = (await screen.findAllByRole('button', {
-      name: 'Add debt',
+      name: customerMessages.actions.addDebt,
     }))[0]!;
-    const debtSection = await screen.findByRole('region', { name: 'Debts' });
+    const debtSection = await screen.findByRole('region', {
+      name: debtMessages.section.title,
+    });
     const ledgerAddDebtButton = within(debtSection).getByRole('button', {
-      name: 'Add debt',
+      name: customerMessages.actions.addDebt,
     });
 
     await user.click(headerAddDebtButton);
-    expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle }),
+    ).toBeInTheDocument();
     await user.keyboard('{Escape}');
     await waitFor(() => expect(headerAddDebtButton).toHaveFocus());
 
     await user.click(ledgerAddDebtButton);
-    expect(await screen.findByRole('dialog', { name: 'Add debt' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('dialog', { name: debtMessages.drawer.createTitle }),
+    ).toBeInTheDocument();
     await user.keyboard('{Escape}');
     await waitFor(() => expect(ledgerAddDebtButton).toHaveFocus());
   });
@@ -136,32 +153,38 @@ describe('CustomerDetailsPage debt actions', () => {
     await screen.findByRole('heading', { name: initialDebt.description });
     const { actionsMenu } = await openDebtActionMenu(user, initialDebt.description);
     await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Delete debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.delete }),
     );
-    const dialog = await screen.findByRole('dialog', { name: 'Delete debt' });
+    const dialog = await screen.findByRole('dialog', { name: debtMessages.delete.title });
 
     await user.click(
-      within(dialog).getByRole('button', { name: 'Delete debt' }),
+      within(dialog).getByRole('button', { name: debtMessages.delete.confirm }),
     );
 
     expect(deleteRequestCount).toBe(1);
     expect(
-      await screen.findByRole('status', { name: 'Debt deleted' }),
-    ).toHaveTextContent('Website redesign was deleted.');
+      await screen.findByRole('status', { name: debtMessages.toast.delete.successTitle }),
+    ).toHaveTextContent(debtDeleteSuccessDescription('Website redesign'));
     await waitFor(() =>
       expect(
         screen.queryByRole('heading', { name: initialDebt.description }),
       ).not.toBeInTheDocument(),
     );
     expect(
-      await screen.findByRole('region', { name: 'Financial summary' }),
-    ).toHaveTextContent('No financial activity');
+      await screen.findByRole('region', {
+        name: customerMessages.details.financialSummary,
+      }),
+    ).toHaveTextContent(customerMessages.details.noFinancialActivity);
 
     await user.click(screen.getByRole('button', { name: 'Go back' }));
     expect(
       await screen.findByRole('cell', { name: baseCustomer.name }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole('cell', { name: 'No debt' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('cell', {
+        name: customerMessages.list.emptyFinancial.remainingDebt,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('saves an edited debt and refreshes affected views', async () => {
@@ -270,20 +293,20 @@ describe('CustomerDetailsPage debt actions', () => {
 
     await user.click(
       within(debtCard).getByRole('button', {
-        name: `Open actions for ${initialDebt.description}`,
+        name: debtOpenMenuLabel(initialDebt.description),
       }),
     );
     const actionsMenu = await screen.findByRole('menu', {
-      name: `Actions for ${initialDebt.description}`,
+      name: debtActionsMenuLabel(initialDebt.description),
     });
     await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Edit debt' }),
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.edit }),
     );
-    const drawer = await screen.findByRole('dialog', { name: 'Edit debt' });
-    const descriptionInput = within(drawer).getByLabelText('Description');
-    const amountInput = within(drawer).getByLabelText('Total amount');
-    const currencySelect = within(drawer).getByLabelText('Currency');
-    const dueDateInput = within(drawer).getByLabelText('Due date');
+    const drawer = await screen.findByRole('dialog', { name: debtMessages.drawer.editTitle });
+    const descriptionInput = within(drawer).getByLabelText(debtMessages.form.descriptionLabel);
+    const amountInput = within(drawer).getByLabelText(debtMessages.form.totalAmountLabel);
+    const currencySelect = within(drawer).getByLabelText(debtMessages.form.currencyLabel);
+    const dueDateInput = within(drawer).getByLabelText(debtMessages.form.dueDateLabel);
 
     await user.clear(descriptionInput);
     await user.type(descriptionInput, updatedDebt.description);
@@ -292,12 +315,14 @@ describe('CustomerDetailsPage debt actions', () => {
     await user.selectOptions(currencySelect, 'EUR');
     await user.clear(dueDateInput);
     await user.type(dueDateInput, '2026-10-15');
-    await user.click(within(drawer).getByRole('button', { name: 'Save debt' }));
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
 
     expect(
-      await screen.findByRole('status', { name: 'Debt updated' }),
+      await screen.findByRole('status', { name: debtMessages.toast.edit.successTitle }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: 'Edit debt' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: debtMessages.drawer.editTitle }),
+    ).not.toBeInTheDocument();
     await screen.findByRole('heading', { name: updatedDebt.description });
     const updatedDebtCard = getDebtCard(updatedDebt.description);
 
@@ -308,7 +333,7 @@ describe('CustomerDetailsPage debt actions', () => {
     );
 
     const summary = await screen.findByRole('region', {
-      name: 'Financial summary',
+      name: customerMessages.details.financialSummary,
     });
     expect(summary).toHaveTextContent('€275.70');
 
@@ -328,14 +353,14 @@ async function openDebtActionMenu(
 ): Promise<{ actionsMenu: HTMLElement; actionsTrigger: HTMLElement }> {
   const debtCard = getDebtCard(description);
   const actionsTrigger = within(debtCard).getByRole('button', {
-    name: `Open actions for ${description}`,
+    name: debtOpenMenuLabel(description),
   });
 
   await user.click(actionsTrigger);
 
   return {
     actionsMenu: await screen.findByRole('menu', {
-      name: `Actions for ${description}`,
+      name: debtActionsMenuLabel(description),
     }),
     actionsTrigger,
   };

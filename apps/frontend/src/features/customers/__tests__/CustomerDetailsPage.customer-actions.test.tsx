@@ -7,12 +7,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
 import { emptyDebtList } from '../../debts/__tests__/debtTestData';
+import { customerResources } from '../localization/resources';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const customerUpdateSuccessDescription = (name: string) =>
+  customerMessages.toast.update.successDescription.replace('{{name}}', name);
 
 describe('CustomerDetailsPage customer actions', () => {
   beforeEach(() => {
@@ -46,18 +51,18 @@ describe('CustomerDetailsPage customer actions', () => {
       await screen.findByRole('heading', { name: baseCustomer.name }),
     ).toBeInTheDocument();
 
-    const editButton = screen.getByRole('button', { name: 'Edit customer' });
+    const editButton = screen.getByRole('button', { name: customerMessages.actions.edit });
     await user.click(editButton);
 
     expect(
-      await screen.findByRole('dialog', { name: 'Edit customer' }),
+      await screen.findByRole('dialog', { name: customerMessages.edit.title }),
     ).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
 
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Edit customer' }),
+        screen.queryByRole('dialog', { name: customerMessages.edit.title }),
       ).not.toBeInTheDocument(),
     );
     expect(editButton).toHaveFocus();
@@ -87,20 +92,24 @@ describe('CustomerDetailsPage customer actions', () => {
       await screen.findByRole('heading', { name: baseCustomer.name }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Edit customer' }));
-    const editDialog = await screen.findByRole('dialog', { name: 'Edit customer' });
-    const nameInput = within(editDialog).getByLabelText('Name');
+    await user.click(screen.getByRole('button', { name: customerMessages.actions.edit }));
+    const editDialog = await screen.findByRole('dialog', { name: customerMessages.edit.title });
+    const nameInput = within(editDialog).getByLabelText(customerMessages.form.nameLabel);
 
     await user.clear(nameInput);
     await user.type(nameInput, 'Acme Wholesale');
-    await user.click(within(editDialog).getByRole('button', { name: 'Save customer' }));
+    await user.click(
+      within(editDialog).getByRole('button', { name: customerMessages.actions.save }),
+    );
 
     expect(
       await screen.findByRole('heading', { name: 'Acme Wholesale' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('status', { name: 'Customer updated' }),
-    ).toHaveTextContent('Acme Wholesale changes were saved.');
-    expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument();
+      await screen.findByRole('status', { name: customerMessages.toast.update.successTitle }),
+    ).toHaveTextContent(customerUpdateSuccessDescription('Acme Wholesale'));
+    expect(
+      screen.queryByRole('dialog', { name: customerMessages.edit.title }),
+    ).not.toBeInTheDocument();
   });
 });

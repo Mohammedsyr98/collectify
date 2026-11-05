@@ -6,12 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
+import { customerResources } from '../localization/resources';
 import {
   customerList,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
 
 describe('CustomersPage search and URL state', () => {
   beforeEach(() => {
@@ -70,7 +73,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=2&search=acme']);
 
-    expect(await screen.findByLabelText('Search customers')).toHaveValue('acme');
+    expect(await screen.findByLabelText(customerMessages.search.label)).toHaveValue('acme');
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
   });
@@ -99,7 +102,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=1&search=acme', '/customers?page=1&search=north']);
 
-    const searchInput = await screen.findByLabelText('Search customers');
+    const searchInput = await screen.findByLabelText(customerMessages.search.label);
     expect(searchInput).toHaveValue('north');
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '1', search: 'north' }]));
@@ -144,7 +147,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=2']);
 
-    const searchInput = await screen.findByLabelText('Search customers');
+    const searchInput = await screen.findByLabelText(customerMessages.search.label);
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '2', search: null }]));
 
     await user.type(searchInput, 'a');
@@ -217,7 +220,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=2&search=acme']);
 
-    const searchInput = await screen.findByLabelText('Search customers');
+    const searchInput = await screen.findByLabelText(customerMessages.search.label);
     expect(searchInput).toHaveValue('acme');
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
@@ -236,7 +239,7 @@ describe('CustomersPage search and URL state', () => {
     expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=1');
     await waitFor(() =>
       expect(
-        screen.getAllByText('Create your first customer to start tracking debts.'),
+        screen.getAllByText(customerMessages.page.empty),
       ).toHaveLength(2),
     );
   });

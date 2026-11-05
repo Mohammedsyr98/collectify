@@ -4,11 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CreateCustomerRequest } from '@collectify/contracts';
+import {
+  customerValidationCode,
+  type CreateCustomerRequest,
+} from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { CustomerCreateModal } from '../CustomerCreateModal';
+import { customerResources } from '../localization/resources';
 import { resetCustomerTestEnvironment } from './customerTestData';
+
+const customerMessages = customerResources.en.common.customers;
 
 describe('CustomerCreateModal', () => {
   beforeEach(() => {
@@ -27,11 +33,11 @@ describe('CustomerCreateModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
 
     expect(
-      screen.getByRole('dialog', { name: 'Create customer' }),
+      screen.getByRole('dialog', { name: customerMessages.create.title }),
     ).toHaveAccessibleDescription(
-      'Create a customer for debt and payment tracking.',
+      customerMessages.create.description,
     );
-    expect(screen.getByLabelText('Name')).toHaveFocus();
+    expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveFocus();
   });
 
   it('closes with Escape and returns focus to the opening button', async () => {
@@ -55,12 +61,12 @@ describe('CustomerCreateModal', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Open create' }));
-    const dialog = screen.getByRole('dialog', { name: 'Create customer' });
+    const dialog = screen.getByRole('dialog', { name: customerMessages.create.title });
     const closeButton = within(dialog).getByRole('button', {
-      name: 'Close customer form',
+      name: customerMessages.create.close,
     });
     const saveButton = within(dialog).getByRole('button', {
-      name: 'Save customer',
+      name: customerMessages.actions.save,
     });
 
     saveButton.focus();
@@ -79,12 +85,14 @@ describe('CustomerCreateModal', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Open create' }));
-    const dialog = screen.getByRole('dialog', { name: 'Create customer' });
+    const dialog = screen.getByRole('dialog', { name: customerMessages.create.title });
 
     expect(
-      within(dialog).getByRole('button', { name: 'Close customer form' }),
+      within(dialog).getByRole('button', { name: customerMessages.create.close }),
     ).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: customerMessages.form.cancel }),
+    ).toBeDisabled();
 
     await user.keyboard('{Escape}');
     await user.click(screen.getByTestId('customer-create-overlay'));
@@ -97,13 +105,13 @@ describe('CustomerCreateModal', () => {
     renderCustomerCreateHarness({ onSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.nameLabel), {
       target: { value: 'Draft Customer' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Close customer form' }));
+    fireEvent.click(screen.getByRole('button', { name: customerMessages.create.close }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    expect(screen.getByLabelText('Name')).toHaveValue('');
+    expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveValue('');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -112,13 +120,13 @@ describe('CustomerCreateModal', () => {
     renderCustomerCreateHarness({ onSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.nameLabel), {
       target: { value: 'Draft Customer' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: customerMessages.form.cancel }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    expect(screen.getByLabelText('Name')).toHaveValue('');
+    expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveValue('');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -128,7 +136,7 @@ describe('CustomerCreateModal', () => {
     renderCustomerCreateHarness({ onSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.nameLabel), {
       target: { value: 'Draft Customer' },
     });
     await user.click(screen.getByTestId('customer-create-overlay'));
@@ -144,19 +152,19 @@ describe('CustomerCreateModal', () => {
     renderCustomerCreateHarness({ onSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.nameLabel), {
       target: { value: '  Acme Market  ' },
     });
-    fireEvent.change(screen.getByLabelText('Code'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.codeLabel), {
       target: { value: '  ACME-001  ' },
     });
-    fireEvent.change(screen.getByLabelText('Phone number'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.phoneNumberLabel), {
       target: { value: '  +90 555 123 45 67  ' },
     });
-    fireEvent.change(screen.getByLabelText('Address'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.addressLabel), {
       target: { value: '   ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
+    fireEvent.click(screen.getByRole('button', { name: customerMessages.actions.save }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
@@ -174,24 +182,30 @@ describe('CustomerCreateModal', () => {
     renderCustomerCreateHarness({ onSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open create' }));
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.nameLabel), {
       target: { value: 'Acme Market' },
     });
-    fireEvent.change(screen.getByLabelText('Code'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.codeLabel), {
       target: { value: 'ACME-001' },
     });
-    fireEvent.change(screen.getByLabelText('Address'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.addressLabel), {
       target: { value: '42 Market Street' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
+    fireEvent.click(screen.getByRole('button', { name: customerMessages.actions.save }));
 
-    expect(await screen.findByText('Phone number is required.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        customerMessages.validation[customerValidationCode.customerPhoneNumberRequired],
+      ),
+    ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
-    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
-    expect(screen.getByLabelText('Phone number')).toHaveValue('');
-    expect(screen.getByLabelText('Address')).toHaveValue('42 Market Street');
+    expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveValue('Acme Market');
+    expect(screen.getByLabelText(customerMessages.form.codeLabel)).toHaveValue('ACME-001');
+    expect(screen.getByLabelText(customerMessages.form.phoneNumberLabel)).toHaveValue('');
+    expect(screen.getByLabelText(customerMessages.form.addressLabel)).toHaveValue(
+      '42 Market Street',
+    );
   });
 });
 

@@ -7,12 +7,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
 import { emptyDebtList } from '../../debts/__tests__/debtTestData';
+import { debtResources } from '../../debts/localization/resources';
+import { customerResources } from '../localization/resources';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const debtMessages = debtResources.en.common.debts;
 
 const customerWithAddress = {
   ...baseCustomer,
@@ -61,15 +66,19 @@ describe('CustomerDetailsPage view and lifecycle', () => {
     expect(
       await screen.findByRole('heading', { name: 'Acme Market' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Code: ACME-001')).toBeInTheDocument();
+    expect(
+      screen.getByText(`${customerMessages.details.code}: ACME-001`),
+    ).toBeInTheDocument();
     expect(screen.getByText('+90 555 123 45 67')).toBeInTheDocument();
     expect(screen.getByText('Istanbul')).toBeInTheDocument();
     expect(
-      screen.getByRole('region', { name: 'Financial summary' }),
-    ).toHaveTextContent('No financial activity');
-    expect(screen.getByRole('region', { name: 'Debts' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Payments' })).toHaveTextContent(
-      'Payment history is not available yet.',
+      screen.getByRole('region', { name: customerMessages.details.financialSummary }),
+    ).toHaveTextContent(customerMessages.details.noFinancialActivity);
+    expect(
+      screen.getByRole('region', { name: debtMessages.section.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: customerMessages.details.payments })).toHaveTextContent(
+      customerMessages.details.paymentsUnavailable,
     );
     await waitFor(() => expect(detailsRequestCount).toBe(1));
   });
@@ -120,11 +129,11 @@ describe('CustomerDetailsPage view and lifecycle', () => {
     renderCustomerRoutes(['/customers/missing']);
 
     expect(
-      await screen.findByRole('heading', { name: 'Customer not found' }),
+      await screen.findByRole('heading', { name: customerMessages.notFound.title }),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Back to Customers' }));
+    await user.click(screen.getByRole('button', { name: customerMessages.notFound.action }));
     expect(
-      await screen.findByRole('main', { name: 'Customers' }),
+      await screen.findByRole('main', { name: customerMessages.page.title }),
     ).toBeInTheDocument();
   });
 });

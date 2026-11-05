@@ -8,12 +8,17 @@ import { getBackendUrl } from '../../../shared/api/http';
 import { localeStorageKey } from '../../../shared/localization';
 import { server } from '../../../shared/test/server';
 import { emptyDebtList } from '../../debts/__tests__/debtTestData';
+import { customerResources } from '../localization/resources';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const paymentProgressLabel = (currency: string) =>
+  customerMessages.details.paymentProgress.replace('{{currency}}', currency);
 
 const customerWithFinancialActivity = {
   ...baseCustomer,
@@ -65,7 +70,7 @@ describe('CustomerDetailsPage financial summary', () => {
     ]);
 
     const summary = await screen.findByRole('region', {
-      name: 'Financial summary',
+      name: customerMessages.details.financialSummary,
     });
 
     expect(summary).toHaveTextContent('EUR');
@@ -87,9 +92,11 @@ describe('CustomerDetailsPage financial summary', () => {
     ]);
 
     const summary = await screen.findByRole('region', {
-      name: 'Financial summary',
+      name: customerMessages.details.financialSummary,
     });
-    const allCurrencies = screen.getByRole('button', { name: 'All currencies' });
+    const allCurrencies = screen.getByRole('button', {
+      name: customerMessages.details.allCurrencies,
+    });
     const usd = screen.getByRole('button', { name: 'USD' });
 
     expect(allCurrencies).toHaveAttribute('aria-pressed', 'true');
@@ -97,7 +104,10 @@ describe('CustomerDetailsPage financial summary', () => {
       within(summary)
         .getAllByRole('progressbar')
         .map((progressbar) => progressbar.getAttribute('aria-label')),
-    ).toEqual(['Payment progress for EUR', 'Payment progress for USD']);
+    ).toEqual([
+      paymentProgressLabel('EUR'),
+      paymentProgressLabel('USD'),
+    ]);
 
     await user.click(usd);
 
@@ -106,7 +116,7 @@ describe('CustomerDetailsPage financial summary', () => {
       within(summary)
         .getAllByRole('progressbar')
         .map((progressbar) => progressbar.getAttribute('aria-label')),
-    ).toEqual(['Payment progress for USD']);
+    ).toEqual([paymentProgressLabel('USD')]);
     expect(summary).toHaveTextContent('75.00');
   });
 

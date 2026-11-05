@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { sharedLocalizationResources } from '../../../shared/localization/resources';
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
 import { emptyDebtList } from '../../debts/__tests__/debtTestData';
+import { customerResources } from '../localization/resources';
 import {
   baseCustomer,
   customerList,
@@ -15,6 +17,11 @@ import {
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
+const sharedMessages = sharedLocalizationResources.en.common;
+const openActionsLabel = (name: string) =>
+  customerMessages.list.actions.openMenu.replace('{{name}}', name);
 
 describe('CustomersPage row actions', () => {
   beforeEach(() => {
@@ -57,10 +64,14 @@ describe('CustomersPage row actions', () => {
     });
     await user.click(
       within(northStarRow).getByRole('button', {
-        name: 'Open actions for North Star Cafe',
+        name: openActionsLabel('North Star Cafe'),
       }),
     );
-    await user.click(await screen.findByRole('menuitem', { name: 'Open details' }));
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: customerMessages.list.actions.openDetails,
+      }),
+    );
 
     expect(await screen.findByRole('heading', { name: 'North Star Cafe' })).toBeInTheDocument();
   });
@@ -84,12 +95,16 @@ describe('CustomersPage row actions', () => {
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
     const actionsButton = within(acmeRow).getByRole('button', {
-      name: 'Open actions for Acme Market',
+      name: openActionsLabel('Acme Market'),
     });
     await user.click(actionsButton);
-    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await user.click(
+      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+    );
 
-    expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: customerMessages.edit.title }),
+    ).toBeInTheDocument();
     expect(requestedCustomerIds).toEqual([baseCustomer.id]);
   });
 
@@ -112,15 +127,19 @@ describe('CustomersPage row actions', () => {
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
     const actionsButton = within(acmeRow).getByRole('button', {
-      name: 'Open actions for Acme Market',
+      name: openActionsLabel('Acme Market'),
     });
     await user.click(actionsButton);
 
     await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
 
-    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await user.click(
+      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+    );
 
-    expect(await screen.findByRole('heading', { name: 'Edit customer' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: customerMessages.edit.title }),
+    ).toBeInTheDocument();
     expect(requestedCustomerIds).toEqual([baseCustomer.id]);
   });
 
@@ -137,17 +156,19 @@ describe('CustomersPage row actions', () => {
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
     const actionsButton = within(acmeRow).getByRole('button', {
-      name: 'Open actions for Acme Market',
+      name: openActionsLabel('Acme Market'),
     });
     await user.click(actionsButton);
-    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
-    await screen.findByRole('dialog', { name: 'Edit customer' });
+    await user.click(
+      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+    );
+    await screen.findByRole('dialog', { name: customerMessages.edit.title });
 
     await user.keyboard('{Escape}');
 
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Edit customer' }),
+        screen.queryByRole('dialog', { name: customerMessages.edit.title }),
       ).not.toBeInTheDocument(),
     );
     expect(actionsButton).toHaveFocus();
@@ -175,35 +196,41 @@ describe('CustomersPage row actions', () => {
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
     await user.click(
       within(acmeRow).getByRole('button', {
-        name: 'Open actions for Acme Market',
+        name: openActionsLabel('Acme Market'),
       }),
     );
-    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await user.click(
+      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+    );
     await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
 
-    const editDialog = screen.getByRole('dialog', { name: 'Edit customer' });
+    const editDialog = screen.getByRole('dialog', { name: customerMessages.edit.title });
     const closeButton = within(editDialog).getByRole('button', {
-      name: 'Close customer form',
+      name: customerMessages.edit.close,
     });
 
     try {
       expect(
         within(editDialog).getByRole('status'),
-      ).toHaveTextContent('Loading customer details.');
+      ).toHaveTextContent(customerMessages.edit.loading);
       expect(closeButton).toHaveFocus();
-      expect(within(editDialog).getByLabelText('Name')).toBeDisabled();
-      expect(within(editDialog).getByLabelText('Code')).toBeDisabled();
-      expect(within(editDialog).getByLabelText('Phone number')).toBeDisabled();
-      expect(within(editDialog).getByLabelText('Address')).toBeDisabled();
-      expect(within(editDialog).getByRole('button', { name: 'Save customer' })).toBeDisabled();
+      expect(within(editDialog).getByLabelText(customerMessages.form.nameLabel)).toBeDisabled();
+      expect(within(editDialog).getByLabelText(customerMessages.form.codeLabel)).toBeDisabled();
+      expect(
+        within(editDialog).getByLabelText(customerMessages.form.phoneNumberLabel),
+      ).toBeDisabled();
+      expect(within(editDialog).getByLabelText(customerMessages.form.addressLabel)).toBeDisabled();
+      expect(
+        within(editDialog).getByRole('button', { name: customerMessages.actions.save }),
+      ).toBeDisabled();
     } finally {
       resolveCustomerDetailsRequest();
     }
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue(baseCustomer.name),
+      expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveValue(baseCustomer.name),
     );
-    expect(screen.getByRole('dialog', { name: 'Edit customer' })).toBe(editDialog);
+    expect(screen.getByRole('dialog', { name: customerMessages.edit.title })).toBe(editDialog);
     expect(closeButton).toHaveFocus();
   });
 
@@ -223,16 +250,20 @@ describe('CustomersPage row actions', () => {
 
     const acmeRow = await screen.findByRole('row', { name: /Acme Market/ });
     const actionsButton = within(acmeRow).getByRole('button', {
-      name: 'Open actions for Acme Market',
+      name: openActionsLabel('Acme Market'),
     });
     await user.click(actionsButton);
-    await user.click(await screen.findByRole('menuitem', { name: 'Edit customer' }));
+    await user.click(
+      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+    );
     await waitFor(() => expect(requestedCustomerIds).toContain(baseCustomer.id));
 
     expect(
-      await screen.findByRole('alert', { name: 'Could not open customer editor' }),
-    ).toHaveTextContent('Something went wrong. Try again.');
-    expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument();
+      await screen.findByRole('alert', { name: customerMessages.toast.editLoad.errorTitle }),
+    ).toHaveTextContent(sharedMessages.errors.genericDescription);
+    expect(
+      screen.queryByRole('dialog', { name: customerMessages.edit.title }),
+    ).not.toBeInTheDocument();
     expect(actionsButton).toHaveFocus();
   });
 

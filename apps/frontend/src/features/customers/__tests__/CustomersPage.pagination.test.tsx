@@ -6,12 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getBackendUrl } from '../../../shared/api/http';
 import { server } from '../../../shared/test/server';
+import { customerResources } from '../localization/resources';
 import {
   customerList,
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
+
+const customerMessages = customerResources.en.common.customers;
 
 describe('CustomersPage pagination', () => {
   beforeEach(() => {
@@ -57,7 +60,9 @@ describe('CustomersPage pagination', () => {
 
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(
+      screen.getByRole('button', { name: customerMessages.list.pagination.nextPage }),
+    );
 
     await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
     expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
@@ -80,8 +85,12 @@ describe('CustomersPage pagination', () => {
     renderCustomerRoutes(['/customers?page=2']);
 
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: customerMessages.list.pagination.previousPage }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: customerMessages.list.pagination.nextPage }),
+    ).toBeDisabled();
   });
 
   it('normalizes an out-of-range customer page query to the last available page', async () => {
@@ -123,7 +132,7 @@ describe('CustomersPage pagination', () => {
 
     try {
       expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=2');
-      expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
+      expect(screen.getByRole('status')).toHaveTextContent(customerMessages.list.loading);
     } finally {
       resolveLastPageRequest();
     }
@@ -148,11 +157,15 @@ describe('CustomersPage pagination', () => {
 
     await waitFor(() => expect(requestedPages).toEqual(['99', '1']));
     expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=1');
-    expect(screen.getAllByText('Create your first customer to start tracking debts.')).toHaveLength(
-      2,
-    );
-    expect(screen.queryByRole('button', { name: 'Previous page' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
+    expect(screen.getAllByText(customerMessages.page.empty)).toHaveLength(2);
+    expect(
+      screen.queryByRole('button', {
+        name: customerMessages.list.pagination.previousPage,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: customerMessages.list.pagination.nextPage }),
+    ).not.toBeInTheDocument();
   });
 
   it('replaces the current customer page while the next page loads and updates pagination controls', async () => {
@@ -193,14 +206,22 @@ describe('CustomersPage pagination', () => {
 
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(
+      screen.getByRole('button', { name: customerMessages.list.pagination.nextPage }),
+    );
     await waitFor(() => expect(requestedPages).toEqual(['1', '2']));
 
     try {
       expect(screen.queryByRole('cell', { name: 'Acme Market' })).not.toBeInTheDocument();
-      expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
-      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent(customerMessages.list.loading);
+      expect(
+        screen.getByRole('button', {
+          name: customerMessages.list.pagination.previousPage,
+        }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: customerMessages.list.pagination.nextPage }),
+      ).toBeDisabled();
     } finally {
       resolveNextPageRequest();
     }
@@ -246,14 +267,24 @@ describe('CustomersPage pagination', () => {
 
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Previous page' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: customerMessages.list.pagination.previousPage,
+      }),
+    );
     await waitFor(() => expect(requestedPages).toEqual(['2', '1']));
 
     try {
       expect(screen.queryByRole('cell', { name: 'North Star Cafe' })).not.toBeInTheDocument();
-      expect(screen.getByRole('status')).toHaveTextContent('Loading customers');
-      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent(customerMessages.list.loading);
+      expect(
+        screen.getByRole('button', {
+          name: customerMessages.list.pagination.previousPage,
+        }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: customerMessages.list.pagination.nextPage }),
+      ).toBeDisabled();
     } finally {
       resolvePreviousPageRequest();
     }
