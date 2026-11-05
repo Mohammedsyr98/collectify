@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -61,5 +61,46 @@ describe('CustomerDetailsPage customer actions', () => {
       ).not.toBeInTheDocument(),
     );
     expect(editButton).toHaveFocus();
+  });
+
+  it('saves an edited customer and updates the details page', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(baseCustomer),
+      ),
+      http.patch(`${getBackendUrl()}/customers/:customerId`, async ({ request }) => {
+        const requestBody = (await request.json()) as { name?: string };
+
+        return HttpResponse.json({
+          ...baseCustomer,
+          name: requestBody.name ?? baseCustomer.name,
+          updatedAt: '2026-08-28T13:00:00.000Z',
+        });
+      }),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+
+    expect(
+      await screen.findByRole('heading', { name: baseCustomer.name }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit customer' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Edit customer' });
+    const nameInput = within(editDialog).getByLabelText('Name');
+
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Acme Wholesale');
+    await user.click(within(editDialog).getByRole('button', { name: 'Save customer' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Acme Wholesale' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('status', { name: 'Customer updated' }),
+    ).toHaveTextContent('Acme Wholesale changes were saved.');
+    expect(screen.queryByRole('dialog', { name: 'Edit customer' })).not.toBeInTheDocument();
   });
 });
