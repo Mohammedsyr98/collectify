@@ -6,8 +6,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { CustomerActionsCell } from '../list/CustomerActionsCell';
+import { customerResources } from '../localization/resources';
 import { resetCustomerTestEnvironment } from './customerTestData';
 import { RouterLocationProbe } from './RouterLocationProbe';
+
+const customerMessages = customerResources.en.common.customers;
+const customerName = 'North Star Cafe';
+const openActionsLabel = customerMessages.list.actions.openMenu.replace(
+  '{{name}}',
+  customerName,
+);
+const actionsMenuLabel = customerMessages.list.actions.menuLabel.replace(
+  '{{name}}',
+  customerName,
+);
 
 describe('CustomerActionsCell', () => {
   beforeEach(() => {
@@ -46,15 +58,17 @@ describe('CustomerActionsCell', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'Open actions for North Star Cafe',
+        name: openActionsLabel,
       }),
     );
 
     const actionsMenu = await screen.findByRole('menu', {
-      name: 'Actions for North Star Cafe',
+      name: actionsMenuLabel,
     });
     await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Open details' }),
+      within(actionsMenu).getByRole('menuitem', {
+        name: customerMessages.list.actions.openDetails,
+      }),
     );
 
     expect(screen.getByTestId('router-location')).toHaveTextContent(
@@ -84,20 +98,22 @@ describe('CustomerActionsCell', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'Open actions for North Star Cafe',
+        name: openActionsLabel,
       }),
     );
 
     const actionsMenu = await screen.findByRole('menu', {
-      name: 'Actions for North Star Cafe',
+      name: actionsMenuLabel,
     });
     await user.click(
-      within(actionsMenu).getByRole('menuitem', { name: 'Edit customer' }),
+      within(actionsMenu).getByRole('menuitem', {
+        name: customerMessages.list.actions.edit,
+      }),
     );
 
     expect(onEditCustomer).toHaveBeenCalledExactlyOnceWith(
       'customer_456',
-      screen.getByRole('button', { name: 'Open actions for North Star Cafe' }),
+      screen.getByRole('button', { name: openActionsLabel }),
     );
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });

@@ -4,11 +4,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { CustomerTable } from '../list/CustomerTable';
+import { customerResources } from '../localization/resources';
 import {
   customerList,
   financialCustomer,
   resetCustomerTestEnvironment,
 } from './customerTestData';
+
+const customerMessages = customerResources.en.common.customers;
+const extraCurrencyCountLabel = (count: number) =>
+  customerMessages.list.extraCurrencies.count.replace('{{count}}', String(count));
+const remainingExtraCurrenciesButtonLabel = (count: number, name: string) =>
+  customerMessages.list.extraCurrencies.remainingAriaLabelPlural
+    .replace('{{count}}', String(count))
+    .replace('{{name}}', name);
+const overdueExtraCurrenciesButtonLabel = (count: number, name: string) =>
+  customerMessages.list.extraCurrencies.overdueAriaLabelPlural
+    .replace('{{count}}', String(count))
+    .replace('{{name}}', name);
 
 describe('CustomerTable', () => {
   beforeEach(() => {
@@ -31,12 +44,12 @@ describe('CustomerTable', () => {
     expect(
       screen.getAllByRole('columnheader').map((header) => header.textContent),
     ).toEqual([
-      'Name',
-      'Code',
-      'Phone',
-      'Remaining debt',
-      'Overdue amount',
-      'Actions',
+      customerMessages.list.columns.name,
+      customerMessages.list.columns.code,
+      customerMessages.list.columns.phone,
+      customerMessages.list.columns.remainingDebt,
+      customerMessages.list.columns.overdueAmount,
+      customerMessages.list.columns.actions,
     ]);
 
     expect(screen.getByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
@@ -67,18 +80,22 @@ describe('CustomerTable', () => {
     expect(within(financialRow).getByText(/5\.00 USD/)).toBeInTheDocument();
     expect(
       within(financialRow).getByRole('button', {
-        name: 'Show 2 more remaining debt currencies for South Ledger',
+        name: remainingExtraCurrenciesButtonLabel(2, 'South Ledger'),
       }),
-    ).toHaveTextContent('+2 currencies');
+    ).toHaveTextContent(extraCurrencyCountLabel(2));
     expect(
       within(financialRow).getByRole('button', {
-        name: 'Show 2 more overdue amount currencies for South Ledger',
+        name: overdueExtraCurrenciesButtonLabel(2, 'South Ledger'),
       }),
-    ).toHaveTextContent('+2 currencies');
+    ).toHaveTextContent(extraCurrencyCountLabel(2));
 
     const emptyFinancialRow = screen.getByRole('row', { name: /Acme Market/ });
-    expect(within(emptyFinancialRow).getByText('No debt')).toBeInTheDocument();
-    expect(within(emptyFinancialRow).getByText('No overdue')).toBeInTheDocument();
+    expect(
+      within(emptyFinancialRow).getByText(customerMessages.list.emptyFinancial.remainingDebt),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyFinancialRow).getByText(customerMessages.list.emptyFinancial.overdueAmount),
+    ).toBeInTheDocument();
   });
 
   it('renders decorative skeleton rows in loading mode', () => {
@@ -93,7 +110,7 @@ describe('CustomerTable', () => {
 
     expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
     expect(
-      screen.getByRole('columnheader', { name: 'Name' }),
+      screen.getByRole('columnheader', { name: customerMessages.list.columns.name }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('cell', { name: 'Acme Market' })).not.toBeInTheDocument();
     expect(screen.getAllByTestId('customer-table-skeleton-row')).toHaveLength(6);

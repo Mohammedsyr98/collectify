@@ -5,11 +5,28 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { CurrencyBalancesCell } from '../list/CurrencyBalancesCell';
+import { customerResources } from '../localization/resources';
 import {
   customerList,
   financialCustomer,
   resetCustomerTestEnvironment,
 } from './customerTestData';
+
+const customerMessages = customerResources.en.common.customers;
+const extraCurrencyCountLabel = (count: number) =>
+  customerMessages.list.extraCurrencies.count.replace('{{count}}', String(count));
+const remainingExtraCurrenciesButtonLabel = (count: number, name: string) =>
+  customerMessages.list.extraCurrencies.remainingAriaLabelPlural
+    .replace('{{count}}', String(count))
+    .replace('{{name}}', name);
+const remainingExtraCurrenciesDialogLabel = (name: string) =>
+  customerMessages.list.extraCurrencies.remainingDialogLabel.replace('{{name}}', name);
+const overdueExtraCurrenciesButtonLabel = (count: number, name: string) =>
+  customerMessages.list.extraCurrencies.overdueAriaLabelPlural
+    .replace('{{count}}', String(count))
+    .replace('{{name}}', name);
+const overdueExtraCurrenciesDialogLabel = (name: string) =>
+  customerMessages.list.extraCurrencies.overdueDialogLabel.replace('{{name}}', name);
 
 describe('CurrencyBalancesCell', () => {
   beforeEach(() => {
@@ -28,7 +45,9 @@ describe('CurrencyBalancesCell', () => {
       />,
     );
 
-    expect(screen.getByText('No debt')).toBeInTheDocument();
+    expect(
+      screen.getByText(customerMessages.list.emptyFinancial.remainingDebt),
+    ).toBeInTheDocument();
   });
 
   it('opens and closes additional remaining debt currencies', async () => {
@@ -48,17 +67,19 @@ describe('CurrencyBalancesCell', () => {
     expect(screen.queryByText(/12\.30 TRY/)).not.toBeInTheDocument();
 
     const remainingExtraCurrencies = screen.getByRole('button', {
-      name: 'Show 2 more remaining debt currencies for South Ledger',
+      name: remainingExtraCurrenciesButtonLabel(2, 'South Ledger'),
     });
-    expect(remainingExtraCurrencies).toHaveTextContent('+2 currencies');
+    expect(remainingExtraCurrencies).toHaveTextContent(extraCurrencyCountLabel(2));
 
     await user.click(remainingExtraCurrencies);
 
     const currencyPopover = await screen.findByRole('dialog', {
-      name: 'Remaining debt currencies for South Ledger',
+      name: remainingExtraCurrenciesDialogLabel('South Ledger'),
     });
     expect(
-      within(currencyPopover).getByRole('heading', { name: 'Remaining debt' }),
+      within(currencyPopover).getByRole('heading', {
+        name: customerMessages.list.columns.remainingDebt,
+      }),
     ).toBeInTheDocument();
 
     const currencyRows = within(currencyPopover).getAllByRole('listitem');
@@ -71,21 +92,21 @@ describe('CurrencyBalancesCell', () => {
     await user.keyboard('{Escape}');
     expect(
       screen.queryByRole('dialog', {
-        name: 'Remaining debt currencies for South Ledger',
+        name: remainingExtraCurrenciesDialogLabel('South Ledger'),
       }),
     ).not.toBeInTheDocument();
 
     await user.click(remainingExtraCurrencies);
     expect(
       await screen.findByRole('dialog', {
-        name: 'Remaining debt currencies for South Ledger',
+        name: remainingExtraCurrenciesDialogLabel('South Ledger'),
       }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('heading', { name: 'Customers' }));
     expect(
       screen.queryByRole('dialog', {
-        name: 'Remaining debt currencies for South Ledger',
+        name: remainingExtraCurrenciesDialogLabel('South Ledger'),
       }),
     ).not.toBeInTheDocument();
   });
@@ -103,15 +124,17 @@ describe('CurrencyBalancesCell', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'Show 2 more overdue amount currencies for South Ledger',
+        name: overdueExtraCurrenciesButtonLabel(2, 'South Ledger'),
       }),
     );
 
     const currencyPopover = await screen.findByRole('dialog', {
-      name: 'Overdue amount currencies for South Ledger',
+      name: overdueExtraCurrenciesDialogLabel('South Ledger'),
     });
     expect(
-      within(currencyPopover).getByRole('heading', { name: 'Overdue amount' }),
+      within(currencyPopover).getByRole('heading', {
+        name: customerMessages.list.columns.overdueAmount,
+      }),
     ).toBeInTheDocument();
 
     const currencyRows = within(currencyPopover).getAllByRole('listitem');

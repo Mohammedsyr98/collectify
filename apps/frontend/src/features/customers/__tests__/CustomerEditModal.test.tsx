@@ -7,7 +7,10 @@ import type { UpdateCustomerRequest } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { CustomerEditModal } from '../CustomerEditModal';
+import { customerResources } from '../localization/resources';
 import { baseCustomer, resetCustomerTestEnvironment } from './customerTestData';
+
+const customerMessages = customerResources.en.common.customers;
 
 const customerWithAddress = {
   ...baseCustomer,
@@ -35,9 +38,9 @@ describe('CustomerEditModal', () => {
     );
 
     expect(
-      screen.getByRole('dialog', { name: 'Edit customer' }),
-    ).toHaveAccessibleDescription("Edit this customer's details.");
-    expect(screen.getByLabelText('Name')).toHaveFocus();
+      screen.getByRole('dialog', { name: customerMessages.edit.title }),
+    ).toHaveAccessibleDescription(customerMessages.edit.description);
+    expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveFocus();
   });
 
   it('keeps keyboard focus inside the dialog', async () => {
@@ -51,12 +54,12 @@ describe('CustomerEditModal', () => {
         onSubmit={vi.fn(async () => undefined)}
       />,
     );
-    const dialog = screen.getByRole('dialog', { name: 'Edit customer' });
+    const dialog = screen.getByRole('dialog', { name: customerMessages.edit.title });
     const closeButton = within(dialog).getByRole('button', {
-      name: 'Close customer form',
+      name: customerMessages.edit.close,
     });
     const saveButton = within(dialog).getByRole('button', {
-      name: 'Save customer',
+      name: customerMessages.actions.save,
     });
 
     saveButton.focus();
@@ -79,12 +82,14 @@ describe('CustomerEditModal', () => {
         onSubmit={vi.fn(async () => undefined)}
       />,
     );
-    const dialog = screen.getByRole('dialog', { name: 'Edit customer' });
+    const dialog = screen.getByRole('dialog', { name: customerMessages.edit.title });
 
     expect(
-      within(dialog).getByRole('button', { name: 'Close customer form' }),
+      within(dialog).getByRole('button', { name: customerMessages.edit.close }),
     ).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: customerMessages.form.cancel }),
+    ).toBeDisabled();
 
     await user.keyboard('{Escape}');
     await user.click(screen.getByTestId('customer-edit-overlay'));
@@ -127,11 +132,13 @@ describe('CustomerEditModal', () => {
       />,
     );
 
-    expect(screen.getByRole('dialog', { name: 'Edit customer' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Name')).toHaveValue('Acme Market');
-    expect(screen.getByLabelText('Code')).toHaveValue('ACME-001');
-    expect(screen.getByLabelText('Phone number')).toHaveValue('+90 555 123 45 67');
-    expect(screen.getByLabelText('Address')).toHaveValue('Istanbul');
+    expect(screen.getByRole('dialog', { name: customerMessages.edit.title })).toBeInTheDocument();
+    expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveValue('Acme Market');
+    expect(screen.getByLabelText(customerMessages.form.codeLabel)).toHaveValue('ACME-001');
+    expect(screen.getByLabelText(customerMessages.form.phoneNumberLabel)).toHaveValue(
+      '+90 555 123 45 67',
+    );
+    expect(screen.getByLabelText(customerMessages.form.addressLabel)).toHaveValue('Istanbul');
   });
 
   it('submits edited customer values', async () => {
@@ -150,10 +157,10 @@ describe('CustomerEditModal', () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByLabelText(customerMessages.form.nameLabel), {
       target: { value: 'Acme Wholesale' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save customer' }));
+    fireEvent.click(screen.getByRole('button', { name: customerMessages.actions.save }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
