@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "lint": "pnpm run lint:rtl && eslint .",
+    "lint": "pnpm run lint:rtl && eslint . && pnpm run lint:architecture",
+    "lint:architecture": "steiger ./src --ignore-warnings",
     "lint:rtl": "node ./scripts/check-rtl-logical-layout.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "test": "vitest run",
@@ -14,8 +15,8 @@
   },
   "dependencies": {
     "@collectify/contracts": "workspace:*",
-    "@collectify/domain": "workspace:*",
     "@collectify/design-tokens": "workspace:*",
+    "@collectify/domain": "workspace:*",
     "@hookform/resolvers": "^5.5.7",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-focus-scope": "^1.1.16",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@collectify/eslint-config": "workspace:*",
     "@collectify/typescript-config": "workspace:*",
+    "@feature-sliced/steiger-plugin": "^0.8.2",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
@@ -44,6 +46,7 @@
     "eslint": "^9.32.0",
     "jsdom": "^26.1.0",
     "msw": "^2.15.0",
+    "steiger": "^0.9.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.2",
     "vite": "^7.0.6",
