@@ -71,3 +71,10 @@
 - Treat unexpected diffs as user-owned work. Do not revert, overwrite, or label them as tool noise until you inspect the diff and ask the user when the origin is unclear.
 - If the user says something smells complex, stop implementation, inspect the design, and either simplify it or explain why the complexity is essential.
 - Use `grill-me` when product intent, design shape, or tradeoffs are unclear; ask one question at a time.
+
+## Frontend Architecture
+
+- The frontend architecture contract is documented in [apps/frontend/ARCHITECTURE.md](apps/frontend/ARCHITECTURE.md).
+- New frontend code follows `App -> Pages -> Features -> Entities -> Shared`; lower layers must not import higher layers or peer slices.
+- Cross-slice imports use the frontend `@/*` alias and a target public interface; same-slice imports remain relative.
+- `pnpm --filter @collectify/frontend lint` runs ESLint and the Steiger architecture check. Do not widen temporary Steiger legacy exceptions; remove them in the migration ticket that owns the boundary.

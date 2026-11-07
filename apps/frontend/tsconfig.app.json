@@ -3,6 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "react-i18next": ["./node_modules/react-i18next/index.d.ts"]
     }
   },
