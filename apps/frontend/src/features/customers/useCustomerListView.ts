@@ -6,9 +6,9 @@ import {
   type CustomerListQuery,
 } from '@collectify/contracts';
 
-import { usePageQueryParam } from '../../shared/usePageQueryParam';
-import { useDebouncedSearchQuery } from '../../shared/useDebouncedSearchQuery';
-import { useCustomerListQuery } from './customerQueries';
+import { useCustomerListQuery } from '@/entities/customer';
+import { useDebouncedSearchQuery } from '@/shared/useDebouncedSearchQuery';
+import { usePageQueryParam } from '@/shared/usePageQueryParam';
 
 const emptyCustomers: CustomerListItem[] = [];
 

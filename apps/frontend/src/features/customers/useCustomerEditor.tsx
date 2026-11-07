@@ -6,13 +6,12 @@ import {
   type CustomerDetailsResponse,
 } from '@collectify/contracts';
 
-import { resolveApiErrorDescription } from '../../shared/api/http';
-import { useToast } from '../../shared/ui/toast/toastContext';
+import { useCustomerDetailsQuery } from '@/entities/customer';
+import { resolveApiErrorDescription } from '@/shared/api';
+import { useToast } from '@/shared/ui/toast';
+
 import { CustomerEditModal } from './CustomerEditModal';
-import {
-  useCustomerDetailsQuery,
-  useUpdateCustomerMutation,
-} from './customerQueries';
+import { useUpdateCustomerMutation } from './customerMutations';
 
 export type CustomerEditTarget =
   | { customer: CustomerDetailsResponse }
