@@ -44,16 +44,12 @@ const customerLegacyFiles = [
   './src/features/customers/__tests__/CustomerTable.test.tsx',
   './src/features/customers/__tests__/renderCustomerRoutes.tsx',
   './src/features/customers/api/create-customer.ts',
-  './src/features/customers/api/get-customer.ts',
-  './src/features/customers/api/list-customers.ts',
   './src/features/customers/api/update-customer.ts',
   './src/features/customers/CustomerFinancialSummary.tsx',
   './src/features/customers/CustomerForm.tsx',
-  './src/features/customers/customerQueries.ts',
   './src/features/customers/CustomersPage.tsx',
   './src/features/customers/list/CurrencyBalancesCell.tsx',
   './src/features/customers/list/CustomerActionsCell.tsx',
-  './src/features/customers/useCustomerEditor.tsx',
 ];
 
 const debtLegacyFiles = [
@@ -110,7 +106,6 @@ const appLocalizationLegacyFiles = [
 
 const legacyPublicApiPaths = [
   './src/features/auth/**',
-  './src/features/customers/**',
   './src/features/debts/**',
   './src/features/payments/**',
   './src/shared/api/**',

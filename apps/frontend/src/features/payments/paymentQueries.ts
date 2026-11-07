@@ -7,12 +7,10 @@ import {
   type RecordPaymentRequest,
 } from '@collectify/contracts';
 
+import { customerCache } from '@/entities/customer';
+
 import { resolveApiErrorDescription } from '../../shared/api/http';
 import { useToast } from '../../shared/ui/toast/toastContext';
-import {
-  customerDetailsQueryKey,
-  customerListQueryKey,
-} from '../customers/customerQueries';
 import { debtListQueryKey } from '../debts/ledger/debtQueries';
 import {
   recordPayment as sendPayment,
@@ -45,11 +43,7 @@ export function useRecordPaymentMutation({
         queryClient.invalidateQueries({
           queryKey: debtListQueryKey(customerId),
         }),
-        queryClient.invalidateQueries({
-          queryKey: customerDetailsQueryKey(customerId),
-          exact: true,
-        }),
-        queryClient.invalidateQueries({ queryKey: customerListQueryKey }),
+        customerCache.invalidateCustomer(queryClient, customerId),
       ]);
       showToast({
         variant: 'success',

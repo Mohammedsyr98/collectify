@@ -8,12 +8,10 @@ import {
   type ReplaceDebtRequest,
 } from '@collectify/contracts';
 
+import { customerCache } from '@/entities/customer';
+
 import { resolveApiErrorDescription } from '../../../shared/api/http';
 import { useToast } from '../../../shared/ui/toast/toastContext';
-import {
-  customerDetailsQueryKey,
-  customerListQueryKey,
-} from '../../customers/customerQueries';
 import { createDebt } from '../api/create-debt';
 import { deleteDebt } from '../api/delete-debt';
 import { listDebts } from '../api/list-debts';
@@ -57,10 +55,7 @@ export function useCreateDebtMutation({
       void queryClient.invalidateQueries({
         queryKey: debtListQueryKey(customerId),
       });
-      void queryClient.invalidateQueries({
-        queryKey: customerDetailsQueryKey(customerId),
-      });
-      void queryClient.invalidateQueries({ queryKey: customerListQueryKey });
+      void customerCache.invalidateCustomer(queryClient, customerId);
       showToast({
         variant: 'success',
         title: t('debts.toast.create.successTitle'),
@@ -113,10 +108,7 @@ export function useReplaceDebtMutation({
       void queryClient.invalidateQueries({
         queryKey: debtListQueryKey(customerId),
       });
-      void queryClient.invalidateQueries({
-        queryKey: customerDetailsQueryKey(customerId),
-      });
-      void queryClient.invalidateQueries({ queryKey: customerListQueryKey });
+      void customerCache.invalidateCustomer(queryClient, customerId);
       showToast({
         variant: 'success',
         title: t('debts.toast.edit.successTitle'),
@@ -169,10 +161,7 @@ export function useDeleteDebtMutation({
       void queryClient.invalidateQueries({
         queryKey: debtListQueryKey(customerId),
       });
-      void queryClient.invalidateQueries({
-        queryKey: customerDetailsQueryKey(customerId),
-      });
-      void queryClient.invalidateQueries({ queryKey: customerListQueryKey });
+      void customerCache.invalidateCustomer(queryClient, customerId);
       showToast({
         variant: 'success',
         title: t('debts.toast.delete.successTitle'),

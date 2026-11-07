@@ -3,9 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
-import {
-  useCreateCustomerMutation,
-} from './customerQueries';
+import { useCreateCustomerMutation } from './customerMutations';
 import { CustomerTable } from './list/CustomerTable';
 import { useCustomerEditor } from './useCustomerEditor';
 import { useCustomerListView } from './useCustomerListView';

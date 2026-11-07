@@ -4,7 +4,7 @@ import {
   type UpdateCustomerResponse,
 } from '@collectify/contracts';
 
-import { fetchBackend } from '../../../shared/api/fetch-backend';
+import { fetchBackend } from '@/shared/api';
 
 export interface UpdateCustomerOptions {
   customerId: string;
