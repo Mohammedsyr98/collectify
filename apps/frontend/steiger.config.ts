@@ -51,14 +51,12 @@ const debtLegacyFiles = [
   './src/features/debts/__tests__/DebtDrawer.test.tsx',
   './src/features/debts/api/create-debt.ts',
   './src/features/debts/api/delete-debt.ts',
-  './src/features/debts/api/list-debts.ts',
   './src/features/debts/api/replace-debt.ts',
   './src/features/debts/CustomerDebtLedger.tsx',
   './src/features/debts/editor/DebtDrawer.tsx',
   './src/features/debts/editor/DebtPlanFields.tsx',
   './src/features/debts/editor/InstallmentPlanFields.tsx',
   './src/features/debts/ledger/DebtCard.tsx',
-  './src/features/debts/ledger/debtQueries.ts',
 ];
 
 const paymentLegacyFiles = [
@@ -94,7 +92,6 @@ const appLocalizationLegacyFiles = [
 
 const legacyPublicApiPaths = [
   './src/features/auth/**',
-  './src/features/debts/**',
   './src/features/payments/**',
   './src/shared/api/**',
   './src/shared/test/**',

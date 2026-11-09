@@ -8,10 +8,10 @@ import {
 } from '@collectify/contracts';
 
 import { customerCache } from '@/entities/customer';
+import { debtCache } from '@/entities/debt';
 
 import { resolveApiErrorDescription } from '../../shared/api/http';
 import { useToast } from '../../shared/ui/toast/toastContext';
-import { debtListQueryKey } from '../debts/ledger/debtQueries';
 import {
   recordPayment as sendPayment,
   type PaymentSubmissionRequest,
@@ -40,9 +40,7 @@ export function useRecordPaymentMutation({
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: debtListQueryKey(customerId),
-        }),
+        debtCache.invalidateCustomerDebts(queryClient, customerId),
         customerCache.invalidateCustomer(queryClient, customerId),
       ]);
       showToast({

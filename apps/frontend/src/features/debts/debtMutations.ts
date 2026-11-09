@@ -1,42 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import {
   isDebtApiErrorCode,
   type CreateDebtRequest,
-  type DebtListQuery,
   type ReplaceDebtRequest,
 } from '@collectify/contracts';
 
 import { customerCache } from '@/entities/customer';
+import { debtCache } from '@/entities/debt';
+import { resolveApiErrorDescription } from '@/shared/api';
+import { useToast } from '@/shared/ui/toast';
 
-import { resolveApiErrorDescription } from '../../../shared/api/http';
-import { useToast } from '../../../shared/ui/toast/toastContext';
-import { createDebt } from '../api/create-debt';
-import { deleteDebt } from '../api/delete-debt';
-import { listDebts } from '../api/list-debts';
-import { replaceDebt } from '../api/replace-debt';
-
-export const debtListQueryKey = (customerId: string) =>
-  ['customers', customerId, 'debts'] as const;
-
-export const debtListPageQueryKey = (
-  customerId: string,
-  query: DebtListQuery,
-) => [...debtListQueryKey(customerId), query] as const;
-
-export function useDebtListQuery(
-  customerId: string | undefined,
-  query: DebtListQuery,
-) {
-  return useQuery({
-    queryKey: debtListPageQueryKey(customerId ?? '', query),
-    queryFn: () => listDebts(customerId!, query),
-    enabled: Boolean(customerId),
-    placeholderData: (previousData, previousQuery) =>
-      previousQuery?.queryKey[1] === customerId ? previousData : undefined,
-  });
-}
+import { createDebt } from './api/create-debt';
+import { deleteDebt } from './api/delete-debt';
+import { replaceDebt } from './api/replace-debt';
 
 export function useCreateDebtMutation({
   customerId,
@@ -52,10 +34,7 @@ export function useCreateDebtMutation({
   const mutation = useMutation({
     mutationFn: (request: CreateDebtRequest) => createDebt(customerId, request),
     onSuccess: (debt) => {
-      void queryClient.invalidateQueries({
-        queryKey: debtListQueryKey(customerId),
-      });
-      void customerCache.invalidateCustomer(queryClient, customerId);
+      refreshCustomerDebtViews(queryClient, customerId);
       showToast({
         variant: 'success',
         title: t('debts.toast.create.successTitle'),
@@ -79,12 +58,8 @@ export function useCreateDebtMutation({
   });
 
   return {
-    createDebt: async (request: CreateDebtRequest) => {
-      try {
-        await mutation.mutateAsync(request);
-      } catch {
-        // Error presentation is handled by the mutation toast path.
-      }
+    createDebt: (request: CreateDebtRequest) => {
+      mutation.mutate(request);
     },
     isCreating: mutation.isPending,
   };
@@ -105,10 +80,7 @@ export function useReplaceDebtMutation({
     mutationFn: ({ debtId, request }: { debtId: string; request: ReplaceDebtRequest }) =>
       replaceDebt(customerId, debtId, request),
     onSuccess: (debt) => {
-      void queryClient.invalidateQueries({
-        queryKey: debtListQueryKey(customerId),
-      });
-      void customerCache.invalidateCustomer(queryClient, customerId);
+      refreshCustomerDebtViews(queryClient, customerId);
       showToast({
         variant: 'success',
         title: t('debts.toast.edit.successTitle'),
@@ -133,12 +105,8 @@ export function useReplaceDebtMutation({
 
   return {
     isReplacing: mutation.isPending,
-    replaceDebt: async (debtId: string, request: ReplaceDebtRequest) => {
-      try {
-        await mutation.mutateAsync({ debtId, request });
-      } catch {
-        // Failure presentation is handled in the next edit-workflow slice.
-      }
+    replaceDebt: (debtId: string, request: ReplaceDebtRequest) => {
+      mutation.mutate({ debtId, request });
     },
   };
 }
@@ -158,10 +126,7 @@ export function useDeleteDebtMutation({
     mutationFn: ({ debtId }: { debtId: string; description: string }) =>
       deleteDebt(customerId, debtId),
     onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: debtListQueryKey(customerId),
-      });
-      void customerCache.invalidateCustomer(queryClient, customerId);
+      refreshCustomerDebtViews(queryClient, customerId);
       showToast({
         variant: 'success',
         title: t('debts.toast.delete.successTitle'),
@@ -185,13 +150,19 @@ export function useDeleteDebtMutation({
   });
 
   return {
-    deleteDebt: async (debtId: string, description: string) => {
-      try {
-        await mutation.mutateAsync({ debtId, description });
-      } catch {
-        // Failure presentation is handled by the mutation toast path.
-      }
+    deleteDebt: (debtId: string, description: string) => {
+      mutation.mutate({ debtId, description });
     },
     isDeleting: mutation.isPending,
   };
+}
+
+function refreshCustomerDebtViews(
+  queryClient: QueryClient,
+  customerId: string,
+) {
+  void Promise.all([
+    debtCache.invalidateCustomerDebts(queryClient, customerId),
+    customerCache.invalidateCustomer(queryClient, customerId),
+  ]);
 }
