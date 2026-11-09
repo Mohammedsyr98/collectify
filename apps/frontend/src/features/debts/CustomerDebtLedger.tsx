@@ -9,7 +9,7 @@ import { SearchField } from '../../shared/ui/search/SearchField';
 import { DebtDrawer } from './editor/DebtDrawer';
 import { DebtCard } from './ledger/DebtCard';
 import { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
-import { useDeleteDebtMutation, useReplaceDebtMutation } from './ledger/debtQueries';
+import { useDeleteDebtMutation, useReplaceDebtMutation } from './debtMutations';
 import { useDebtListView } from './ledger/useDebtListView';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
@@ -186,7 +186,7 @@ export function CustomerDebtLedger({
           isDeleting={isDeleting}
           onClose={() => setActiveDebtAction(null)}
           onConfirm={() => {
-            void deleteDebt(activeDebtAction.debt.id, activeDebtAction.debt.description);
+            deleteDebt(activeDebtAction.debt.id, activeDebtAction.debt.description);
           }}
           returnFocusRef={returnFocusRef}
         />

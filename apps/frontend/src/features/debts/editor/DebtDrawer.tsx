@@ -31,13 +31,13 @@ type DebtDrawerProps = {
       debt?: never;
       mode?: 'create';
       defaultCurrency: Currency;
-      onSubmit: (request: CreateDebtRequest) => Promise<void>;
+      onSubmit: (request: CreateDebtRequest) => void;
     }
   | {
       debt: DebtResponse;
       mode: 'edit';
       defaultCurrency?: never;
-      onSubmit: (request: ReplaceDebtRequest) => Promise<void>;
+      onSubmit: (request: ReplaceDebtRequest) => void;
     }
 );
 

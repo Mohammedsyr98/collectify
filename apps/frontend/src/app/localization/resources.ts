@@ -1,8 +1,8 @@
 import { authResources } from '../../features/auth/localization/resources';
-import { debtResources } from '../../features/debts/localization/resources';
 import { paymentResources } from '../../features/payments/localization/resources';
 import { sharedLocalizationResources, type SupportedLocale } from '../../shared/localization';
 
+import { debtResources } from '@/features/debts';
 import { customerResources } from '@/features/customers';
 import { customerDirectoryResources } from '@/pages/customers';
 
