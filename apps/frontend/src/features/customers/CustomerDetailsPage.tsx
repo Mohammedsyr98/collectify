@@ -8,7 +8,6 @@ import {
   type CustomerDetailsResponse,
   type Currency,
   type DebtResponse,
-  type PaymentTarget,
 } from '@collectify/contracts';
 import { parseMoney } from '@collectify/domain/money';
 
@@ -19,11 +18,10 @@ import {
   DebtDrawer,
   useCreateDebtMutation,
 } from '@/features/debts';
+import { usePaymentRecorder } from '@/features/payments';
 
 import { ErrorStatePage } from '../../shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
-import { PaymentDrawer } from '../payments/editor/PaymentDrawer';
-import { useRecordPaymentMutation } from '../payments/paymentQueries';
 import { CustomerFinancialSummary } from './CustomerFinancialSummary';
 import { useCustomerEditor } from './useCustomerEditor';
 
@@ -90,24 +88,22 @@ function CustomerDetailsContent({
   onEditCustomer: (trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
-  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
   const [isDebtCreationOpen, setIsDebtCreationOpen] = useState(false);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const paymentRecorder = usePaymentRecorder({
+    customerId: customer.id,
+    customerName: customer.name,
+  });
   const { createDebt, isCreating } = useCreateDebtMutation({
     customerId: customer.id,
     onCreated: () => setIsDebtCreationOpen(false),
-  });
-  const { recordPayment } = useRecordPaymentMutation({
-    customerId: customer.id,
-    onRecorded: () => setPaymentSession(null),
   });
   const hasEligiblePayment = customer.financialSummary.some(
     ({ remainingAmount }) => parseMoney(remainingAmount) > 0,
   );
 
-  const openPayment = (initialTarget: PaymentTarget | undefined, trigger: HTMLElement) => {
-    returnFocusRef.current = trigger;
-    setPaymentSession({ initialTarget });
+  const openPayment = (trigger: HTMLElement) => {
+    paymentRecorder.open(undefined, trigger);
   };
 
   const openDebtCreation = (trigger: HTMLButtonElement) => {
@@ -120,13 +116,7 @@ function CustomerDetailsContent({
     scheduleItemId: string,
     trigger: HTMLButtonElement,
   ) => {
-    const target = toPaymentTarget(debt, scheduleItemId);
-
-    if (!target) {
-      return;
-    }
-
-    openPayment(target, trigger);
+    paymentRecorder.open({ debt, scheduleItemId }, trigger);
   };
 
   return (
@@ -158,7 +148,7 @@ function CustomerDetailsContent({
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
                 onClick={(event) => {
                   if (hasEligiblePayment) {
-                    openPayment(undefined, event.currentTarget);
+                    openPayment(event.currentTarget);
                   } else {
                     openDebtCreation(event.currentTarget);
                   }
@@ -206,16 +196,7 @@ function CustomerDetailsContent({
         </div>
       </main>
 
-      {paymentSession ? (
-        <PaymentDrawer
-          customerId={customer.id}
-          customerName={customer.name}
-          initialTarget={paymentSession.initialTarget}
-          onClose={() => setPaymentSession(null)}
-          onSubmit={recordPayment}
-          returnFocusRef={returnFocusRef}
-        />
-      ) : null}
+      {paymentRecorder.dialog}
       {isDebtCreationOpen ? (
         <DebtDrawer
           defaultCurrency={defaultCurrency}
@@ -227,33 +208,6 @@ function CustomerDetailsContent({
       ) : null}
     </>
   );
-}
-
-type PaymentSession = { initialTarget?: PaymentTarget };
-
-function toPaymentTarget(debt: DebtResponse, scheduleItemId: string): PaymentTarget | undefined {
-  const scheduleItem = debt.scheduleItems.find(({ id }) => id === scheduleItemId);
-
-  if (!scheduleItem || scheduleItem.paymentState === 'paid') {
-    return undefined;
-  }
-
-  return {
-    scheduleItemId: scheduleItem.id,
-    debtId: debt.id,
-    debtDescription: debt.description,
-    currency: debt.currency,
-    debtVersion: debt.version,
-    amount: scheduleItem.amount,
-    remainingAmount: scheduleItem.remainingAmount,
-    dueDate: scheduleItem.dueDate,
-    timing: scheduleItem.timing,
-    paymentState: scheduleItem.paymentState,
-    plan:
-      debt.paymentPlanType === 'installment'
-        ? { type: 'installment', position: scheduleItem.position }
-        : { type: 'onePayment' },
-  };
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {

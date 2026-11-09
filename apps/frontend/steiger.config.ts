@@ -92,7 +92,6 @@ const appLocalizationLegacyFiles = [
 
 const legacyPublicApiPaths = [
   './src/features/auth/**',
-  './src/features/payments/**',
   './src/shared/api/**',
   './src/shared/test/**',
   './src/shared/ui/anchored-menu/**',
