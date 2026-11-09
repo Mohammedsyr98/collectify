@@ -75,7 +75,7 @@ function PaymentDrawerHarness({ target }: { target: PaymentTarget }) {
           initialTarget={target}
           onClose={() => setIsOpen(false)}
           onSubmit={async () => undefined}
-          returnFocusRef={openButtonRef}
+          returnFocusTarget={openButtonRef.current}
         />
       ) : null}
     </>

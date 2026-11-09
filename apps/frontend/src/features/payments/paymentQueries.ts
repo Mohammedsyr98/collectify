@@ -64,6 +64,9 @@ export function useRecordPaymentMutation({
   });
 
   return {
+    resetIdempotencyKey: () => {
+      previousRequestRef.current = undefined;
+    },
     recordPayment: async (submission: PaymentSubmissionRequest) => {
       try {
         await mutation.mutateAsync(submission);

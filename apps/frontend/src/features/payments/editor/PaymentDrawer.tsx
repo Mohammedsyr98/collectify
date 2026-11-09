@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
-import { useId, useState, type RefObject } from 'react';
+import { useId, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { z } from 'zod';
@@ -42,7 +42,7 @@ export type PaymentDrawerProps = {
   initialTarget?: PaymentTarget;
   onSubmit: (request: PaymentSubmissionRequest) => Promise<void>;
   onClose: () => void;
-  returnFocusRef?: RefObject<HTMLElement | null>;
+  returnFocusTarget?: HTMLElement | null;
 };
 
 export function PaymentDrawer({
@@ -51,7 +51,7 @@ export function PaymentDrawer({
   initialTarget,
   onSubmit,
   onClose,
-  returnFocusRef,
+  returnFocusTarget,
 }: PaymentDrawerProps) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
@@ -105,9 +105,9 @@ export function PaymentDrawer({
           aria-describedby="payment-drawer-description"
           className="fixed inset-y-0 end-0 z-10 grid w-full max-w-[486px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-s border-border bg-card shadow-[var(--shadow-md)]"
           onCloseAutoFocus={(event) => {
-            if (returnFocusRef?.current?.isConnected) {
+            if (returnFocusTarget?.isConnected) {
               event.preventDefault();
-              returnFocusRef.current.focus();
+              returnFocusTarget.focus();
             }
           }}
         >
