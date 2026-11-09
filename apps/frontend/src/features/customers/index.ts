@@ -1,6 +1,6 @@
 export { CustomerDetailsPage } from './CustomerDetailsPage';
-export { CustomersPage } from './CustomersPage';
-export { useCreateCustomerMutation } from './customerMutations';
 export { customerResources } from './localization/resources';
+export { useCustomerCreator } from './useCustomerCreator';
 export { useCustomerEditor } from './useCustomerEditor';
+export type { CustomerCreator } from './useCustomerCreator';
 export type { CustomerEditTarget, CustomerEditor } from './useCustomerEditor';

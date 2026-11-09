@@ -3,7 +3,8 @@ import { Navigate, Route, Routes } from 'react-router';
 
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
 import { useAppSessionState } from './features/auth/session/useAppSessionState';
-import { CustomerDetailsPage, CustomersPage } from '@/features/customers';
+import { CustomerDetailsPage } from '@/features/customers';
+import { CustomersPage } from '@/pages/customers';
 import { PanelPage } from './features/owner-workspace/PanelPage';
 import { OwnerWorkspaceSidebar } from './features/owner-workspace/OwnerWorkspaceSidebar';
 import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';

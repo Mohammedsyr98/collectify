@@ -1,11 +1,9 @@
+import { renderWithAppProviders, RouterLocationProbe } from '@/shared/test';
+import type { Currency } from '@collectify/contracts';
 import { Route, Routes } from 'react-router';
 
-import type { Currency } from '@collectify/contracts';
-
-import { renderWithAppProviders } from '../../../shared/test/render';
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
-import { CustomersPage } from '../CustomersPage';
-import { RouterLocationProbe } from './RouterLocationProbe';
+import { CustomerDirectoryQueryProbe } from './CustomerDirectoryQueryProbe';
 
 export function renderCustomerRoutes(
   initialEntries: string[] = ['/customers'],
@@ -14,7 +12,14 @@ export function renderCustomerRoutes(
   return renderWithAppProviders(
     <>
       <Routes>
-        <Route element={<CustomersPage />} path="/customers" />
+        <Route
+          element={
+            <div data-testid="customers-directory-route">
+              <CustomerDirectoryQueryProbe />
+            </div>
+          }
+          path="/customers"
+        />
         <Route
           element={<CustomerDetailsPage defaultCurrency={defaultCurrency} />}
           path="/customers/:customerId"
@@ -25,3 +30,4 @@ export function renderCustomerRoutes(
     { initialEntries },
   );
 }
+

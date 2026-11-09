@@ -14,7 +14,7 @@ import { getBackendUrl } from '../../../shared/api/http';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
 import { baseCustomer, resetCustomerTestEnvironment } from '../../customers/__tests__/customerTestData';
-import { RouterLocationProbe } from '../../customers/__tests__/RouterLocationProbe';
+import { RouterLocationProbe } from '@/shared/test';
 import { debtResources } from '../localization/resources';
 import {
   createDebtFixture,

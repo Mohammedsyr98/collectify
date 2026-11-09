@@ -132,8 +132,6 @@ describe('CustomerDetailsPage view and lifecycle', () => {
       await screen.findByRole('heading', { name: customerMessages.notFound.title }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: customerMessages.notFound.action }));
-    expect(
-      await screen.findByRole('main', { name: customerMessages.page.title }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('customers-directory-route')).toBeInTheDocument();
   });
 });
