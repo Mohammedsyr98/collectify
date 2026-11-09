@@ -1,5 +1,4 @@
 import { CreditCard, Pencil, Plus, type LucideIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 
@@ -13,7 +12,7 @@ import { parseMoney } from '@collectify/domain/money';
 
 import { useCustomerDetailsQuery } from '@/entities/customer';
 import { isApiError } from '@/shared/api';
-import { DebtDrawer, useCreateDebtMutation } from '@/features/debts';
+import { useDebtCreator } from '@/features/debts';
 import { useCustomerEditor } from '@/features/customers';
 import { usePaymentRecorder } from '@/features/payments';
 import { ErrorStatePage } from '@/shared/ui/error';
@@ -85,15 +84,13 @@ function CustomerDetailsContent({
   onEditCustomer: (trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
-  const [isDebtCreationOpen, setIsDebtCreationOpen] = useState(false);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const debtCreator = useDebtCreator({
+    customerId: customer.id,
+    defaultCurrency,
+  });
   const paymentRecorder = usePaymentRecorder({
     customerId: customer.id,
     customerName: customer.name,
-  });
-  const { createDebt, isCreating } = useCreateDebtMutation({
-    customerId: customer.id,
-    onCreated: () => setIsDebtCreationOpen(false),
   });
   const hasEligiblePayment = customer.financialSummary.some(
     ({ remainingAmount }) => parseMoney(remainingAmount) > 0,
@@ -104,8 +101,7 @@ function CustomerDetailsContent({
   };
 
   const openDebtCreation = (trigger: HTMLButtonElement) => {
-    returnFocusRef.current = trigger;
-    setIsDebtCreationOpen(true);
+    debtCreator.open(trigger);
   };
 
   const openDebtPayment = (
@@ -194,15 +190,7 @@ function CustomerDetailsContent({
       </main>
 
       {paymentRecorder.dialog}
-      {isDebtCreationOpen ? (
-        <DebtDrawer
-          defaultCurrency={defaultCurrency}
-          isSubmitting={isCreating}
-          onClose={() => setIsDebtCreationOpen(false)}
-          onSubmit={createDebt}
-          returnFocusRef={returnFocusRef}
-        />
-      ) : null}
+      {debtCreator.dialog}
     </>
   );
 }
