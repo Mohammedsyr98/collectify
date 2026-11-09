@@ -28,35 +28,22 @@ const authLegacyFiles = [
 
 const customerLegacyFiles = [
   './src/features/customers/__tests__/CustomerCreateModal.test.tsx',
-  './src/features/customers/__tests__/CustomerDetailsPage.customer-actions.test.tsx',
-  './src/features/customers/__tests__/CustomerDetailsPage.debt-actions.test.tsx',
-  './src/features/customers/__tests__/CustomerDetailsPage.financial-summary.test.tsx',
-  './src/features/customers/__tests__/CustomerDetailsPage.payment-actions.test.tsx',
-  './src/features/customers/__tests__/CustomerDetailsPage.view-and-lifecycle.test.tsx',
   './src/features/customers/__tests__/CustomerEditModal.test.tsx',
   './src/features/customers/api/create-customer.ts',
   './src/features/customers/api/update-customer.ts',
-  './src/features/customers/CustomerFinancialSummary.tsx',
   './src/features/customers/CustomerForm.tsx',
 ];
 
 const debtLegacyFiles = [
-  './src/features/debts/__tests__/CustomerDebtLedger.display.test.tsx',
-  './src/features/debts/__tests__/CustomerDebtLedger.loading-recovery.test.tsx',
-  './src/features/debts/__tests__/CustomerDebtLedger.mutations.test.tsx',
-  './src/features/debts/__tests__/CustomerDebtLedger.pagination.test.tsx',
-  './src/features/debts/__tests__/CustomerDebtLedger.search.test.tsx',
   './src/features/debts/__tests__/DebtDrawer.payment-plans.test.tsx',
   './src/features/debts/__tests__/DebtDrawer.saved-payment-plans.test.tsx',
   './src/features/debts/__tests__/DebtDrawer.test.tsx',
   './src/features/debts/api/create-debt.ts',
   './src/features/debts/api/delete-debt.ts',
   './src/features/debts/api/replace-debt.ts',
-  './src/features/debts/CustomerDebtLedger.tsx',
   './src/features/debts/editor/DebtDrawer.tsx',
   './src/features/debts/editor/DebtPlanFields.tsx',
   './src/features/debts/editor/InstallmentPlanFields.tsx',
-  './src/features/debts/ledger/DebtCard.tsx',
 ];
 
 const paymentLegacyFiles = [
@@ -64,7 +51,6 @@ const paymentLegacyFiles = [
   './src/features/payments/__tests__/PaymentDrawer.target-picker-browsing.test.tsx',
   './src/features/payments/__tests__/PaymentDrawer.target-selection.test.tsx',
   './src/features/payments/__tests__/paymentDrawerTestUtils.tsx',
-  './src/features/payments/__tests__/PaymentSubmissionFailureHandling.test.tsx',
   './src/features/payments/api/list-payment-targets.test.ts',
   './src/features/payments/api/list-payment-targets.ts',
   './src/features/payments/api/record-payment.ts',

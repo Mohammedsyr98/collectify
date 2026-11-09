@@ -13,11 +13,10 @@ import {
   type RecordPaymentResponse,
 } from '@collectify/contracts';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { renderWithAppProviders } from '../../../shared/test/render';
-import { server } from '../../../shared/test/server';
-import { CustomerDetailsPage } from '../../customers/CustomerDetailsPage';
-import { paymentResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { renderWithAppProviders, server } from '@/shared/test';
+import { CustomerDetailsPage } from '../CustomerDetailsPage';
+import { paymentResources } from '@/features/payments';
 import { createPaymentTargetFixture } from './paymentTestData';
 
 const paymentMessages = paymentResources.en.common.payments;
@@ -50,25 +49,19 @@ describe('payment submission failure handling', () => {
     );
 
     renderPaymentSubmissionFailure(target);
-    await user.click(
-      await screen.findByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(await screen.findByRole('button', { name: paymentMessages.drawer.submit }));
 
     const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
     const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     await user.type(amountInput, '10.00');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     expect(
       await screen.findByRole('alert', { name: paymentMessages.toast.record.errorTitle }),
     ).toBeInTheDocument();
     expect(amountInput).toHaveValue('10.00');
 
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1]).toEqual(requests[0]);
@@ -97,23 +90,17 @@ describe('payment submission failure handling', () => {
     );
 
     renderPaymentSubmissionFailure(target);
-    await user.click(
-      await screen.findByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(await screen.findByRole('button', { name: paymentMessages.drawer.submit }));
 
     const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
     const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     await user.type(amountInput, '10.00');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await screen.findByRole('alert', { name: paymentMessages.toast.record.errorTitle });
     await user.clear(amountInput);
     await user.type(amountInput, '11.00');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[0].amount).toBe('10.00');
@@ -139,18 +126,14 @@ describe('payment submission failure handling', () => {
     );
 
     renderPaymentSubmissionFailure(target);
-    await user.click(
-      await screen.findByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(await screen.findByRole('button', { name: paymentMessages.drawer.submit }));
 
     const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
     const amountInput = await within(drawer).findByLabelText(paymentMessages.drawer.amountLabel);
     const noteInput = within(drawer).getByLabelText(paymentMessages.drawer.noteLabel);
     await user.type(amountInput, '10.00');
     await user.type(noteInput, 'cash');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     const errorToast = await screen.findByRole('alert', {
       name: paymentMessages.toast.record.errorTitle,
@@ -185,9 +168,7 @@ function renderPaymentSubmissionFailure(target: PaymentTarget) {
   } satisfies CustomerDetailsResponse;
 
   server.use(
-    http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-      HttpResponse.json(customer),
-    ),
+    http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(customer)),
     http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
       HttpResponse.json({
         items: [],

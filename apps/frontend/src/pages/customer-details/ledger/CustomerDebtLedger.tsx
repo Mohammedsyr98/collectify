@@ -4,13 +4,17 @@ import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
 
-import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
-import { SearchField } from '../../shared/ui/search/SearchField';
-import { DebtDrawer } from './editor/DebtDrawer';
-import { DebtCard } from './ledger/DebtCard';
-import { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
-import { useDeleteDebtMutation, useReplaceDebtMutation } from './debtMutations';
-import { useDebtListView } from './ledger/useDebtListView';
+import {
+  useDeleteDebtMutation,
+  useReplaceDebtMutation,
+  DebtDrawer,
+  DebtDeletionDialog,
+} from '@/features/debts';
+import { PaginationControls } from '@/shared/ui/pagination';
+import { SearchField } from '@/shared/ui/search';
+
+import { DebtCard } from './DebtCard';
+import { useDebtListView } from './useDebtListView';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
 

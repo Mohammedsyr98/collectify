@@ -4,18 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { server } from '../../../shared/test/server';
-import { emptyDebtList } from '../../debts/__tests__/debtTestData';
-import { customerResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { server } from '@/shared/test';
+import { emptyDebtList } from './debtTestData';
+import { customerMessages } from './customerDetailsTestMessages';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
-} from './customerTestData';
+} from './customerDetailsTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerMessages = customerResources.en.common.customers;
 const customerUpdateSuccessDescription = (name: string) =>
   customerMessages.toast.update.successDescription.replace('{{name}}', name);
 
@@ -23,9 +22,7 @@ describe('CustomerDetailsPage customer actions', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(emptyCustomerList),
-      ),
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(emptyDebtList),
       ),
@@ -40,16 +37,12 @@ describe('CustomerDetailsPage customer actions', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(baseCustomer),
-      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
     );
 
     renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
-    expect(
-      await screen.findByRole('heading', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: baseCustomer.name })).toBeInTheDocument();
 
     const editButton = screen.getByRole('button', { name: customerMessages.actions.edit });
     await user.click(editButton);
@@ -72,9 +65,7 @@ describe('CustomerDetailsPage customer actions', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(baseCustomer),
-      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
       http.patch(`${getBackendUrl()}/customers/:customerId`, async ({ request }) => {
         const requestBody = (await request.json()) as { name?: string };
 
@@ -88,9 +79,7 @@ describe('CustomerDetailsPage customer actions', () => {
 
     renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
-    expect(
-      await screen.findByRole('heading', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: baseCustomer.name })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: customerMessages.actions.edit }));
     const editDialog = await screen.findByRole('dialog', { name: customerMessages.edit.title });
@@ -102,9 +91,7 @@ describe('CustomerDetailsPage customer actions', () => {
       within(editDialog).getByRole('button', { name: customerMessages.actions.save }),
     );
 
-    expect(
-      await screen.findByRole('heading', { name: 'Acme Wholesale' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Acme Wholesale' })).toBeInTheDocument();
     expect(
       await screen.findByRole('status', { name: customerMessages.toast.update.successTitle }),
     ).toHaveTextContent(customerUpdateSuccessDescription('Acme Wholesale'));

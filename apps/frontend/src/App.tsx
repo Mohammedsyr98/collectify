@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 
 import { AuthEntryPage } from './features/auth/AuthEntryPage';
 import { useAppSessionState } from './features/auth/session/useAppSessionState';
-import { CustomerDetailsPage } from '@/features/customers';
+import { CustomerDetailsPage } from '@/pages/customer-details';
 import { CustomersPage } from '@/pages/customers';
 import { PanelPage } from './features/owner-workspace/PanelPage';
 import { OwnerWorkspaceSidebar } from './features/owner-workspace/OwnerWorkspaceSidebar';
@@ -64,13 +64,7 @@ function App() {
   return <AuthEntryPage />;
 }
 
-function OwnerSetupNoticePage({
-  detail,
-  title,
-}: {
-  detail: string;
-  title: string;
-}) {
+function OwnerSetupNoticePage({ detail, title }: { detail: string; title: string }) {
   return (
     <main className="flex min-h-screen items-center bg-background p-7">
       <section
@@ -78,14 +72,14 @@ function OwnerSetupNoticePage({
         aria-labelledby="owner-setup-notice-title"
       >
         <p className="m-0 text-[0.76rem] font-[850] tracking-normal text-primary">Collectify</p>
-        <h1 className="m-0 text-[1.6rem] leading-[1.15] tracking-normal" id="owner-setup-notice-title">
+        <h1
+          className="m-0 text-[1.6rem] leading-[1.15] tracking-normal"
+          id="owner-setup-notice-title"
+        >
           {title}
         </h1>
         <p className="m-0 text-muted-foreground">{detail}</p>
-        <span
-          className="h-2.5 w-2.5 rounded-full bg-status-due-border"
-          aria-hidden="true"
-        />
+        <span className="h-2.5 w-2.5 rounded-full bg-status-due-border" aria-hidden="true" />
       </section>
     </main>
   );

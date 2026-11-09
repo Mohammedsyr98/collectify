@@ -1,4 +1,4 @@
-export { CustomerDebtLedger } from './CustomerDebtLedger';
+export { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
 export { DebtDrawer } from './editor/DebtDrawer';
 export { debtResources } from './localization/resources';
 export {

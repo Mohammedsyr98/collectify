@@ -4,24 +4,18 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { server } from '../../../shared/test/server';
-import {
-  createDebtFixture,
-  emptyDebtList,
-} from '../../debts/__tests__/debtTestData';
-import { debtResources } from '../../debts/localization/resources';
-import { customerResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { server } from '@/shared/test';
+import { createDebtFixture, emptyDebtList } from './debtTestData';
+import { customerMessages, debtMessages } from './customerDetailsTestMessages';
 import {
   baseCustomer,
   customerList,
   emptyCustomerList,
   resetCustomerTestEnvironment,
-} from './customerTestData';
+} from './customerDetailsTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerMessages = customerResources.en.common.customers;
-const debtMessages = debtResources.en.common.debts;
 const debtDeleteSuccessDescription = (description: string) =>
   debtMessages.toast.delete.successDescription.replace('{{description}}', description);
 const debtOpenMenuLabel = (description: string) =>
@@ -33,9 +27,7 @@ describe('CustomerDetailsPage debt actions', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(emptyCustomerList),
-      ),
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(emptyDebtList),
       ),
@@ -50,16 +42,16 @@ describe('CustomerDetailsPage debt actions', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(baseCustomer),
-      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
     );
 
     renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
-    const headerAddDebtButton = (await screen.findAllByRole('button', {
-      name: customerMessages.actions.addDebt,
-    }))[0]!;
+    const headerAddDebtButton = (
+      await screen.findAllByRole('button', {
+        name: customerMessages.actions.addDebt,
+      })
+    )[0]!;
     const debtSection = await screen.findByRole('region', {
       name: debtMessages.section.title,
     });
@@ -136,14 +128,11 @@ describe('CustomerDetailsPage debt actions', () => {
               },
         ),
       ),
-      http.delete(
-        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
-        () => {
-          deleteRequestCount += 1;
-          isDeleted = true;
-          return new HttpResponse(null, { status: 204 });
-        },
-      ),
+      http.delete(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () => {
+        deleteRequestCount += 1;
+        isDeleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
     );
 
     renderCustomerRoutes(['/customers', `/customers/${baseCustomer.id}`], {
@@ -157,9 +146,7 @@ describe('CustomerDetailsPage debt actions', () => {
     );
     const dialog = await screen.findByRole('dialog', { name: debtMessages.delete.title });
 
-    await user.click(
-      within(dialog).getByRole('button', { name: debtMessages.delete.confirm }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: debtMessages.delete.confirm }));
 
     expect(deleteRequestCount).toBe(1);
     expect(
@@ -177,9 +164,7 @@ describe('CustomerDetailsPage debt actions', () => {
     ).toHaveTextContent(customerMessages.details.noFinancialActivity);
 
     await user.click(screen.getByRole('button', { name: 'Go back' }));
-    expect(
-      await screen.findByRole('cell', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: baseCustomer.name })).toBeInTheDocument();
     expect(
       await screen.findByRole('cell', {
         name: `${baseCustomer.name} remaining balances`,
@@ -274,14 +259,11 @@ describe('CustomerDetailsPage debt actions', () => {
           totalPages: 1,
         }),
       ),
-      http.put(
-        `${getBackendUrl()}/customers/:customerId/debts/:debtId`,
-        () => {
-          isReplaced = true;
+      http.put(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () => {
+        isReplaced = true;
 
-          return HttpResponse.json(updatedDebt);
-        },
-      ),
+        return HttpResponse.json(updatedDebt);
+      }),
     );
 
     renderCustomerRoutes(['/customers', `/customers/${baseCustomer.id}`], {
@@ -327,10 +309,7 @@ describe('CustomerDetailsPage debt actions', () => {
     const updatedDebtCard = getDebtCard(updatedDebt.description);
 
     expect(updatedDebtCard).toHaveTextContent('€275.70');
-    expect(within(updatedDebtCard).getByRole('time')).toHaveAttribute(
-      'datetime',
-      '2026-10-15',
-    );
+    expect(within(updatedDebtCard).getByRole('time')).toHaveAttribute('datetime', '2026-10-15');
 
     const summary = await screen.findByRole('region', {
       name: customerMessages.details.financialSummary,
@@ -338,9 +317,7 @@ describe('CustomerDetailsPage debt actions', () => {
     expect(summary).toHaveTextContent('€275.70');
 
     await user.click(screen.getByRole('button', { name: 'Go back' }));
-    expect(
-      await screen.findByRole('cell', { name: baseCustomer.name }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: baseCustomer.name })).toBeInTheDocument();
     expect(
       await screen.findByRole('cell', {
         name: `${baseCustomer.name} remaining balances`,
@@ -369,9 +346,7 @@ async function openDebtActionMenu(
 }
 
 function getDebtCard(description: string): HTMLElement {
-  const debtCard = screen
-    .getByRole('heading', { name: description })
-    .closest('article');
+  const debtCard = screen.getByRole('heading', { name: description }).closest('article');
 
   if (!debtCard) {
     throw new Error('Expected the debt heading to belong to a debt card.');

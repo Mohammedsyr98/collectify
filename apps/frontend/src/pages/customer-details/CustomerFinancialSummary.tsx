@@ -3,22 +3,12 @@ import { useTranslation } from 'react-i18next';
 
 import type { CustomerCurrencySummary } from '@collectify/contracts';
 
-import {
-  formatCurrencyAmount,
-  useLocalization,
-} from '../../shared/localization';
-import {
-  SegmentedControl,
-  type SegmentedControlOption,
-} from '../../shared/ui/segmented-control/SegmentedControl';
+import { formatCurrencyAmount, useLocalization } from '@/shared/localization';
+import { SegmentedControl, type SegmentedControlOption } from '@/shared/ui/segmented-control';
 
 type CurrencySelection = 'all' | CustomerCurrencySummary['currency'];
 
-export function CustomerFinancialSummary({
-  summaries,
-}: {
-  summaries: CustomerCurrencySummary[];
-}) {
+export function CustomerFinancialSummary({ summaries }: { summaries: CustomerCurrencySummary[] }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencySelection>('all');
@@ -97,12 +87,7 @@ function CurrencySummaryCard({
 
       <div className="grid gap-3">
         {visibleSummaries.map((summary) => (
-          <CurrencySummaryBlock
-            key={summary.currency}
-            locale={locale}
-            summary={summary}
-            t={t}
-          />
+          <CurrencySummaryBlock key={summary.currency} locale={locale} summary={summary} t={t} />
         ))}
       </div>
     </div>

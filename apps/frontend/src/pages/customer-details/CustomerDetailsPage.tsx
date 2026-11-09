@@ -13,17 +13,14 @@ import { parseMoney } from '@collectify/domain/money';
 
 import { useCustomerDetailsQuery } from '@/entities/customer';
 import { isApiError } from '@/shared/api';
-import {
-  CustomerDebtLedger,
-  DebtDrawer,
-  useCreateDebtMutation,
-} from '@/features/debts';
+import { DebtDrawer, useCreateDebtMutation } from '@/features/debts';
+import { useCustomerEditor } from '@/features/customers';
 import { usePaymentRecorder } from '@/features/payments';
+import { ErrorStatePage } from '@/shared/ui/error';
+import { LoadingScreen } from '@/shared/ui/loading';
 
-import { ErrorStatePage } from '../../shared/ui/error/ErrorStatePage';
-import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
+import { CustomerDebtLedger } from './ledger/CustomerDebtLedger';
 import { CustomerFinancialSummary } from './CustomerFinancialSummary';
-import { useCustomerEditor } from './useCustomerEditor';
 
 export function CustomerDetailsPage({ defaultCurrency }: { defaultCurrency: Currency }) {
   const { customerId } = useParams();

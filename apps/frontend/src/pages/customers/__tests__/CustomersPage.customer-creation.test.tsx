@@ -20,8 +20,7 @@ import {
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
 const customerMessages = customerResources.en.common.customers;
-const customerDirectoryMessages =
-  customerDirectoryResources.en.common.customerDirectory;
+const customerDirectoryMessages = customerDirectoryResources.en.common.customerDirectory;
 const customerCreateSuccessDescription = (name: string) =>
   customerMessages.toast.create.successDescription.replace('{{name}}', name);
 
@@ -40,25 +39,12 @@ describe('CustomersPage customer creation', () => {
     cleanup();
   });
 
-  it('creates a customer, shows a success toast, and navigates to durable details', async () => {
+  it('creates a customer, shows a success toast, and navigates to its details route', async () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${getBackendUrl()}/customers`, () =>
         HttpResponse.json(baseCustomer, { status: 201 }),
       ),
-      http.get(`${getBackendUrl()}/customers/:customerId`, ({ params }) => {
-        if (params.customerId !== baseCustomer.id) {
-          return HttpResponse.json(
-            {
-              code: 'CUSTOMER_NOT_FOUND',
-              message: 'Customer was not found.',
-            },
-            { status: 404 },
-          );
-        }
-
-        return HttpResponse.json(baseCustomer);
-      }),
     );
 
     renderCustomerRoutes();
@@ -76,10 +62,9 @@ describe('CustomersPage customer creation', () => {
     expect(
       await screen.findByRole('status', { name: customerMessages.toast.create.successTitle }),
     ).toHaveTextContent(customerCreateSuccessDescription('Acme Market'));
-    expect(await screen.findByRole('heading', { name: 'Acme Market' })).toBeInTheDocument();
-    expect(
-      screen.getByText(`${customerMessages.details.code}: ACME-001`),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('router-location')).toHaveTextContent(
+      `/customers/${baseCustomer.id}`,
+    );
   });
 
   it('shows a duplicate-code create error toast and keeps the create modal open', async () => {
@@ -113,9 +98,7 @@ describe('CustomersPage customer creation', () => {
 
     expect(
       await screen.findByRole('alert', { name: customerMessages.toast.create.errorTitle }),
-    ).toHaveTextContent(
-      customerMessages.errors[customerApiErrorCode.customerCodeAlreadyExists],
-    );
+    ).toHaveTextContent(customerMessages.errors[customerApiErrorCode.customerCodeAlreadyExists]);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText(customerMessages.form.nameLabel)).toHaveValue('Acme Market');
   });
