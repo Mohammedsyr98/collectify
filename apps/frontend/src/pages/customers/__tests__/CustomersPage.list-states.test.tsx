@@ -4,25 +4,25 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { appShellResources } from '../../../app/localization/appShellResources';
-import { getBackendUrl } from '../../../shared/api/http';
-import { sharedLocalizationResources } from '../../../shared/localization/resources';
-import { server } from '../../../shared/test/server';
-import { customerResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { sharedLocalizationResources } from '@/shared/localization';
+import { server } from '@/shared/test';
+
+import { customerDirectoryResources } from '../localization/resources';
 import {
   customerList,
   emptyCustomerList,
-  resetCustomerTestEnvironment,
-} from './customerTestData';
+  resetCustomerDirectoryTestEnvironment,
+} from './customerDirectoryTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerMessages = customerResources.en.common.customers;
-const appMessages = appShellResources.en.common.app;
+const customerDirectoryMessages =
+  customerDirectoryResources.en.common.customerDirectory;
 const sharedMessages = sharedLocalizationResources.en.common;
 
 describe('CustomersPage list states', () => {
   beforeEach(() => {
-    resetCustomerTestEnvironment();
+    resetCustomerDirectoryTestEnvironment();
     server.use(
       http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
     );
@@ -55,10 +55,10 @@ describe('CustomersPage list states', () => {
 
     renderCustomerRoutes();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(customerMessages.list.loading);
+    expect(await screen.findByRole('status')).toHaveTextContent(customerDirectoryMessages.list.loading);
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: customerMessages.list.columns.name }),
+      screen.getByRole('columnheader', { name: customerDirectoryMessages.list.columns.name }),
     ).toBeInTheDocument();
 
     resolveCustomerListRequest();
@@ -70,12 +70,12 @@ describe('CustomersPage list states', () => {
 
     await waitFor(() =>
       expect(
-        screen.getAllByText(customerMessages.page.empty),
+        screen.getAllByText(customerDirectoryMessages.page.empty),
       ).toHaveLength(2),
     );
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('columnheader', { name: customerMessages.list.columns.name }),
+      screen.queryByRole('columnheader', { name: customerDirectoryMessages.list.columns.name }),
     ).not.toBeInTheDocument();
   });
 
@@ -97,19 +97,19 @@ describe('CustomersPage list states', () => {
     renderCustomerRoutes();
 
     const errorState = await screen.findByRole('alert', {
-      name: customerMessages.list.error.title,
+      name: customerDirectoryMessages.list.error.title,
     });
     expect(errorState).toHaveTextContent(sharedMessages.errors.genericDescription);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
 
     await user.click(
-      within(errorState).getByRole('button', { name: appMessages.error.retry }),
+      within(errorState).getByRole('button', { name: 'Try again' }),
     );
 
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'NSC-002' })).toBeInTheDocument();
     expect(
-      screen.queryByRole('alert', { name: customerMessages.list.error.title }),
+      screen.queryByRole('alert', { name: customerDirectoryMessages.list.error.title }),
     ).not.toBeInTheDocument();
     expect(customerListRequestCount).toBe(2);
   });

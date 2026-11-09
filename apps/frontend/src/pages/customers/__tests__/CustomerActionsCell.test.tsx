@@ -4,13 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithAppProviders } from '../../../shared/test/render';
-import { CustomerActionsCell } from '../list/CustomerActionsCell';
-import { customerResources } from '../localization/resources';
-import { resetCustomerTestEnvironment } from './customerTestData';
-import { RouterLocationProbe } from './RouterLocationProbe';
+import { renderWithAppProviders, RouterLocationProbe } from '@/shared/test';
 
-const customerMessages = customerResources.en.common.customers;
+import { CustomerActionsCell } from '../list/CustomerActionsCell';
+import { customerDirectoryResources } from '../localization/resources';
+import { resetCustomerDirectoryTestEnvironment } from './customerDirectoryTestData';
+
+const customerMessages = customerDirectoryResources.en.common.customerDirectory;
 const customerName = 'North Star Cafe';
 const openActionsLabel = customerMessages.list.actions.openMenu.replace(
   '{{name}}',
@@ -23,7 +23,7 @@ const actionsMenuLabel = customerMessages.list.actions.menuLabel.replace(
 
 describe('CustomerActionsCell', () => {
   beforeEach(() => {
-    resetCustomerTestEnvironment();
+    resetCustomerDirectoryTestEnvironment();
   });
 
   afterEach(() => {

@@ -182,9 +182,9 @@ describe('CustomerDetailsPage debt actions', () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('cell', {
-        name: customerMessages.list.emptyFinancial.remainingDebt,
+        name: `${baseCustomer.name} remaining balances`,
       }),
-    ).toBeInTheDocument();
+    ).toBeEmptyDOMElement();
   });
 
   it('saves an edited debt and refreshes affected views', async () => {
@@ -342,8 +342,10 @@ describe('CustomerDetailsPage debt actions', () => {
       await screen.findByRole('cell', { name: baseCustomer.name }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('cell', { name: '275.70 EUR' }),
-    ).toBeInTheDocument();
+      await screen.findByRole('cell', {
+        name: `${baseCustomer.name} remaining balances`,
+      }),
+    ).toHaveTextContent('EUR 275.70');
   });
 });
 

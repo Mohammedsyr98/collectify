@@ -4,21 +4,23 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { server } from '../../../shared/test/server';
-import { customerResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { server } from '@/shared/test';
+
+import { customerDirectoryResources } from '../localization/resources';
 import {
   customerList,
   emptyCustomerList,
-  resetCustomerTestEnvironment,
-} from './customerTestData';
+  resetCustomerDirectoryTestEnvironment,
+} from './customerDirectoryTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerMessages = customerResources.en.common.customers;
+const customerDirectoryMessages =
+  customerDirectoryResources.en.common.customerDirectory;
 
 describe('CustomersPage search and URL state', () => {
   beforeEach(() => {
-    resetCustomerTestEnvironment();
+    resetCustomerDirectoryTestEnvironment();
     server.use(
       http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
     );
@@ -73,7 +75,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=2&search=acme']);
 
-    expect(await screen.findByLabelText(customerMessages.search.label)).toHaveValue('acme');
+    expect(await screen.findByLabelText(customerDirectoryMessages.search.label)).toHaveValue('acme');
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
   });
@@ -102,7 +104,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=1&search=acme', '/customers?page=1&search=north']);
 
-    const searchInput = await screen.findByLabelText(customerMessages.search.label);
+    const searchInput = await screen.findByLabelText(customerDirectoryMessages.search.label);
     expect(searchInput).toHaveValue('north');
     expect(await screen.findByRole('cell', { name: 'North Star Cafe' })).toBeInTheDocument();
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '1', search: 'north' }]));
@@ -147,7 +149,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=2']);
 
-    const searchInput = await screen.findByLabelText(customerMessages.search.label);
+    const searchInput = await screen.findByLabelText(customerDirectoryMessages.search.label);
     await waitFor(() => expect(requestedQueries).toEqual([{ page: '2', search: null }]));
 
     await user.type(searchInput, 'a');
@@ -220,7 +222,7 @@ describe('CustomersPage search and URL state', () => {
 
     renderCustomerRoutes(['/customers?page=2&search=acme']);
 
-    const searchInput = await screen.findByLabelText(customerMessages.search.label);
+    const searchInput = await screen.findByLabelText(customerDirectoryMessages.search.label);
     expect(searchInput).toHaveValue('acme');
     expect(await screen.findByRole('cell', { name: 'Acme Market' })).toBeInTheDocument();
     expect(requestedQueries).toEqual([{ page: '2', search: 'acme' }]);
@@ -239,7 +241,7 @@ describe('CustomersPage search and URL state', () => {
     expect(screen.getByTestId('router-location')).toHaveTextContent('/customers?page=1');
     await waitFor(() =>
       expect(
-        screen.getAllByText(customerMessages.page.empty),
+        screen.getAllByText(customerDirectoryMessages.page.empty),
       ).toHaveLength(2),
     );
   });

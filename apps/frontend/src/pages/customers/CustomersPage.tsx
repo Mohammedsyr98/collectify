@@ -1,25 +1,25 @@
 import { Plus } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { CustomerCreateModal } from './CustomerCreateModal';
-import { useCreateCustomerMutation } from './customerMutations';
+import { useCustomerCreator, useCustomerEditor } from '@/features/customers';
+import { PaginationControls } from '@/shared/ui/pagination';
+import { SearchField } from '@/shared/ui/search';
+
 import { CustomerTable } from './list/CustomerTable';
-import { useCustomerEditor } from './useCustomerEditor';
 import { useCustomerListView } from './useCustomerListView';
-import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
-import { SearchField } from '../../shared/ui/search/SearchField';
 
 export function CustomersPage() {
   const { t } = useTranslation();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const createCustomerButtonRef = useRef<HTMLButtonElement>(null);
-  const customerEditor = useCustomerEditor();
-  const { open: openCustomerEditorSession } = customerEditor;
+  const { dialog: customerCreatorDialog, open: openCustomerCreator } =
+    useCustomerCreator();
+  const {
+    dialog: customerEditorDialog,
+    open: openCustomerEditorSession,
+    prefetch: prefetchCustomerEditor,
+  } = useCustomerEditor();
   const { customers, pagination, search, status } = useCustomerListView();
-  const { createCustomer, isCreating } = useCreateCustomerMutation({
-    onCreated: () => setIsCreateModalOpen(false),
-  });
   const openCustomerEditor = useCallback(
     (customerId: string, returnFocusTarget: HTMLButtonElement | null) => {
       openCustomerEditorSession({ customerId }, returnFocusTarget);
@@ -38,28 +38,28 @@ export function CustomersPage() {
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="grid gap-1">
             <h1 className="m-0 text-[1.65rem] font-black leading-tight tracking-normal">
-              {t('customers.page.title')}
+              {t('customerDirectory.page.title')}
             </h1>
             <p className="m-0 text-[0.86rem] text-muted-foreground">
-              {t('customers.page.empty')}
+              {t('customerDirectory.page.empty')}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <SearchField
-              ariaLabel={t('customers.search.label')}
+              ariaLabel={t('customerDirectory.search.label')}
               className="min-w-[min(100%,16rem)]"
               onChange={search.onChange}
-              placeholder={t('customers.search.placeholder')}
+              placeholder={t('customerDirectory.search.placeholder')}
               value={search.value}
             />
             <button
               className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-[5px] border-0 bg-primary px-4 text-[0.8rem] font-extrabold text-primary-foreground transition duration-150 hover:-translate-y-px hover:brightness-95"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => openCustomerCreator(createCustomerButtonRef.current)}
               ref={createCustomerButtonRef}
               type="button"
             >
               <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
-              {t('customers.actions.create')}
+              {t('customerDirectory.actions.create')}
             </button>
           </div>
         </header>
@@ -69,19 +69,19 @@ export function CustomersPage() {
             className="sr-only"
             role="status"
           >
-            {t('customers.list.loading')}
+            {t('customerDirectory.list.loading')}
           </p>
         ) : null}
 
         {status.status === 'error' ? (
           <section
-            aria-label={t('customers.list.error.title')}
+            aria-label={t('customerDirectory.list.error.title')}
             className="grid self-start gap-3 rounded-md border border-border bg-card p-5"
             role="alert"
           >
             <div className="grid gap-1">
               <h2 className="m-0 text-[1rem] font-black tracking-normal">
-                {t('customers.list.error.title')}
+                {t('customerDirectory.list.error.title')}
               </h2>
               <p className="m-0 text-[0.86rem] text-muted-foreground">
                 {t('errors.genericDescription')}
@@ -103,7 +103,7 @@ export function CustomersPage() {
         {status.status === 'empty' ? (
           <section className="self-start rounded-md border border-dashed border-border bg-card p-8 text-center">
             <p className="m-0 text-[0.9rem] font-bold text-muted-foreground">
-              {t('customers.page.empty')}
+              {t('customerDirectory.page.empty')}
             </p>
           </section>
         ) : null}
@@ -114,33 +114,26 @@ export function CustomersPage() {
               customers={customers}
               isLoading={isTableLoading}
               onEditCustomer={openCustomerEditor}
-              onPrefetchEditCustomer={customerEditor.prefetch}
+              onPrefetchEditCustomer={prefetchCustomerEditor}
             />
           </div>
         ) : null}
 
         {pagination.showsControls ? (
           <PaginationControls
-            ariaLabel={t('customers.list.pagination.label')}
+            ariaLabel={t('customerDirectory.list.pagination.label')}
             canMoveToNextPage={pagination.canMoveToNextPage}
             canMoveToPreviousPage={pagination.canMoveToPreviousPage}
-            nextPageLabel={t('customers.list.pagination.nextPage')}
+            nextPageLabel={t('customerDirectory.list.pagination.nextPage')}
             onNextPage={pagination.moveToNextPage}
             onPreviousPage={pagination.moveToPreviousPage}
-            previousPageLabel={t('customers.list.pagination.previousPage')}
+            previousPageLabel={t('customerDirectory.list.pagination.previousPage')}
           />
         ) : null}
       </div>
 
-      {isCreateModalOpen ? (
-        <CustomerCreateModal
-          isSubmitting={isCreating}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={createCustomer}
-          returnFocusRef={createCustomerButtonRef}
-        />
-      ) : null}
-      {customerEditor.dialog}
+      {customerCreatorDialog}
+      {customerEditorDialog}
     </main>
   );
 }

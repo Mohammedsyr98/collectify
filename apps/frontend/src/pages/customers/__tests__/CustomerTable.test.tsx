@@ -2,16 +2,17 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithAppProviders } from '../../../shared/test/render';
+import { renderWithAppProviders } from '@/shared/test';
+
 import { CustomerTable } from '../list/CustomerTable';
-import { customerResources } from '../localization/resources';
+import { customerDirectoryResources } from '../localization/resources';
 import {
   customerList,
   financialCustomer,
-  resetCustomerTestEnvironment,
-} from './customerTestData';
+  resetCustomerDirectoryTestEnvironment,
+} from './customerDirectoryTestData';
 
-const customerMessages = customerResources.en.common.customers;
+const customerMessages = customerDirectoryResources.en.common.customerDirectory;
 const extraCurrencyCountLabel = (count: number) =>
   customerMessages.list.extraCurrencies.count.replace('{{count}}', String(count));
 const remainingExtraCurrenciesButtonLabel = (count: number, name: string) =>
@@ -25,7 +26,7 @@ const overdueExtraCurrenciesButtonLabel = (count: number, name: string) =>
 
 describe('CustomerTable', () => {
   beforeEach(() => {
-    resetCustomerTestEnvironment();
+    resetCustomerDirectoryTestEnvironment();
   });
 
   afterEach(() => {

@@ -27,8 +27,6 @@ const authLegacyFiles = [
 ];
 
 const customerLegacyFiles = [
-  './src/features/customers/__tests__/CurrencyBalancesCell.test.tsx',
-  './src/features/customers/__tests__/CustomerActionsCell.test.tsx',
   './src/features/customers/__tests__/CustomerCreateModal.test.tsx',
   './src/features/customers/__tests__/CustomerDetailsPage.customer-actions.test.tsx',
   './src/features/customers/__tests__/CustomerDetailsPage.debt-actions.test.tsx',
@@ -36,20 +34,10 @@ const customerLegacyFiles = [
   './src/features/customers/__tests__/CustomerDetailsPage.payment-actions.test.tsx',
   './src/features/customers/__tests__/CustomerDetailsPage.view-and-lifecycle.test.tsx',
   './src/features/customers/__tests__/CustomerEditModal.test.tsx',
-  './src/features/customers/__tests__/CustomersPage.customer-creation.test.tsx',
-  './src/features/customers/__tests__/CustomersPage.list-states.test.tsx',
-  './src/features/customers/__tests__/CustomersPage.pagination.test.tsx',
-  './src/features/customers/__tests__/CustomersPage.row-actions.test.tsx',
-  './src/features/customers/__tests__/CustomersPage.search-and-routing.test.tsx',
-  './src/features/customers/__tests__/CustomerTable.test.tsx',
-  './src/features/customers/__tests__/renderCustomerRoutes.tsx',
   './src/features/customers/api/create-customer.ts',
   './src/features/customers/api/update-customer.ts',
   './src/features/customers/CustomerFinancialSummary.tsx',
   './src/features/customers/CustomerForm.tsx',
-  './src/features/customers/CustomersPage.tsx',
-  './src/features/customers/list/CurrencyBalancesCell.tsx',
-  './src/features/customers/list/CustomerActionsCell.tsx',
 ];
 
 const debtLegacyFiles = [

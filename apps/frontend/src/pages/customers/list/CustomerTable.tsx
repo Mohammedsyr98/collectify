@@ -37,17 +37,17 @@ export function CustomerTable({
     () =>
       customerColumnHelper.columns([
         customerColumnHelper.accessor('name', {
-          header: t('customers.list.columns.name'),
+          header: t('customerDirectory.list.columns.name'),
         }),
         customerColumnHelper.accessor('code', {
-          header: t('customers.list.columns.code'),
+          header: t('customerDirectory.list.columns.code'),
         }),
         customerColumnHelper.accessor('phoneNumber', {
-          header: t('customers.list.columns.phone'),
+          header: t('customerDirectory.list.columns.phone'),
         }),
         customerColumnHelper.display({
           id: 'remainingDebt',
-          header: t('customers.list.columns.remainingDebt'),
+          header: t('customerDirectory.list.columns.remainingDebt'),
           cell: ({ row }) => (
             <CurrencyBalancesCell
               customer={row.original}
@@ -57,7 +57,7 @@ export function CustomerTable({
         }),
         customerColumnHelper.display({
           id: 'overdueAmount',
-          header: t('customers.list.columns.overdueAmount'),
+          header: t('customerDirectory.list.columns.overdueAmount'),
           cell: ({ row }) => (
             <CurrencyBalancesCell
               customer={row.original}
@@ -67,7 +67,7 @@ export function CustomerTable({
         }),
         customerColumnHelper.display({
           id: 'actions',
-          header: t('customers.list.columns.actions'),
+          header: t('customerDirectory.list.columns.actions'),
           cell: ({ row }) => (
             <CustomerActionsCell
               customerId={row.original.id}

@@ -4,6 +4,7 @@ import { paymentResources } from '../../features/payments/localization/resources
 import { sharedLocalizationResources, type SupportedLocale } from '../../shared/localization';
 
 import { customerResources } from '@/features/customers';
+import { customerDirectoryResources } from '@/pages/customers';
 
 import { appShellResources } from './appShellResources';
 
@@ -13,6 +14,7 @@ export const appI18nResources = {
       ...appShellResources.en.common,
       ...authResources.en.common,
       ...customerResources.en.common,
+      ...customerDirectoryResources.en.common,
       ...debtResources.en.common,
       ...paymentResources.en.common,
       ...sharedLocalizationResources.en.common,
@@ -23,6 +25,7 @@ export const appI18nResources = {
       ...appShellResources.tr.common,
       ...authResources.tr.common,
       ...customerResources.tr.common,
+      ...customerDirectoryResources.tr.common,
       ...debtResources.tr.common,
       ...paymentResources.tr.common,
       ...sharedLocalizationResources.tr.common,
@@ -33,6 +36,7 @@ export const appI18nResources = {
       ...appShellResources.ar.common,
       ...authResources.ar.common,
       ...customerResources.ar.common,
+      ...customerDirectoryResources.ar.common,
       ...debtResources.ar.common,
       ...paymentResources.ar.common,
       ...sharedLocalizationResources.ar.common,

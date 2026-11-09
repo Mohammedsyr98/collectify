@@ -7,7 +7,7 @@ import type {
   CustomerListItem,
 } from '@collectify/contracts';
 
-import { useAnchoredPopup } from '../../../shared/ui/anchored-popup/useAnchoredPopup';
+import { useAnchoredPopup } from '@/shared/ui/anchored-popup';
 
 const currencyPopoverGap = 8;
 const currencyPopoverEstimatedHeight = 128;
@@ -28,21 +28,21 @@ type CurrencyBalanceConfig = {
 const currencyBalanceConfigs = {
   overdueAmount: {
     amountKey: 'overdueAmount',
-    dialogLabelKey: 'customers.list.extraCurrencies.overdueDialogLabel',
-    emptyTextKey: 'customers.list.emptyFinancial.overdueAmount',
+    dialogLabelKey: 'customerDirectory.list.extraCurrencies.overdueDialogLabel',
+    emptyTextKey: 'customerDirectory.list.emptyFinancial.overdueAmount',
     multipleExtraLabelKey:
-      'customers.list.extraCurrencies.overdueAriaLabelPlural',
-    singleExtraLabelKey: 'customers.list.extraCurrencies.overdueAriaLabel',
-    titleKey: 'customers.list.columns.overdueAmount',
+      'customerDirectory.list.extraCurrencies.overdueAriaLabelPlural',
+    singleExtraLabelKey: 'customerDirectory.list.extraCurrencies.overdueAriaLabel',
+    titleKey: 'customerDirectory.list.columns.overdueAmount',
   },
   remainingDebt: {
     amountKey: 'remainingAmount',
-    dialogLabelKey: 'customers.list.extraCurrencies.remainingDialogLabel',
-    emptyTextKey: 'customers.list.emptyFinancial.remainingDebt',
+    dialogLabelKey: 'customerDirectory.list.extraCurrencies.remainingDialogLabel',
+    emptyTextKey: 'customerDirectory.list.emptyFinancial.remainingDebt',
     multipleExtraLabelKey:
-      'customers.list.extraCurrencies.remainingAriaLabelPlural',
-    singleExtraLabelKey: 'customers.list.extraCurrencies.remainingAriaLabel',
-    titleKey: 'customers.list.columns.remainingDebt',
+      'customerDirectory.list.extraCurrencies.remainingAriaLabelPlural',
+    singleExtraLabelKey: 'customerDirectory.list.extraCurrencies.remainingAriaLabel',
+    titleKey: 'customerDirectory.list.columns.remainingDebt',
   },
 } satisfies Record<CurrencyBalanceVariant, CurrencyBalanceConfig>;
 
@@ -77,8 +77,8 @@ export function CurrencyBalancesCell({
       : config.multipleExtraLabelKey;
   const extraCountLabelKey =
     extraBalances.length === 1
-      ? 'customers.list.extraCurrencies.countSingular'
-      : 'customers.list.extraCurrencies.count';
+      ? 'customerDirectory.list.extraCurrencies.countSingular'
+      : 'customerDirectory.list.extraCurrencies.count';
 
   return (
     <span className="inline-flex items-center gap-1.5">

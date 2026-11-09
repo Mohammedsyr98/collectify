@@ -4,28 +4,32 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { sharedLocalizationResources } from '../../../shared/localization/resources';
-import { getBackendUrl } from '../../../shared/api/http';
-import { server } from '../../../shared/test/server';
-import { emptyDebtList } from '../../debts/__tests__/debtTestData';
-import { customerResources } from '../localization/resources';
+import { customerResources } from '@/features/customers';
+import { getBackendUrl } from '@/shared/api';
+import { sharedLocalizationResources } from '@/shared/localization';
+import { server } from '@/shared/test';
+
+import { customerDirectoryResources } from '../localization/resources';
 import {
   baseCustomer,
   customerList,
+  emptyDebtList,
   emptyCustomerList,
   northStarCustomer,
-  resetCustomerTestEnvironment,
-} from './customerTestData';
+  resetCustomerDirectoryTestEnvironment,
+} from './customerDirectoryTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
 const customerMessages = customerResources.en.common.customers;
+const customerDirectoryMessages =
+  customerDirectoryResources.en.common.customerDirectory;
 const sharedMessages = sharedLocalizationResources.en.common;
 const openActionsLabel = (name: string) =>
-  customerMessages.list.actions.openMenu.replace('{{name}}', name);
+  customerDirectoryMessages.list.actions.openMenu.replace('{{name}}', name);
 
 describe('CustomersPage row actions', () => {
   beforeEach(() => {
-    resetCustomerTestEnvironment();
+    resetCustomerDirectoryTestEnvironment();
     server.use(
       http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
@@ -69,7 +73,7 @@ describe('CustomersPage row actions', () => {
     );
     await user.click(
       await screen.findByRole('menuitem', {
-        name: customerMessages.list.actions.openDetails,
+        name: customerDirectoryMessages.list.actions.openDetails,
       }),
     );
 
@@ -99,7 +103,7 @@ describe('CustomersPage row actions', () => {
     });
     await user.click(actionsButton);
     await user.click(
-      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+      await screen.findByRole('menuitem', { name: customerDirectoryMessages.list.actions.edit }),
     );
 
     expect(
@@ -134,7 +138,7 @@ describe('CustomersPage row actions', () => {
     await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
 
     await user.click(
-      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+      await screen.findByRole('menuitem', { name: customerDirectoryMessages.list.actions.edit }),
     );
 
     expect(
@@ -160,7 +164,7 @@ describe('CustomersPage row actions', () => {
     });
     await user.click(actionsButton);
     await user.click(
-      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+      await screen.findByRole('menuitem', { name: customerDirectoryMessages.list.actions.edit }),
     );
     await screen.findByRole('dialog', { name: customerMessages.edit.title });
 
@@ -200,7 +204,7 @@ describe('CustomersPage row actions', () => {
       }),
     );
     await user.click(
-      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+      await screen.findByRole('menuitem', { name: customerDirectoryMessages.list.actions.edit }),
     );
     await waitFor(() => expect(requestedCustomerIds).toEqual([baseCustomer.id]));
 
@@ -254,7 +258,7 @@ describe('CustomersPage row actions', () => {
     });
     await user.click(actionsButton);
     await user.click(
-      await screen.findByRole('menuitem', { name: customerMessages.list.actions.edit }),
+      await screen.findByRole('menuitem', { name: customerDirectoryMessages.list.actions.edit }),
     );
     await waitFor(() => expect(requestedCustomerIds).toContain(baseCustomer.id));
 

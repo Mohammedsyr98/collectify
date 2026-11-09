@@ -3,16 +3,17 @@ import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { renderWithAppProviders } from '../../../shared/test/render';
+import { renderWithAppProviders } from '@/shared/test';
+
 import { CurrencyBalancesCell } from '../list/CurrencyBalancesCell';
-import { customerResources } from '../localization/resources';
+import { customerDirectoryResources } from '../localization/resources';
 import {
   customerList,
   financialCustomer,
-  resetCustomerTestEnvironment,
-} from './customerTestData';
+  resetCustomerDirectoryTestEnvironment,
+} from './customerDirectoryTestData';
 
-const customerMessages = customerResources.en.common.customers;
+const customerMessages = customerDirectoryResources.en.common.customerDirectory;
 const extraCurrencyCountLabel = (count: number) =>
   customerMessages.list.extraCurrencies.count.replace('{{count}}', String(count));
 const remainingExtraCurrenciesButtonLabel = (count: number, name: string) =>
@@ -30,7 +31,7 @@ const overdueExtraCurrenciesDialogLabel = (name: string) =>
 
 describe('CurrencyBalancesCell', () => {
   beforeEach(() => {
-    resetCustomerTestEnvironment();
+    resetCustomerDirectoryTestEnvironment();
   });
 
   afterEach(() => {
