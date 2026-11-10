@@ -10,12 +10,12 @@ import {
 import { customerCache } from '@/entities/customer';
 import { debtCache } from '@/entities/debt';
 
-import { resolveApiErrorDescription } from '../../shared/api/http';
-import { useToast } from '../../shared/ui/toast/toastContext';
+import { resolveApiErrorDescription } from '../../../shared/api/http';
+import { useToast } from '../../../shared/ui/toast/toastContext';
 import {
   recordPayment as sendPayment,
   type PaymentSubmissionRequest,
-} from './api/record-payment';
+} from '../api/record-payment';
 
 export function useRecordPaymentMutation({
   customerId,

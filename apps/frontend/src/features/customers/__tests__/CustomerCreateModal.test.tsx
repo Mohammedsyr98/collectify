@@ -10,7 +10,7 @@ import {
 } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { CustomerCreateModal } from '../CustomerCreateModal';
+import { CustomerCreateModal } from '../ui/CustomerCreateModal';
 import { customerResources } from '../localization/resources';
 import { resetCustomerTestEnvironment } from './customerTestData';
 

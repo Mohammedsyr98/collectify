@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next';
 
 import type { EligiblePaymentState, PaymentTarget } from '@collectify/contracts';
 
-import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../shared/localization';
-import { PaginationControls } from '../../../shared/ui/pagination/PaginationControls';
-import { SegmentedControl } from '../../../shared/ui/segmented-control/SegmentedControl';
-import { useDebouncedValue } from '../../../shared/useDebouncedValue';
-import { usePaymentTargetListQuery } from '../paymentTargetQueries';
+import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../../shared/localization';
+import { PaginationControls } from '../../../../shared/ui/pagination/PaginationControls';
+import { SegmentedControl } from '../../../../shared/ui/segmented-control/SegmentedControl';
+import { useDebouncedValue } from '../../../../shared/useDebouncedValue';
+import { usePaymentTargetListQuery } from '../../model/paymentTargetQueries';
 
 const paymentTargetSkeletonCards = [0, 1, 2];
 

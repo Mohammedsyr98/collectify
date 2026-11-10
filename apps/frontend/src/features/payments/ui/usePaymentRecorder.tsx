@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import type { DebtResponse, PaymentTarget } from '@collectify/contracts';
 
 import { PaymentDrawer } from './editor/PaymentDrawer';
-import { useRecordPaymentMutation } from './paymentQueries';
+import { useRecordPaymentMutation } from '../model/paymentQueries';
 
 export type PaymentRecordingTarget = {
   debt: DebtResponse;

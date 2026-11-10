@@ -6,8 +6,8 @@ import {
   formatCurrencyAmount,
   formatDateOnly,
   useLocalization,
-} from '../../../shared/localization';
-import type { buildAutomaticSchedulePreview } from './debt-draft';
+} from '@/shared/localization';
+import type { buildAutomaticSchedulePreview } from '../../model/debt-draft';
 
 export function InstallmentSchedulePreview({
   currency,

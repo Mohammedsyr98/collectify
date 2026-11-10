@@ -1,4 +1,4 @@
 export { debtResources } from './localization/resources';
-export { useDebtCreator } from './useDebtCreator';
-export { useDebtDeleter } from './useDebtDeleter';
-export { useDebtEditor } from './useDebtEditor';
+export { useDebtCreator } from './ui/useDebtCreator';
+export { useDebtDeleter } from './ui/useDebtDeleter';
+export { useDebtEditor } from './ui/useDebtEditor';

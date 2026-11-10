@@ -3,7 +3,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import type { Currency } from '@collectify/contracts';
 
 import { DebtDrawer } from './editor/DebtDrawer';
-import { useCreateDebtMutation } from './debtMutations';
+import { useCreateDebtMutation } from '../model/debtMutations';
 
 export type DebtCreator = {
   dialog: ReactNode;

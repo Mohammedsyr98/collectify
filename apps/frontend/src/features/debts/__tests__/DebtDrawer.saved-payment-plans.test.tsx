@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DebtResponse, ReplaceDebtRequest } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { DebtDrawer } from '../editor/DebtDrawer';
+import { DebtDrawer } from '../ui/editor/DebtDrawer';
 import { debtResources } from '../localization/resources';
 import { createDebtFixture } from './debtTestData';
 

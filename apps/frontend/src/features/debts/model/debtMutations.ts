@@ -16,9 +16,9 @@ import { debtCache } from '@/entities/debt';
 import { resolveApiErrorDescription } from '@/shared/api';
 import { useToast } from '@/shared/ui/toast';
 
-import { createDebt } from './api/create-debt';
-import { deleteDebt } from './api/delete-debt';
-import { replaceDebt } from './api/replace-debt';
+import { createDebt } from '../api/create-debt';
+import { deleteDebt } from '../api/delete-debt';
+import { replaceDebt } from '../api/replace-debt';
 
 export function useCreateDebtMutation({
   customerId,

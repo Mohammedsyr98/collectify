@@ -12,15 +12,15 @@ import type {
   Currency,
 } from '@collectify/contracts';
 
-import { FormInput } from '../../../shared/ui/form/FormInput';
-import { FormSelect } from '../../../shared/ui/form/FormSelect';
-import { useDebtValidationErrorFormatter } from '../localization/useDebtValidationErrorFormatter';
+import { FormInput } from '../../../../shared/ui/form/FormInput';
+import { FormSelect } from '../../../../shared/ui/form/FormSelect';
+import { useDebtValidationErrorFormatter } from '../../localization/useDebtValidationErrorFormatter';
 import { DebtPlanFields } from './DebtPlanFields';
 import {
   getDebtDraftDefaultValues,
   debtDraftSchema,
   type DebtDraft,
-} from './debt-draft';
+} from '../../model/debt-draft';
 
 type DebtDrawerProps = {
   isSubmitting: boolean;

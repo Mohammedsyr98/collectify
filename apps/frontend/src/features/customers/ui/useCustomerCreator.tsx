@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 
 import { CustomerCreateModal } from './CustomerCreateModal';
-import { useCreateCustomerMutation } from './customerMutations';
+import { useCreateCustomerMutation } from '../model/customerMutations';
 
 export type CustomerCreator = {
   dialog: ReactNode;

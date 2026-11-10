@@ -11,11 +11,11 @@ import { customerCache } from '@/entities/customer';
 import { resolveApiErrorDescription } from '@/shared/api';
 import { useToast } from '@/shared/ui/toast';
 
-import { createCustomer } from './api/create-customer';
+import { createCustomer } from '../api/create-customer';
 import {
   updateCustomer,
   type UpdateCustomerOptions,
-} from './api/update-customer';
+} from '../api/update-customer';
 
 export function useCreateCustomerMutation({
   onCreated,

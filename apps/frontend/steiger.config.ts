@@ -31,7 +31,7 @@ const customerLegacyFiles = [
   './src/features/customers/__tests__/CustomerEditModal.test.tsx',
   './src/features/customers/api/create-customer.ts',
   './src/features/customers/api/update-customer.ts',
-  './src/features/customers/CustomerForm.tsx',
+  './src/features/customers/ui/CustomerForm.tsx',
 ];
 
 const debtLegacyFiles = [
@@ -41,9 +41,9 @@ const debtLegacyFiles = [
   './src/features/debts/api/create-debt.ts',
   './src/features/debts/api/delete-debt.ts',
   './src/features/debts/api/replace-debt.ts',
-  './src/features/debts/editor/DebtDrawer.tsx',
-  './src/features/debts/editor/DebtPlanFields.tsx',
-  './src/features/debts/editor/InstallmentPlanFields.tsx',
+  './src/features/debts/ui/editor/DebtDrawer.tsx',
+  './src/features/debts/ui/editor/DebtPlanFields.tsx',
+  './src/features/debts/ui/editor/InstallmentPlanFields.tsx',
 ];
 
 const paymentLegacyFiles = [
@@ -54,9 +54,9 @@ const paymentLegacyFiles = [
   './src/features/payments/api/list-payment-targets.test.ts',
   './src/features/payments/api/list-payment-targets.ts',
   './src/features/payments/api/record-payment.ts',
-  './src/features/payments/editor/PaymentDrawer.tsx',
-  './src/features/payments/editor/PaymentTargetPicker.tsx',
-  './src/features/payments/paymentQueries.ts',
+  './src/features/payments/ui/editor/PaymentDrawer.tsx',
+  './src/features/payments/ui/editor/PaymentTargetPicker.tsx',
+  './src/features/payments/model/paymentQueries.ts',
 ];
 
 // App providers, localization composition, and shared test rendering retain

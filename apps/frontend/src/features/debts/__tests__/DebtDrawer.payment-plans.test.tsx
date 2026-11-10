@@ -10,7 +10,7 @@ import {
 } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { DebtDrawer } from '../editor/DebtDrawer';
+import { DebtDrawer } from '../ui/editor/DebtDrawer';
 import { debtResources } from '../localization/resources';
 
 const debtMessages = debtResources.en.common.debts;
