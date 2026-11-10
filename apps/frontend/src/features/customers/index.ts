@@ -1,4 +1,3 @@
-export { CustomerDetailsPage } from './CustomerDetailsPage';
 export { customerResources } from './localization/resources';
 export { useCustomerCreator } from './useCustomerCreator';
 export { useCustomerEditor } from './useCustomerEditor';

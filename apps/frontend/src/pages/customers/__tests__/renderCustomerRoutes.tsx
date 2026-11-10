@@ -1,22 +1,15 @@
 import { Route, Routes } from 'react-router';
 
-import type { Currency } from '@collectify/contracts';
-
-import { CustomerDetailsPage } from '@/features/customers';
-
 import { renderWithAppProviders, RouterLocationProbe } from '@/shared/test';
 import { CustomersPage } from '../CustomersPage';
 
-export function renderCustomerRoutes(
-  initialEntries: string[] = ['/customers'],
-  { defaultCurrency = 'USD' }: { defaultCurrency?: Currency } = {},
-) {
+export function renderCustomerRoutes(initialEntries: string[] = ['/customers']) {
   return renderWithAppProviders(
     <>
       <Routes>
         <Route element={<CustomersPage />} path="/customers" />
         <Route
-          element={<CustomerDetailsPage defaultCurrency={defaultCurrency} />}
+          element={<div data-testid="customer-details-route" />}
           path="/customers/:customerId"
         />
       </Routes>

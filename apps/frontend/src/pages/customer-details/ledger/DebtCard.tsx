@@ -4,12 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
 
-import {
-  formatCurrencyAmount,
-  formatDateOnly,
-  useLocalization,
-} from '../../../shared/localization';
-import { AnchoredMenu } from '../../../shared/ui/anchored-menu/AnchoredMenu';
+import { formatCurrencyAmount, formatDateOnly, useLocalization } from '@/shared/localization';
+import { AnchoredMenu } from '@/shared/ui/anchored-menu';
 
 export function DebtCard({
   debt,
@@ -20,11 +16,7 @@ export function DebtCard({
   debt: DebtResponse;
   onDelete?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
   onEdit?: (debt: DebtResponse, trigger: HTMLButtonElement | null) => void;
-  onRecordPayment: (
-    debt: DebtResponse,
-    scheduleItemId: string,
-    trigger: HTMLButtonElement,
-  ) => void;
+  onRecordPayment: (debt: DebtResponse, scheduleItemId: string, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
@@ -93,10 +85,7 @@ function InstallmentSummary({
 }: {
   debt: Extract<DebtResponse, { paymentPlanType: 'installment' }>;
   locale: string;
-  onRecordPayment: (
-    scheduleItemId: string,
-    trigger: HTMLButtonElement,
-  ) => void;
+  onRecordPayment: (scheduleItemId: string, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -133,9 +122,7 @@ function InstallmentSummary({
         onClick={() => setExpanded((value) => !value)}
         type="button"
       >
-        <span>
-          {t(expanded ? 'debts.card.hideInstallments' : 'debts.card.viewInstallments')}
-        </span>
+        <span>{t(expanded ? 'debts.card.hideInstallments' : 'debts.card.viewInstallments')}</span>
         {expanded ? (
           <ChevronUp aria-hidden="true" size={15} strokeWidth={2.5} />
         ) : (
@@ -191,9 +178,7 @@ function InstallmentSummary({
                 </div>
                 <RecordPaymentButton
                   isPaid={scheduleItem.paymentState === 'paid'}
-                  onSelect={(trigger) =>
-                    onRecordPayment(scheduleItem.id, trigger)
-                  }
+                  onSelect={(trigger) => onRecordPayment(scheduleItem.id, trigger)}
                 />
               </li>
             ))}
@@ -211,10 +196,7 @@ function OnePaymentSummary({
 }: {
   debt: Extract<DebtResponse, { paymentPlanType: 'onePayment' }>;
   locale: string;
-  onRecordPayment: (
-    scheduleItemId: string,
-    trigger: HTMLButtonElement,
-  ) => void;
+  onRecordPayment: (scheduleItemId: string, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
   const scheduleItem = debt.scheduleItems[0];
@@ -272,13 +254,7 @@ function RecordPaymentButton({
   );
 }
 
-function PaymentProgress({
-  debt,
-  locale,
-}: {
-  debt: DebtResponse;
-  locale: string;
-}) {
+function PaymentProgress({ debt, locale }: { debt: DebtResponse; locale: string }) {
   const { t } = useTranslation();
   const paidPercentage = resolvePaidPercentage(debt);
 
@@ -328,9 +304,7 @@ function resolvePaidPercentage(debt: DebtResponse): number {
     return 0;
   }
 
-  return Math.round(
-    Math.min(1, Math.max(0, paidAmount / totalAmount)) * 100,
-  );
+  return Math.round(Math.min(1, Math.max(0, paidAmount / totalAmount)) * 100);
 }
 
 function FinancialMetric({

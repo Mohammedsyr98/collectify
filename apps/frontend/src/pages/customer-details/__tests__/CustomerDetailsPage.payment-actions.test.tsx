@@ -11,27 +11,18 @@ import type {
   RecordPaymentResponse,
 } from '@collectify/contracts';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { server } from '../../../shared/test/server';
-import {
-  createDebtFixture,
-  createInstallmentDebtFixture,
-  emptyDebtList,
-} from '../../debts/__tests__/debtTestData';
-import { createPaymentTargetFixture } from '../../payments/__tests__/paymentTestData';
-import { debtResources } from '../../debts/localization/resources';
-import { paymentResources } from '../../payments/localization/resources';
-import { customerResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { server } from '@/shared/test';
+import { createDebtFixture, createInstallmentDebtFixture, emptyDebtList } from './debtTestData';
+import { createPaymentTargetFixture } from './paymentTestData';
+import { customerMessages, debtMessages, paymentMessages } from './customerDetailsTestMessages';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
-} from './customerTestData';
+} from './customerDetailsTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerMessages = customerResources.en.common.customers;
-const debtMessages = debtResources.en.common.debts;
-const paymentMessages = paymentResources.en.common.payments;
 const installmentScheduleLabel = (description: string) =>
   debtMessages.card.installmentScheduleLabel.replace('{{description}}', description);
 const installmentLabel = (position: number) =>
@@ -41,9 +32,7 @@ describe('CustomerDetailsPage payment actions', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(emptyCustomerList),
-      ),
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(emptyDebtList),
       ),
@@ -74,9 +63,7 @@ describe('CustomerDetailsPage payment actions', () => {
     let targetRequestCount = 0;
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-        HttpResponse.json(customer),
-      ),
+      http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(customer)),
       http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () => {
         targetRequestCount += 1;
 
@@ -146,13 +133,10 @@ describe('CustomerDetailsPage payment actions', () => {
           totalPages: 1,
         }),
       ),
-      http.post(
-        `${getBackendUrl()}/customers/:customerId/payments`,
-        async ({ request }) => {
-          recordedRequest = (await request.json()) as RecordPaymentRequest;
-          return HttpResponse.json(createPaymentResponse(recordedRequest), { status: 201 });
-        },
-      ),
+      http.post(`${getBackendUrl()}/customers/:customerId/payments`, async ({ request }) => {
+        recordedRequest = (await request.json()) as RecordPaymentRequest;
+        return HttpResponse.json(createPaymentResponse(recordedRequest), { status: 201 });
+      }),
     );
 
     renderCustomerRoutes([`/customers/${initialCustomer.id}`]);
@@ -267,9 +251,7 @@ describe('CustomerDetailsPage payment actions', () => {
 
     const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
     await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '25');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await waitFor(() =>
       expect(paymentScenario.recordedRequest).toEqual(
@@ -280,15 +262,14 @@ describe('CustomerDetailsPage payment actions', () => {
     );
 
     const refreshedDebtCard = await findDebtCard(updatedDebt.description);
-    expect(
-      within(refreshedDebtCard).getByRole('progressbar'),
-    ).toHaveAttribute('aria-valuenow', '25');
+    expect(within(refreshedDebtCard).getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '25',
+    );
     const refreshedSchedule = within(refreshedDebtCard).getByRole('region', {
       name: installmentScheduleLabel(updatedDebt.description),
     });
-    const refreshedInstallmentRow = within(refreshedSchedule).getAllByRole(
-      'listitem',
-    )[0]!;
+    const refreshedInstallmentRow = within(refreshedSchedule).getAllByRole('listitem')[0]!;
     expect(refreshedInstallmentRow).toHaveTextContent('$25.00');
     expect(refreshedInstallmentRow).toHaveTextContent('$35.00');
 
@@ -333,20 +314,12 @@ describe('CustomerDetailsPage payment actions', () => {
     });
     const rows = within(schedule).getAllByRole('listitem');
 
-    await user.click(
-      within(rows[1]!).getByRole('button', { name: paymentMessages.drawer.title }),
-    );
+    await user.click(within(rows[1]!).getByRole('button', { name: paymentMessages.drawer.title }));
 
     const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
-    expect(
-      within(drawer).getByText(
-        installmentLabel(2),
-      ),
-    ).toBeInTheDocument();
+    expect(within(drawer).getByText(installmentLabel(2))).toBeInTheDocument();
     await user.type(within(drawer).getByLabelText(paymentMessages.drawer.amountLabel), '10');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await waitFor(() =>
       expect(paymentScenario.recordedRequest).toEqual(
@@ -402,15 +375,11 @@ describe('CustomerDetailsPage payment actions', () => {
     await user.click(paymentAction);
 
     const drawer = await screen.findByRole('dialog', { name: paymentMessages.drawer.title });
-    expect(
-      within(drawer).getByText(paymentMessages.drawer.onePaymentTarget),
-    ).toBeInTheDocument();
+    expect(within(drawer).getByText(paymentMessages.drawer.onePaymentTarget)).toBeInTheDocument();
     const paymentAmount = within(drawer).getByLabelText(paymentMessages.drawer.amountLabel);
     expect(paymentAmount).toHaveFocus();
     await user.type(paymentAmount, '10');
-    await user.click(
-      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
-    );
+    await user.click(within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }));
 
     await waitFor(() =>
       expect(paymentScenario.recordedRequest).toEqual(
@@ -436,9 +405,7 @@ describe('CustomerDetailsPage payment actions', () => {
 
 async function findDebtCard(description: string): Promise<HTMLElement> {
   await screen.findByRole('heading', { name: description });
-  const debtCard = screen
-    .getByRole('heading', { name: description })
-    .closest('article');
+  const debtCard = screen.getByRole('heading', { name: description }).closest('article');
 
   if (!debtCard) {
     throw new Error('Expected the debt heading to belong to a debt card.');
@@ -472,15 +439,12 @@ function servePaymentScenario({
         totalPages: 1,
       }),
     ),
-    http.post(
-      `${getBackendUrl()}/customers/:customerId/payments`,
-      async ({ request }) => {
-        recordedRequest = (await request.json()) as RecordPaymentRequest;
-        return HttpResponse.json(createPaymentResponse(recordedRequest), {
-          status: 201,
-        });
-      },
-    ),
+    http.post(`${getBackendUrl()}/customers/:customerId/payments`, async ({ request }) => {
+      recordedRequest = (await request.json()) as RecordPaymentRequest;
+      return HttpResponse.json(createPaymentResponse(recordedRequest), {
+        status: 201,
+      });
+    }),
   );
 
   return {
@@ -490,9 +454,7 @@ function servePaymentScenario({
   };
 }
 
-function createPaymentResponse(
-  request: RecordPaymentRequest,
-): RecordPaymentResponse {
+function createPaymentResponse(request: RecordPaymentRequest): RecordPaymentResponse {
   return {
     payment: {
       id: 'payment_123',

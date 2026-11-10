@@ -6,30 +6,6 @@ export const debtResources = {
   en: {
     common: {
       debts: {
-        card: {
-          actions: {
-            delete: 'Delete debt',
-            edit: 'Edit debt',
-            menuLabel: 'Actions for {{description}}',
-            openMenu: 'Open actions for {{description}}',
-            recordPayment: 'Record payment',
-          },
-          dueDate: 'Due',
-          dueToday: 'Due today',
-          dueTodayInstallmentCount: '{{count}} due today',
-          hideInstallments: 'Hide installments',
-          installmentCount: '{{count}} installments',
-          installmentNumber: 'Installment {{number}}',
-          installmentScheduleLabel: 'Installment schedule for {{description}}',
-          onePayment: 'One payment',
-          overdue: 'Overdue',
-          overdueInstallmentCount: '{{count}} overdue',
-          paid: 'Paid',
-          paymentProgress: 'Payment progress for {{description}}',
-          remaining: 'Remaining',
-          upcoming: 'Upcoming',
-          viewInstallments: 'View installments',
-        },
         delete: {
           amountLabel: 'Total to delete',
           cancel: 'Cancel',
@@ -87,25 +63,6 @@ export const debtResources = {
           totalAmountPlaceholder: '125.50',
           weeklyOption: 'Weekly',
         },
-        section: {
-          empty: 'No debts yet.',
-          title: 'Debts',
-        },
-        search: {
-          label: 'Search debts',
-          placeholder: 'Search descriptions',
-        },
-        list: {
-          error: {
-            title: 'Could not load debts',
-          },
-          loading: 'Loading debts',
-          pagination: {
-            label: 'Debt pages',
-            nextPage: 'Next page',
-            previousPage: 'Previous page',
-          },
-        },
         toast: {
           create: {
             errorTitle: 'Could not create debt',
@@ -130,30 +87,6 @@ export const debtResources = {
   tr: {
     common: {
       debts: {
-        card: {
-          actions: {
-            delete: 'Borcu sil',
-            edit: 'Borcu düzenle',
-            menuLabel: '{{description}} işlemleri',
-            openMenu: '{{description}} işlemlerini aç',
-            recordPayment: 'Ödeme kaydet',
-          },
-          dueDate: 'Vade',
-          dueToday: 'Vadesi bugün',
-          dueTodayInstallmentCount: '{{count}} vadesi bugün',
-          hideInstallments: 'Taksitleri gizle',
-          installmentCount: '{{count}} taksit',
-          installmentNumber: 'Taksit {{number}}',
-          installmentScheduleLabel: '{{description}} için taksit planı',
-          onePayment: 'Tek ödeme',
-          overdue: 'Vadesi geçmiş',
-          overdueInstallmentCount: '{{count}} vadesi geçmiş',
-          paid: 'Ödenen',
-          paymentProgress: '{{description}} ödeme ilerlemesi',
-          remaining: 'Kalan',
-          upcoming: 'Bekliyor',
-          viewInstallments: 'Taksitleri göster',
-        },
         delete: {
           amountLabel: 'Silinecek toplam',
           cancel: 'İptal',
@@ -210,25 +143,6 @@ export const debtResources = {
           totalAmountPlaceholder: '125.50',
           weeklyOption: 'Haftalık',
         },
-        section: {
-          empty: 'Henüz borç yok.',
-          title: 'Borçlar',
-        },
-        search: {
-          label: 'Borç ara',
-          placeholder: 'Açiklamalarda ara',
-        },
-        list: {
-          error: {
-            title: 'Borçlar yüklenemedi',
-          },
-          loading: 'Borclar yukleniyor',
-          pagination: {
-            label: 'Borç sayfaları',
-            nextPage: 'Sonraki sayfa',
-            previousPage: 'Önceki sayfa',
-          },
-        },
         toast: {
           create: {
             errorTitle: 'Borç oluşturulamadı',
@@ -254,30 +168,6 @@ export const debtResources = {
   ar: {
     common: {
       debts: {
-        card: {
-          actions: {
-            delete: 'حذف الدين',
-            edit: 'تحرير الدين',
-            menuLabel: 'إجراءات {{description}}',
-            openMenu: 'فتح إجراءات {{description}}',
-            recordPayment: 'سجل دفعة',
-          },
-          dueDate: 'الاستحقاق',
-          dueToday: 'مستحق اليوم',
-          dueTodayInstallmentCount: '{{count}} مستحق اليوم',
-          hideInstallments: 'إخفاء الأقساط',
-          installmentCount: '{{count}} أقساط',
-          installmentNumber: 'القسط {{number}}',
-          installmentScheduleLabel: 'جدول الأقساط لـ {{description}}',
-          onePayment: 'دفعة واحدة',
-          overdue: 'متأخر',
-          overdueInstallmentCount: '{{count}} متأخر',
-          paid: 'المدفوع',
-          paymentProgress: 'تقدم الدفع لـ {{description}}',
-          remaining: 'المتبقي',
-          upcoming: 'قادم',
-          viewInstallments: 'عرض الأقساط',
-        },
         delete: {
           amountLabel: 'الإجمالي المراد حذفه',
           cancel: 'إلغاء',
@@ -333,25 +223,6 @@ export const debtResources = {
           totalAmountLabel: 'المبلغ الإجمالي',
           totalAmountPlaceholder: '125.50',
           weeklyOption: 'أسبوعيًا',
-        },
-        section: {
-          empty: 'لا توجد ديون بعد.',
-          title: 'الديون',
-        },
-        search: {
-          label: 'ابحث عن الديون',
-          placeholder: 'ابحث في الأوصاف',
-        },
-        list: {
-          error: {
-            title: 'تعذر تحميل الديون',
-          },
-          loading: 'جارٍ تحميل الديون',
-          pagination: {
-            label: 'صفحات الديون',
-            nextPage: 'الصفحة التالية',
-            previousPage: 'الصفحة السابقة',
-          },
         },
         toast: {
           create: {

@@ -1,21 +1,17 @@
 import { ReceiptText, Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { DebtResponse } from '@collectify/contracts';
 
-import { PaginationControls } from '../../shared/ui/pagination/PaginationControls';
-import { SearchField } from '../../shared/ui/search/SearchField';
-import { DebtDrawer } from './editor/DebtDrawer';
-import { DebtCard } from './ledger/DebtCard';
-import { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
-import { useDeleteDebtMutation, useReplaceDebtMutation } from './debtMutations';
-import { useDebtListView } from './ledger/useDebtListView';
+import { useDebtDeleter, useDebtEditor } from '@/features/debts';
+import { PaginationControls } from '@/shared/ui/pagination';
+import { SearchField } from '@/shared/ui/search';
+
+import { DebtCard } from './DebtCard';
+import { useDebtListView } from './useDebtListView';
 
 const debtSkeletonCards = Array.from({ length: 5 }, (_, index) => index);
-
-type ActiveDebtAction =
-  { kind: 'delete'; debt: DebtResponse } | { kind: 'edit'; debt: DebtResponse } | null;
 
 export function CustomerDebtLedger({
   customerId,
@@ -28,20 +24,9 @@ export function CustomerDebtLedger({
 }) {
   const { t } = useTranslation();
   const debtQuery = useDebtListView(customerId);
-  const [activeDebtAction, setActiveDebtAction] = useState<ActiveDebtAction>(null);
   const addDebtButtonRef = useRef<HTMLButtonElement>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
-  const { isReplacing, replaceDebt } = useReplaceDebtMutation({
-    customerId,
-    onReplaced: () => setActiveDebtAction(null),
-  });
-  const { deleteDebt, isDeleting } = useDeleteDebtMutation({
-    customerId,
-    onDeleted: () => {
-      returnFocusRef.current = addDebtButtonRef.current;
-      setActiveDebtAction(null);
-    },
-  });
+  const debtEditor = useDebtEditor({ customerId });
+  const debtDeleter = useDebtDeleter({ customerId });
   const debtStatus = debtQuery.status;
   const isRetrying = debtStatus.status === 'error' && debtStatus.isRetrying;
   const isSectionBusy = debtQuery.isLoading || isRetrying;
@@ -139,18 +124,13 @@ export function CustomerDebtLedger({
                 debt={debt}
                 key={debt.id}
                 onDelete={(selectedDebt, trigger) => {
-                  returnFocusRef.current = trigger ?? addDebtButtonRef.current;
-                  setActiveDebtAction({
-                    debt: selectedDebt,
-                    kind: 'delete',
+                  debtDeleter.open(selectedDebt, {
+                    afterDelete: () => addDebtButtonRef.current,
+                    returnFocusTarget: trigger ?? addDebtButtonRef.current,
                   });
                 }}
                 onEdit={(selectedDebt, trigger) => {
-                  returnFocusRef.current = trigger ?? addDebtButtonRef.current;
-                  setActiveDebtAction({
-                    debt: selectedDebt,
-                    kind: 'edit',
-                  });
+                  debtEditor.open(selectedDebt, trigger ?? addDebtButtonRef.current);
                 }}
                 onRecordPayment={(selectedDebt, scheduleItemId, trigger) => {
                   const scheduleItem = selectedDebt.scheduleItems.find(
@@ -180,27 +160,8 @@ export function CustomerDebtLedger({
         ) : null}
       </section>
 
-      {activeDebtAction?.kind === 'delete' ? (
-        <DebtDeletionDialog
-          debt={activeDebtAction.debt}
-          isDeleting={isDeleting}
-          onClose={() => setActiveDebtAction(null)}
-          onConfirm={() => {
-            deleteDebt(activeDebtAction.debt.id, activeDebtAction.debt.description);
-          }}
-          returnFocusRef={returnFocusRef}
-        />
-      ) : null}
-      {activeDebtAction?.kind === 'edit' ? (
-        <DebtDrawer
-          debt={activeDebtAction.debt}
-          isSubmitting={isReplacing}
-          mode="edit"
-          onClose={() => setActiveDebtAction(null)}
-          onSubmit={(request) => replaceDebt(activeDebtAction.debt.id, request)}
-          returnFocusRef={returnFocusRef}
-        />
-      ) : null}
+      {debtDeleter.dialog}
+      {debtEditor.dialog}
     </>
   );
 }

@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import {
-  debtListQuerySchema,
-  type DebtListQuery,
-} from '@collectify/contracts';
+import { debtListQuerySchema, type DebtListQuery } from '@collectify/contracts';
 
 import { useDebtListQuery } from '@/entities/debt';
 
-import { usePageQueryParam } from '../../../shared/usePageQueryParam';
-import { useDebouncedSearchQuery } from '../../../shared/useDebouncedSearchQuery';
+import { usePageQueryParam } from '@/shared/usePageQueryParam';
+import { useDebouncedSearchQuery } from '@/shared/useDebouncedSearchQuery';
 
 type DebtListViewStatus =
   | { status: 'loading' }
@@ -20,8 +17,7 @@ type DebtListViewStatus =
   | { status: 'ready' };
 
 export function useDebtListView(customerId: string | undefined) {
-  const { page: currentPage, setPage: setDebtPageQuery } =
-    usePageQueryParam('debtPage');
+  const { page: currentPage, setPage: setDebtPageQuery } = usePageQueryParam('debtPage');
   const search = useDebouncedSearchQuery({
     pageParamName: 'debtPage',
     searchParamName: 'debtSearch',
@@ -32,16 +28,17 @@ export function useDebtListView(customerId: string | undefined) {
   });
 
   const debtListQuery = useDebtListQuery(customerId, query);
+  const { refetch } = debtListQuery;
   const [isRetrying, setIsRetrying] = useState(false);
   const retry = useCallback(async () => {
     setIsRetrying(true);
 
     try {
-      return await debtListQuery.refetch();
+      return await refetch();
     } finally {
       setIsRetrying(false);
     }
-  }, [debtListQuery.refetch]);
+  }, [refetch]);
   const debtList = debtListQuery.data;
   const debts = debtList?.items ?? [];
   const totalPages = debtList?.totalPages ?? 0;

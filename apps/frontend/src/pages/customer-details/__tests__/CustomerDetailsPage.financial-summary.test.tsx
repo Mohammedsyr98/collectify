@@ -4,19 +4,18 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { localeStorageKey } from '../../../shared/localization';
-import { server } from '../../../shared/test/server';
-import { emptyDebtList } from '../../debts/__tests__/debtTestData';
-import { customerResources } from '../localization/resources';
+import { getBackendUrl } from '@/shared/api';
+import { localeStorageKey } from '@/shared/localization';
+import { server } from '@/shared/test';
+import { emptyDebtList } from './debtTestData';
+import { customerMessages } from './customerDetailsTestMessages';
 import {
   baseCustomer,
   emptyCustomerList,
   resetCustomerTestEnvironment,
-} from './customerTestData';
+} from './customerDetailsTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
-const customerMessages = customerResources.en.common.customers;
 const paymentProgressLabel = (currency: string) =>
   customerMessages.details.paymentProgress.replace('{{currency}}', currency);
 
@@ -45,9 +44,7 @@ describe('CustomerDetailsPage financial summary', () => {
   beforeEach(() => {
     resetCustomerTestEnvironment();
     server.use(
-      http.get(`${getBackendUrl()}/customers`, () =>
-        HttpResponse.json(emptyCustomerList),
-      ),
+      http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
       http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
         HttpResponse.json(emptyDebtList),
       ),
@@ -65,9 +62,7 @@ describe('CustomerDetailsPage financial summary', () => {
       ),
     );
 
-    renderCustomerRoutes([
-      `/customers/${customerWithFinancialActivity.id}`,
-    ]);
+    renderCustomerRoutes([`/customers/${customerWithFinancialActivity.id}`]);
 
     const summary = await screen.findByRole('region', {
       name: customerMessages.details.financialSummary,
@@ -87,9 +82,7 @@ describe('CustomerDetailsPage financial summary', () => {
       ),
     );
 
-    renderCustomerRoutes([
-      `/customers/${customerWithFinancialActivity.id}`,
-    ]);
+    renderCustomerRoutes([`/customers/${customerWithFinancialActivity.id}`]);
 
     const summary = await screen.findByRole('region', {
       name: customerMessages.details.financialSummary,
@@ -104,10 +97,7 @@ describe('CustomerDetailsPage financial summary', () => {
       within(summary)
         .getAllByRole('progressbar')
         .map((progressbar) => progressbar.getAttribute('aria-label')),
-    ).toEqual([
-      paymentProgressLabel('EUR'),
-      paymentProgressLabel('USD'),
-    ]);
+    ).toEqual([paymentProgressLabel('EUR'), paymentProgressLabel('USD')]);
 
     await user.click(usd);
 
@@ -128,15 +118,13 @@ describe('CustomerDetailsPage financial summary', () => {
       ),
     );
 
-    renderCustomerRoutes([
-      `/customers/${customerWithFinancialActivity.id}`,
-    ]);
+    renderCustomerRoutes([`/customers/${customerWithFinancialActivity.id}`]);
 
     const summary = await screen.findByRole('region', {
       name: 'الملخص المالي',
     });
-    const amount = Array.from(summary.querySelectorAll('[dir="ltr"]')).find(
-      (element) => element.textContent?.includes('€'),
+    const amount = Array.from(summary.querySelectorAll('[dir="ltr"]')).find((element) =>
+      element.textContent?.includes('€'),
     );
 
     if (!amount) {

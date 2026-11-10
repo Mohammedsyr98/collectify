@@ -10,13 +10,11 @@ export function CustomerDirectoryQueryProbe() {
           <tr key={customer.id}>
             <td>{customer.name}</td>
             <td aria-label={`${customer.name} remaining balances`}>
-              {customer.financialSummary.balancesByCurrency.map(
-                ({ currency, remainingAmount }) => (
-                  <span key={currency}>
-                    {currency} {remainingAmount}
-                  </span>
-                ),
-              )}
+              {customer.financialSummary.balancesByCurrency.map(({ currency, remainingAmount }) => (
+                <span key={currency}>
+                  {currency} {remainingAmount}
+                </span>
+              ))}
             </td>
           </tr>
         ))}
