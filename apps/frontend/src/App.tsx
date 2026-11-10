@@ -6,7 +6,7 @@ import { CustomerDetailsPage } from '@/pages/customer-details';
 import { CustomersPage } from '@/pages/customers';
 import { AuthEntryPage } from '@/pages/auth-entry';
 import { PanelPage } from './features/owner-workspace/PanelPage';
-import { OwnerWorkspaceSidebar } from './features/owner-workspace/OwnerWorkspaceSidebar';
+import { OwnerWorkspaceSidebar } from './app/OwnerWorkspaceSidebar';
 import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
 
