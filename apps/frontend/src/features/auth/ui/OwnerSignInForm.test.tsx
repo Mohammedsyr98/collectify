@@ -1,9 +1,9 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AppLocalizationProvider } from '../../../app/localization/AppLocalizationProvider';
+import { renderWithAppProviders } from '@/shared/test';
 import { OwnerSignInForm } from './OwnerSignInForm';
 
 function renderOwnerSignInForm({
@@ -13,10 +13,8 @@ function renderOwnerSignInForm({
   isSubmitting?: boolean;
   onSubmit?: ComponentProps<typeof OwnerSignInForm>['onSubmit'];
 } = {}) {
-  return render(
-    <AppLocalizationProvider>
-      <OwnerSignInForm isSubmitting={isSubmitting} onSubmit={onSubmit} />
-    </AppLocalizationProvider>,
+  return renderWithAppProviders(
+    <OwnerSignInForm isSubmitting={isSubmitting} onSubmit={onSubmit} />,
   );
 }
 

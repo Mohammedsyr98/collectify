@@ -5,7 +5,5 @@ export {
   isApiError,
 } from './shared/api/http';
 export type { ApiError } from './shared/api/http';
-export { getSession } from './features/auth/api/get-session';
-export { signInOwner } from './features/auth/api/sign-in-owner';
-export { signOutOwner } from './features/auth/api/sign-out-owner';
-export { signUpOwner } from './features/auth/api/sign-up-owner';
+export { getSession } from '@/entities/session';
+export { signInOwner, signOutOwner, signUpOwner } from '@/features/auth';

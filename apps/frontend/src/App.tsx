@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router';
 
-import { AuthEntryPage } from './features/auth/AuthEntryPage';
-import { useAppSessionState } from './features/auth/session/useAppSessionState';
+import { useAppSessionState } from './app/model/useAppSessionState';
 import { CustomerDetailsPage } from '@/pages/customer-details';
 import { CustomersPage } from '@/pages/customers';
+import { AuthEntryPage } from '@/pages/auth-entry';
 import { PanelPage } from './features/owner-workspace/PanelPage';
 import { OwnerWorkspaceSidebar } from './features/owner-workspace/OwnerWorkspaceSidebar';
 import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';

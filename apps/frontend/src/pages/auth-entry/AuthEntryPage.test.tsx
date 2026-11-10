@@ -6,13 +6,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { OwnerSignInResponse, OwnerSignUpResponse } from '@collectify/contracts';
 
-import { createAppI18nInstance } from '../../app/localization/i18n';
-import { getBackendUrl } from '../../shared/api/http';
-import { localeStorageKey, type SupportedLocale } from '../../shared/localization';
-import { renderWithAppProviders } from '../../shared/test/render';
-import { server } from '../../shared/test/server';
+import { sessionCache } from '@/entities/session';
+import { authResources } from '@/features/auth';
+import { getBackendUrl } from '@/shared/api';
+import {
+  createI18nInstance,
+  localeStorageKey,
+  sharedLocalizationResources,
+  type SupportedLocale,
+} from '@/shared/localization';
+import { renderWithAppProviders } from '@/shared/test';
+import { server } from '@/shared/test';
 import { AuthEntryPage } from './AuthEntryPage';
-import { sessionQueryKey } from './session/sessionQueries';
 
 const arabicOwnerSession: OwnerSignUpResponse = {
   authenticated: true,
@@ -32,6 +37,16 @@ type AuthApiErrorResponse = {
   fieldErrors?: Partial<Record<string, string[]>>;
   message: string;
 };
+
+const authTestResources = {
+  en: { common: { ...authResources.en.common, ...sharedLocalizationResources.en.common } },
+  tr: { common: { ...authResources.tr.common, ...sharedLocalizationResources.tr.common } },
+  ar: { common: { ...authResources.ar.common, ...sharedLocalizationResources.ar.common } },
+};
+
+function createAuthTestI18nInstance(initialLocale: SupportedLocale) {
+  return createI18nInstance({ initialLocale, resources: authTestResources });
+}
 
 function mockOwnerSignUpSuccess(response: OwnerSignUpResponse) {
   server.use(http.post(`${getBackendUrl()}/owner/sign-up`, () => HttpResponse.json(response)));
@@ -110,7 +125,7 @@ async function submitSignInForm(password = 'password123') {
 
 async function submitLocalizedSignInForm(locale: SupportedLocale, password = 'password123') {
   const user = userEvent.setup();
-  const i18n = createAppI18nInstance(locale);
+  const i18n = createAuthTestI18nInstance(locale);
 
   await user.click(
     await screen.findByRole('button', {
@@ -142,7 +157,7 @@ async function submitSignUpForm() {
 
 async function submitLocalizedSignUpForm(locale: SupportedLocale) {
   const user = userEvent.setup();
-  const i18n = createAppI18nInstance(locale);
+  const i18n = createAuthTestI18nInstance(locale);
 
   await user.type(await screen.findByLabelText(i18n.t('auth.signUp.nameLabel')), 'Owner');
   await user.type(screen.getByLabelText(i18n.t('auth.signUp.emailLabel')), 'owner@example.com');
@@ -188,7 +203,7 @@ describe('AuthEntryPage', () => {
   });
 
   it('syncs the returned profile language, caches the session, and shows a localized sign-in success toast', async () => {
-    const arabicI18n = createAppI18nInstance('ar');
+    const arabicI18n = createAuthTestI18nInstance('ar');
     mockOwnerSignInSuccess(arabicOwnerSession);
     const { queryClient } = renderAuthEntryPage();
 
@@ -203,12 +218,12 @@ describe('AuthEntryPage', () => {
     expect(document.documentElement).toHaveAttribute('dir', 'rtl');
     expect(window.localStorage.getItem(localeStorageKey)).toBe('ar');
     await waitFor(() =>
-      expect(queryClient.getQueryData(sessionQueryKey)).toEqual(arabicOwnerSession),
+      expect(sessionCache.get(queryClient)).toEqual(arabicOwnerSession),
     );
   });
 
   it('syncs the returned profile language, caches the session, and shows a localized sign-up success toast', async () => {
-    const arabicI18n = createAppI18nInstance('ar');
+    const arabicI18n = createAuthTestI18nInstance('ar');
     mockOwnerSignUpSuccess(arabicOwnerSession);
     const { queryClient } = renderAuthEntryPage();
 
@@ -223,7 +238,7 @@ describe('AuthEntryPage', () => {
     expect(document.documentElement).toHaveAttribute('dir', 'rtl');
     expect(window.localStorage.getItem(localeStorageKey)).toBe('ar');
     await waitFor(() =>
-      expect(queryClient.getQueryData(sessionQueryKey)).toEqual(arabicOwnerSession),
+      expect(sessionCache.get(queryClient)).toEqual(arabicOwnerSession),
     );
   });
 
@@ -252,7 +267,7 @@ describe('AuthEntryPage', () => {
     expect(
       screen.getByRole('heading', { name: i18n.t('auth.entry.signIn.title') }),
     ).toBeInTheDocument();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 
   it('shows missing owner profile errors without caching a session', async () => {
@@ -273,7 +288,7 @@ describe('AuthEntryPage', () => {
       }),
     ).toHaveTextContent('Owner profile setup is incomplete.');
     expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 
   it('shows a generic localized fallback for malformed sign-in error responses', async () => {
@@ -290,7 +305,7 @@ describe('AuthEntryPage', () => {
     ).toHaveTextContent(i18n.t('errors.genericDescription'));
     expect(screen.queryByText('Malformed backend body.')).not.toBeInTheDocument();
     expect(screen.queryByText('500')).not.toBeInTheDocument();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 
   it('shows known sign-up API errors as localized toasts without caching a session', async () => {
@@ -319,7 +334,7 @@ describe('AuthEntryPage', () => {
     expect(
       screen.getByLabelText(i18n.t('auth.signUp.emailLabel')),
     ).not.toHaveAccessibleDescription();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 
   it('shows backend fallback messages for unknown sign-up API codes without caching a session', async () => {
@@ -344,7 +359,7 @@ describe('AuthEntryPage', () => {
     ).toHaveTextContent('Backend fallback from newer server.');
     expect(screen.queryByText('Backend field detail.')).not.toBeInTheDocument();
     expect(screen.queryByText('auth.errors.FUTURE_SIGN_UP_RULE')).not.toBeInTheDocument();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 
   it('shows profile setup sign-up errors as a localized toast without caching a session', async () => {
@@ -365,7 +380,7 @@ describe('AuthEntryPage', () => {
       }),
     ).toHaveTextContent('We could not finish owner setup. Try again.');
     expect(screen.queryByText('Backend profile setup failed.')).not.toBeInTheDocument();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 
   it('shows a localized failure toast for malformed sign-up error responses', async () => {
@@ -382,6 +397,6 @@ describe('AuthEntryPage', () => {
     ).toHaveTextContent(i18n.t('errors.genericDescription'));
     expect(screen.queryByText('Malformed backend body.')).not.toBeInTheDocument();
     expect(screen.queryByText('500')).not.toBeInTheDocument();
-    expect(queryClient.getQueryData(sessionQueryKey)).toBeUndefined();
+    expect(sessionCache.get(queryClient)).toBeUndefined();
   });
 });

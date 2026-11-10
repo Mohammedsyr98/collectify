@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AuthShell } from './components/AuthShell';
-import { OwnerSignInForm } from './sign-in/OwnerSignInForm';
-import { useOwnerSignInSubmit } from './sign-in/useOwnerSignInSubmit';
-import { OwnerSignUpForm } from './sign-up/OwnerSignUpForm';
-import { useOwnerSignUpSubmit } from './sign-up/useOwnerSignUpSubmit';
-import { SegmentedControl } from '../../shared/ui/segmented-control/SegmentedControl';
+import {
+  OwnerSignInForm,
+  OwnerSignUpForm,
+  useOwnerSignInSubmit,
+  useOwnerSignUpSubmit,
+} from '@/features/auth';
+import { SegmentedControl } from '@/shared/ui/segmented-control';
+
+import { AuthShell } from './ui/AuthShell';
 
 type AuthMode = 'sign-in' | 'sign-up';
 

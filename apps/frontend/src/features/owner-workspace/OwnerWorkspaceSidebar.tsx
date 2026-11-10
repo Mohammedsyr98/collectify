@@ -12,7 +12,7 @@ import { NavLink } from 'react-router';
 
 import type { SessionResponse } from '@collectify/contracts';
 
-import { useOwnerSignOut } from '../auth/sign-out/useOwnerSignOut';
+import { useOwnerSignOut } from '@/features/auth';
 
 type AuthenticatedSession = Extract<SessionResponse, { authenticated: true }>;
 

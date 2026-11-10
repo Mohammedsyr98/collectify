@@ -1,31 +1,6 @@
 import { defineConfig } from 'steiger';
 import fsd from '@feature-sliced/steiger-plugin';
 
-// These are the exact files that still cross the pre-migration boundaries
-// described in ARCHITECTURE.md. Keep this list explicit: broad layer or
-// feature ignores would allow new violations to hide inside legacy code.
-const authLegacyFiles = [
-  './src/features/auth/api/get-session.test.ts',
-  './src/features/auth/api/get-session.ts',
-  './src/features/auth/api/sign-in-owner.test.ts',
-  './src/features/auth/api/sign-in-owner.ts',
-  './src/features/auth/api/sign-out-owner.test.ts',
-  './src/features/auth/api/sign-out-owner.ts',
-  './src/features/auth/api/sign-up-owner.test.ts',
-  './src/features/auth/api/sign-up-owner.ts',
-  './src/features/auth/AuthEntryPage.test.tsx',
-  './src/features/auth/AuthEntryPage.tsx',
-  './src/features/auth/session/useAppSessionState.test.tsx',
-  './src/features/auth/sign-in/OwnerSignInForm.test.tsx',
-  './src/features/auth/sign-in/OwnerSignInForm.tsx',
-  './src/features/auth/sign-in/useOwnerSignInSubmit.ts',
-  './src/features/auth/sign-out/useOwnerSignOut.test.tsx',
-  './src/features/auth/sign-out/useOwnerSignOut.ts',
-  './src/features/auth/sign-up/OwnerSignUpForm.test.tsx',
-  './src/features/auth/sign-up/OwnerSignUpForm.tsx',
-  './src/features/auth/sign-up/useOwnerSignUpSubmit.ts',
-];
-
 const customerLegacyFiles = [
   './src/features/customers/__tests__/CustomerCreateModal.test.tsx',
   './src/features/customers/__tests__/CustomerEditModal.test.tsx',
@@ -77,7 +52,6 @@ const appLocalizationLegacyFiles = [
 ];
 
 const legacyPublicApiPaths = [
-  './src/features/auth/**',
   './src/shared/api/**',
   './src/shared/test/**',
   './src/shared/ui/anchored-menu/**',
@@ -104,15 +78,6 @@ export default defineConfig([
     },
   },
   {
-    // Auth is an explicitly named legacy boundary outside this migration.
-    files: authLegacyFiles,
-    rules: {
-      'fsd/forbidden-imports': 'off',
-      'fsd/import-locality': 'off',
-      'fsd/no-public-api-sidestep': 'off',
-    },
-  },
-  {
     // Customer, debt, and payment files below retain their current seams
     // until the follow-up migration tickets derived from #156 move ownership.
     files: [
@@ -125,13 +90,6 @@ export default defineConfig([
       'fsd/forbidden-imports': 'off',
       'fsd/import-locality': 'off',
       'fsd/no-public-api-sidestep': 'off',
-    },
-  },
-  {
-    // This legacy auth segment is retained until the auth migration.
-    files: ['./src/features/auth/components/**'],
-    rules: {
-      'fsd/segments-by-purpose': 'off',
     },
   },
   {

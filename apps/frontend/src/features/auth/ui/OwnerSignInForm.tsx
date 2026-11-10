@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ownerSignInRequestSchema, type OwnerSignInRequest } from '@collectify/contracts';
 
 import { useAuthValidationErrorFormatter } from '../localization/useAuthValidationErrorFormatter';
-import { FormInput } from '../../../shared/ui/form/FormInput';
+import { FormInput } from '@/shared/ui/form';
 
 const defaultValues: OwnerSignInRequest = {
   email: '',

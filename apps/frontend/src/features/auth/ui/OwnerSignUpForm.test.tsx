@@ -1,18 +1,26 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { authValidationCode } from '@collectify/contracts';
 
-import { AppLocalizationProvider } from '../../../app/localization/AppLocalizationProvider';
-import { createAppI18nInstance } from '../../../app/localization/i18n';
 import {
+  createI18nInstance,
   defaultLocale,
+  sharedLocalizationResources,
   supportedLocales,
   type SupportedLocale,
-} from '../../../shared/localization';
+} from '@/shared/localization';
+import { authResources } from '../localization/resources';
+import { renderWithAppProviders } from '@/shared/test';
 import { OwnerSignUpForm } from './OwnerSignUpForm';
+
+const authTestResources = {
+  en: { common: { ...authResources.en.common, ...sharedLocalizationResources.en.common } },
+  tr: { common: { ...authResources.tr.common, ...sharedLocalizationResources.tr.common } },
+  ar: { common: { ...authResources.ar.common, ...sharedLocalizationResources.ar.common } },
+};
 
 function renderOwnerSignUpForm({
   isSubmitting = false,
@@ -21,11 +29,13 @@ function renderOwnerSignUpForm({
   isSubmitting?: boolean;
   onSubmit?: ComponentProps<typeof OwnerSignUpForm>['onSubmit'];
 } = {}) {
-  return render(
-    <AppLocalizationProvider>
-      <OwnerSignUpForm isSubmitting={isSubmitting} onSubmit={onSubmit} />
-    </AppLocalizationProvider>,
+  return renderWithAppProviders(
+    <OwnerSignUpForm isSubmitting={isSubmitting} onSubmit={onSubmit} />,
   );
+}
+
+function createAuthTestI18nInstance(initialLocale: SupportedLocale) {
+  return createI18nInstance({ initialLocale, resources: authTestResources });
 }
 
 function setBrowserLanguages(languages: readonly string[]) {
@@ -100,7 +110,7 @@ describe('OwnerSignUpForm', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     const alternateLocale = getAlternateLocale();
-    const alternateI18n = createAppI18nInstance(alternateLocale);
+    const alternateI18n = createAuthTestI18nInstance(alternateLocale);
     const alternateNameLabel = alternateI18n.t('auth.signUp.nameLabel');
     const alternateEmailLabel = alternateI18n.t('auth.signUp.emailLabel');
     const alternatePasswordLength = alternateI18n.t(
@@ -181,7 +191,7 @@ describe('OwnerSignUpForm', () => {
 
   it('defaults preferred language from the active locale', () => {
     const alternateLocale = getAlternateLocale();
-    const alternateI18n = createAppI18nInstance(alternateLocale);
+    const alternateI18n = createAuthTestI18nInstance(alternateLocale);
 
     setBrowserLanguages([`${alternateLocale}-${alternateLocale.toUpperCase()}`]);
 
