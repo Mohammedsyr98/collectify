@@ -26,7 +26,6 @@ const i18n = createAppI18nInstance('en');
 const workspaceLabels = {
   debts: i18n.t('app.workspace.navigation.debts'),
   customers: i18n.t('app.workspace.navigation.customers'),
-  panel: i18n.t('app.workspace.navigation.panel'),
   payments: i18n.t('app.workspace.navigation.payments'),
   settings: i18n.t('app.workspace.navigation.settings'),
   signOut: i18n.t('app.workspace.signOut'),
@@ -35,7 +34,7 @@ const workspaceLabels = {
 
 function renderSidebar(session: OwnerWorkspaceSession = ownerSession) {
   return renderWithAppProviders(<OwnerWorkspaceSidebar session={session} />, {
-    initialEntries: ['/panel'],
+    initialEntries: ['/customers'],
   });
 }
 
@@ -60,42 +59,21 @@ describe('OwnerWorkspaceSidebar', () => {
     renderSidebar();
 
     expect(screen.getByText('Collectify')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: workspaceLabels.panel })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: workspaceLabels.customers })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: workspaceLabels.debts })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: workspaceLabels.payments })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: workspaceLabels.settings })).toBeInTheDocument();
   });
 
-  it('switches current navigation between panel and customers links', async () => {
-    const user = userEvent.setup();
+  it('marks customers as the current workspace section', () => {
     renderSidebar();
 
     expect(
       screen.getByRole('link', {
-        name: workspaceLabels.panel,
-        current: 'page',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', {
-        name: workspaceLabels.customers,
-      }),
-    ).not.toHaveAttribute('aria-current');
-
-    await user.click(screen.getByRole('link', { name: workspaceLabels.customers }));
-
-    expect(
-      screen.getByRole('link', {
         name: workspaceLabels.customers,
         current: 'page',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', {
-        name: workspaceLabels.panel,
-      }),
-    ).not.toHaveAttribute('aria-current');
   });
 
   it('keeps future navigation items disabled when clicked', async () => {
@@ -113,7 +91,7 @@ describe('OwnerWorkspaceSidebar', () => {
       await user.click(futureItem);
       expect(
         screen.getByRole('link', {
-          name: workspaceLabels.panel,
+          name: workspaceLabels.customers,
           current: 'page',
         }),
       ).toBeInTheDocument();

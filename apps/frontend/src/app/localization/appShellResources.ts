@@ -24,7 +24,6 @@ export const appShellResources = {
           navigation: {
             customers: 'Customers',
             debts: 'Debts',
-            panel: 'Panel',
             payments: 'Payments',
             settings: 'Settings',
           },
@@ -62,7 +61,6 @@ export const appShellResources = {
           navigation: {
             customers: 'Müşteriler',
             debts: 'Borçlar',
-            panel: 'Panel',
             payments: 'Ödemeler',
             settings: 'Ayarlar',
           },
@@ -99,7 +97,6 @@ export const appShellResources = {
           navigation: {
             customers: 'العملاء',
             debts: 'الديون',
-            panel: 'لوحة التحكم',
             payments: 'المدفوعات',
             settings: 'الإعدادات',
           },

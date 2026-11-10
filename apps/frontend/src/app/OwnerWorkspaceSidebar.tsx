@@ -1,6 +1,5 @@
 import {
   CreditCard,
-  LayoutDashboard,
   LogOut,
   ReceiptText,
   Settings,
@@ -23,7 +22,7 @@ export type OwnerWorkspaceSession = AuthenticatedSession & {
 type NavigationItem = {
   Icon: LucideIcon;
   label: string;
-  to?: '/customers' | '/panel';
+  to?: '/customers';
 };
 
 export function OwnerWorkspaceSidebar({ session }: { session: OwnerWorkspaceSession }) {
@@ -33,11 +32,6 @@ export function OwnerWorkspaceSidebar({ session }: { session: OwnerWorkspaceSess
   const ownerDisplayName = session.user.name ?? session.user.email;
   const signOutLabel = isSigningOut ? t('app.workspace.signingOut') : t('app.workspace.signOut');
   const navigationItems: NavigationItem[] = [
-    {
-      Icon: LayoutDashboard,
-      label: t('app.workspace.navigation.panel'),
-      to: '/panel',
-    },
     {
       Icon: Users,
       label: t('app.workspace.navigation.customers'),
@@ -69,7 +63,6 @@ export function OwnerWorkspaceSidebar({ session }: { session: OwnerWorkspaceSess
           to ? (
             <NavLink
               className={({ isActive }) => workspaceNavigationButtonClassName(isActive)}
-              end={to === '/panel'}
               key={label}
               to={to}
             >
