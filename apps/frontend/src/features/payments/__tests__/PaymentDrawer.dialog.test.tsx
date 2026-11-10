@@ -8,7 +8,7 @@ import type { PaymentTarget } from '@collectify/contracts';
 
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { PaymentDrawer } from '../editor/PaymentDrawer';
+import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';
 import { createPaymentTargetFixture } from './paymentTestData';

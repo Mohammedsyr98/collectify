@@ -3,7 +3,7 @@ import {
   type PaymentValidationCode,
 } from '@collectify/contracts';
 
-import type { SupportedLocale } from '../../../shared/localization';
+import type { SupportedLocale } from '@/shared/localization';
 
 type PaymentValidationTranslationMessages = Record<PaymentValidationCode, string>;
 

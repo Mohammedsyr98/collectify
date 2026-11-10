@@ -1,4 +1,4 @@
-import type { SupportedLocale } from '../../../shared/localization';
+import type { SupportedLocale } from '@/shared/localization';
 import { customerApiErrorTranslations } from './customerApiErrorTranslations';
 import { customerValidationTranslations } from './customerValidationTranslations';
 

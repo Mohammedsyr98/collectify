@@ -4,7 +4,7 @@ import type { PaymentTarget } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
 import type { PaymentSubmissionRequest } from '../api/record-payment';
-import { PaymentDrawer } from '../editor/PaymentDrawer';
+import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 
 export function renderPaymentDrawer(
   target: PaymentTarget,

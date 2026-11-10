@@ -11,7 +11,7 @@ import {
 
 import { localeStorageKey } from '../../../shared/localization';
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { DebtDrawer } from '../editor/DebtDrawer';
+import { DebtDrawer } from '../ui/editor/DebtDrawer';
 import { debtResources } from '../localization/resources';
 import { createDebtFixture } from './debtTestData';
 

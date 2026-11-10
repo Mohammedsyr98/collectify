@@ -3,7 +3,7 @@ import {
   type PaymentApiErrorCode,
 } from '@collectify/contracts';
 
-import type { SupportedLocale } from '../../../shared/localization';
+import type { SupportedLocale } from '@/shared/localization';
 
 type PaymentApiErrorTranslationMessages = Record<PaymentApiErrorCode, string>;
 

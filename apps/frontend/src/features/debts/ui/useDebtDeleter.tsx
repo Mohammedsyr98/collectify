@@ -2,8 +2,8 @@ import { useRef, useState, type ReactNode } from 'react';
 
 import type { DebtResponse } from '@collectify/contracts';
 
-import { DebtDeletionDialog } from './ledger/DebtDeletionDialog';
-import { useDeleteDebtMutation } from './debtMutations';
+import { DebtDeletionDialog } from './DebtDeletionDialog';
+import { useDeleteDebtMutation } from '../model/debtMutations';
 
 type DebtDeletionFocusTargets = {
   afterDelete: () => HTMLElement | null;

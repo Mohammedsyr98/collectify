@@ -11,11 +11,11 @@ import type { PaymentTarget } from '@collectify/contracts';
 import { formatMoney, parseMoney } from '@collectify/domain/money';
 import { validatePayment } from '@collectify/domain/payment';
 
-import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../shared/localization';
-import { FormInput } from '../../../shared/ui/form/FormInput';
-import { FormTextarea } from '../../../shared/ui/form/FormTextarea';
-import type { PaymentSubmissionRequest } from '../api/record-payment';
-import { usePaymentValidationErrorFormatter } from '../localization/usePaymentValidationErrorFormatter';
+import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../../shared/localization';
+import { FormInput } from '../../../../shared/ui/form/FormInput';
+import { FormTextarea } from '../../../../shared/ui/form/FormTextarea';
+import type { PaymentSubmissionRequest } from '../../api/record-payment';
+import { usePaymentValidationErrorFormatter } from '../../localization/usePaymentValidationErrorFormatter';
 import { PaymentTargetPicker } from './PaymentTargetPicker';
 
 const paymentFieldsSchema = recordPaymentRequestSchema.pick({

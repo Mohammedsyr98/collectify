@@ -10,7 +10,7 @@ import { appShellResources } from '../../../app/localization/appShellResources';
 import { getBackendUrl } from '../../../shared/api/http';
 import { renderWithAppProviders } from '../../../shared/test/render';
 import { server } from '../../../shared/test/server';
-import { PaymentDrawer } from '../editor/PaymentDrawer';
+import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';
 import { createPaymentTargetFixture } from './paymentTestData';

@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import type { PaymentTargetQuery } from '@collectify/contracts';
 
-import { listPaymentTargets } from './api/list-payment-targets';
+import { listPaymentTargets } from '../api/list-payment-targets';
 
 export const paymentTargetListQueryKey = (customerId: string) =>
   ['customers', customerId, 'payment-targets'] as const;

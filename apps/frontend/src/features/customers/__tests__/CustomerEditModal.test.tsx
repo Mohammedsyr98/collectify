@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateCustomerRequest } from '@collectify/contracts';
 
 import { renderWithAppProviders } from '../../../shared/test/render';
-import { CustomerEditModal } from '../CustomerEditModal';
+import { CustomerEditModal } from '../ui/CustomerEditModal';
 import { customerResources } from '../localization/resources';
 import { baseCustomer, resetCustomerTestEnvironment } from './customerTestData';
 

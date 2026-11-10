@@ -11,7 +11,7 @@ import { resolveApiErrorDescription } from '@/shared/api';
 import { useToast } from '@/shared/ui/toast';
 
 import { CustomerEditModal } from './CustomerEditModal';
-import { useUpdateCustomerMutation } from './customerMutations';
+import { useUpdateCustomerMutation } from '../model/customerMutations';
 
 export type CustomerEditTarget =
   | { customer: CustomerDetailsResponse }

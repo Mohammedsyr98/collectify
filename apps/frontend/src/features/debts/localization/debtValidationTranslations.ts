@@ -3,7 +3,7 @@ import {
   debtRequestValidationCode,
   type DebtValidationCode,
 } from '@collectify/contracts';
-import type { SupportedLocale } from '../../../shared/localization';
+import type { SupportedLocale } from '@/shared/localization';
 type DebtValidationTranslationMessages = Record<DebtValidationCode, string>;
 export const debtValidationTranslations = {
   en: {
