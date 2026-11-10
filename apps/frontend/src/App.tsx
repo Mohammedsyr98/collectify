@@ -5,7 +5,6 @@ import { useAppSessionState } from './app/model/useAppSessionState';
 import { CustomerDetailsPage } from '@/pages/customer-details';
 import { CustomersPage } from '@/pages/customers';
 import { AuthEntryPage } from '@/pages/auth-entry';
-import { PanelPage } from './features/owner-workspace/PanelPage';
 import { OwnerWorkspaceSidebar } from './app/OwnerWorkspaceSidebar';
 import { ErrorStatePage } from './shared/ui/error/ErrorStatePage';
 import { LoadingScreen } from './shared/ui/loading/LoadingScreen';
@@ -35,8 +34,8 @@ function App() {
       <div className="flex min-h-screen bg-background">
         <OwnerWorkspaceSidebar session={appSession.session} />
         <Routes>
-          <Route element={<Navigate replace to="/panel" />} path="/" />
-          <Route element={<PanelPage />} path="/panel" />
+          <Route element={<Navigate replace to="/customers" />} path="/" />
+          <Route element={<Navigate replace to="/customers" />} path="/panel" />
           <Route element={<CustomersPage />} path="/customers" />
           <Route
             element={
@@ -46,7 +45,7 @@ function App() {
             }
             path="/customers/:customerId"
           />
-          <Route element={<Navigate replace to="/panel" />} path="*" />
+          <Route element={<Navigate replace to="/customers" />} path="*" />
         </Routes>
       </div>
     );

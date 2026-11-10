@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { SessionResponse } from '@collectify/contracts';
+import type { CustomerListResponse, SessionResponse } from '@collectify/contracts';
 
 import App from './App';
 import { createAppI18nInstance } from './app/localization/i18n';
@@ -31,6 +31,14 @@ const ownerSession: SessionResponse = {
   },
 };
 
+const emptyCustomerList: CustomerListResponse = {
+  items: [],
+  page: 1,
+  pageSize: 25,
+  totalItems: 0,
+  totalPages: 0,
+};
+
 function mockSession(response: SessionResponse) {
   server.use(http.get(`${getBackendUrl()}/session`, () => HttpResponse.json(response)));
 }
@@ -40,6 +48,12 @@ function mockSessionError() {
     http.get(`${getBackendUrl()}/session`, () =>
       HttpResponse.json({ message: 'Backend unavailable.' }, { status: 503 }),
     ),
+  );
+}
+
+function mockCustomerList() {
+  server.use(
+    http.get(`${getBackendUrl()}/customers`, () => HttpResponse.json(emptyCustomerList)),
   );
 }
 
@@ -61,6 +75,7 @@ describe('App', () => {
     document.documentElement.removeAttribute('dir');
     setBrowserLanguages(['en-US']);
     mockSession(unauthenticatedSession);
+    mockCustomerList();
   });
 
   afterEach(() => {
@@ -71,7 +86,7 @@ describe('App', () => {
     renderApp();
 
     expect(await screen.findByRole('heading', { name: 'Create account' })).toBeInTheDocument();
-    expect(screen.queryByRole('main', { name: 'Panel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('main', { name: 'Customers' })).not.toBeInTheDocument();
   });
 
   it('renders the session-unavailable state when session loading fails', async () => {
@@ -87,7 +102,7 @@ describe('App', () => {
     expect(screen.getByText('Try again in a moment.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Create account' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('main', { name: 'Panel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('main', { name: 'Customers' })).not.toBeInTheDocument();
   });
 
   it('retries session loading from the generic error state', async () => {
@@ -117,19 +132,19 @@ describe('App', () => {
 
     renderApp(['/panel']);
 
-    expect(await screen.findByRole('main', { name: 'Panel' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Panel', current: 'page' })).toBeInTheDocument();
+    expect(await screen.findByRole('main', { name: 'Customers' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Customers', current: 'page' })).toBeInTheDocument();
     expect(screen.queryByText('Owner session active')).not.toBeInTheDocument();
     expect(screen.queryByText('Protected Collectify workspace')).not.toBeInTheDocument();
   });
 
-  it('redirects authenticated owners from / to /panel', async () => {
+  it('redirects authenticated owners from / to /customers', async () => {
     mockSession(ownerSession);
 
     renderApp(['/']);
 
-    expect(await screen.findByRole('main', { name: 'Panel' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Panel', current: 'page' })).toBeInTheDocument();
+    expect(await screen.findByRole('main', { name: 'Customers' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Customers', current: 'page' })).toBeInTheDocument();
   });
 
   it('renders the authenticated customers route without enabling future sections', async () => {
@@ -155,6 +170,15 @@ describe('App', () => {
     );
   });
 
+  it('redirects authenticated owners from unknown routes to /customers', async () => {
+    mockSession(ownerSession);
+
+    renderApp(['/unknown']);
+
+    expect(await screen.findByRole('main', { name: 'Customers' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Customers', current: 'page' })).toBeInTheDocument();
+  });
+
   it('applies owner preferred language to the authenticated workspace', async () => {
     const arabicI18n = createAppI18nInstance('ar');
     mockSession({
@@ -174,12 +198,12 @@ describe('App', () => {
 
     expect(
       await screen.findByRole('main', {
-        name: arabicI18n.t('app.workspace.navigation.panel'),
+        name: arabicI18n.t('app.workspace.navigation.customers'),
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {
-        name: arabicI18n.t('app.workspace.navigation.panel'),
+        name: arabicI18n.t('app.workspace.navigation.customers'),
         current: 'page',
       }),
     ).toBeInTheDocument();
@@ -204,6 +228,6 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { name: 'Owner setup incomplete' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('main', { name: 'Panel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('main', { name: 'Customers' })).not.toBeInTheDocument();
   });
 });
