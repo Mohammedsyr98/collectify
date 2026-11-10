@@ -77,7 +77,11 @@ describe('CustomersPage row actions', () => {
       }),
     );
 
-    expect(await screen.findByRole('heading', { name: 'North Star Cafe' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('router-location')).toHaveTextContent(
+        `/customers/${northStarCustomer.id}`,
+      ),
+    );
   });
 
   it('opens the edit flow from a customer row action', async () => {
