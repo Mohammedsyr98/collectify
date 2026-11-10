@@ -6,10 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { OwnerWorkspaceSession } from './OwnerWorkspaceSidebar';
 import { OwnerWorkspaceSidebar } from './OwnerWorkspaceSidebar';
-import { createAppI18nInstance } from '../../app/localization/i18n';
-import { getBackendUrl } from '../../shared/api/http';
-import { renderWithAppProviders } from '../../shared/test/render';
-import { server } from '../../shared/test/server';
+import { createAppI18nInstance } from './localization/i18n';
+import { getBackendUrl } from '@/shared/api';
+import { renderWithAppProviders, server } from '@/shared/test';
 
 const ownerSession: OwnerWorkspaceSession = {
   authenticated: true,
