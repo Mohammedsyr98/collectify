@@ -3,7 +3,7 @@ import {
   type OwnerSignOutResponse,
 } from '@collectify/contracts';
 
-import { fetchBackend } from '../../../shared/api/fetch-backend';
+import { fetchBackend } from '@/shared/api';
 
 export async function signOutOwner(): Promise<OwnerSignOutResponse> {
   return fetchBackend({

@@ -11,10 +11,9 @@ import {
   supportedLocales,
   type SupportedLocale,
   useLocalization,
-} from '../../../shared/localization';
+} from '@/shared/localization';
 import { useAuthValidationErrorFormatter } from '../localization/useAuthValidationErrorFormatter';
-import { FormInput } from '../../../shared/ui/form/FormInput';
-import { FormSelect } from '../../../shared/ui/form/FormSelect';
+import { FormInput, FormSelect } from '@/shared/ui/form';
 
 const localeNameTranslationKeys = {
   ar: 'locale.arabic',

@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 
 import type { OwnerProfile, SessionResponse } from '@collectify/contracts';
 
-import { useSessionQuery } from './sessionQueries';
-import { useOwnerProfileLanguageSync } from './useOwnerProfileLanguageSync';
+import { useSessionQuery } from '@/entities/session';
+import { useOwnerProfileLanguageSync } from '@/features/auth';
 
 type AuthenticatedSession = Extract<SessionResponse, { authenticated: true }>;
 type OwnerWorkspaceSession = AuthenticatedSession & {

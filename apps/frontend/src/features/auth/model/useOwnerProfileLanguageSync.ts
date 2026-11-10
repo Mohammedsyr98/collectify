@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 
 import type { OwnerProfile } from '@collectify/contracts';
 
-import { useLocalization } from '../../../shared/localization';
+import { useLocalization } from '@/shared/localization';
 
 type OwnerProfileLanguage = Pick<OwnerProfile, 'preferredLanguage'>;
 

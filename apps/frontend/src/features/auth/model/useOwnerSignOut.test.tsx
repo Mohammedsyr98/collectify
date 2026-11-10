@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { SessionResponse } from '@collectify/contracts';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { renderWithAppProviders } from '../../../shared/test/render';
-import { server } from '../../../shared/test/server';
-import { useSessionQuery } from '../session/sessionQueries';
+import { useSessionQuery } from '@/entities/session';
+import { getBackendUrl } from '@/shared/api';
+import { renderWithAppProviders } from '@/shared/test';
+import { server } from '@/shared/test';
 import { useOwnerSignOut } from './useOwnerSignOut';
 
 const ownerSession: SessionResponse = {

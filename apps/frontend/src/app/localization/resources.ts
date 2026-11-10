@@ -1,5 +1,5 @@
-import { authResources } from '../../features/auth/localization/resources';
-import { sharedLocalizationResources, type SupportedLocale } from '../../shared/localization';
+import { authResources } from '@/features/auth';
+import { sharedLocalizationResources, type SupportedLocale } from '@/shared/localization';
 
 import { debtResources } from '@/features/debts';
 import { customerResources } from '@/features/customers';

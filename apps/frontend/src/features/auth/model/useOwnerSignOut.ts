@@ -1,18 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import type { SessionResponse } from '@collectify/contracts';
-
-import { getApiErrorDescription } from '../../../shared/api/http';
-import { useToast } from '../../../shared/ui/toast/toastContext';
+import { sessionCache } from '@/entities/session';
+import { getApiErrorDescription } from '@/shared/api';
+import { useToast } from '@/shared/ui/toast';
 import { signOutOwner } from '../api/sign-out-owner';
-import { sessionQueryKey } from '../session/sessionQueries';
-
-const signedOutSession: SessionResponse = {
-  authenticated: false,
-  user: null,
-  ownerProfile: null,
-};
 
 export function useOwnerSignOut() {
   const queryClient = useQueryClient();
@@ -22,8 +14,8 @@ export function useOwnerSignOut() {
   const signOutMutation = useMutation({
     mutationFn: signOutOwner,
     onSuccess: async () => {
-      queryClient.setQueryData(sessionQueryKey, signedOutSession);
-      await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+      sessionCache.setSignedOut(queryClient);
+      await sessionCache.refresh(queryClient);
     },
     onError: (error) => {
       showToast({

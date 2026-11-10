@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getBackendUrl } from '../../../shared/api/http';
+import { getBackendUrl } from '@/shared/api';
 import { signUpOwner } from './sign-up-owner';
 
 describe('owner sign-up API', () => {

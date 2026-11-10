@@ -1,6 +1,6 @@
 import { authApiErrorCode, type AuthApiErrorCode } from '@collectify/contracts';
 
-import type { SupportedLocale } from '../../../shared/localization';
+import type { SupportedLocale } from '@/shared/localization';
 
 type AuthApiErrorTranslationMessages = Record<AuthApiErrorCode, string>;
 

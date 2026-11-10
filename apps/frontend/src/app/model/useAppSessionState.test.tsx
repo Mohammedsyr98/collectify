@@ -6,11 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { SessionResponse } from '@collectify/contracts';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { localeStorageKey } from '../../../shared/localization';
-import { createTestQueryClient, renderWithAppProviders } from '../../../shared/test/render';
-import { server } from '../../../shared/test/server';
-import { sessionQueryKey } from './sessionQueries';
+import { sessionCache } from '@/entities/session';
+import { getBackendUrl } from '@/shared/api';
+import { localeStorageKey } from '@/shared/localization';
+import { createTestQueryClient, renderWithAppProviders } from '@/shared/test';
+import { server } from '@/shared/test';
 import { useAppSessionState } from './useAppSessionState';
 
 const signedOutSession: SessionResponse = {
@@ -161,7 +161,7 @@ describe('useAppSessionState', () => {
 
   it('keeps the owner workspace pending while the RTL profile language is unsynced', async () => {
     const queryClient = createTestQueryClient();
-    queryClient.setQueryData(sessionQueryKey, arabicOwnerSession);
+    sessionCache.setCurrent(queryClient, arabicOwnerSession);
     mockSession(arabicOwnerSession);
 
     renderWithAppProviders(<AppSessionStateProbe />, { queryClient });
