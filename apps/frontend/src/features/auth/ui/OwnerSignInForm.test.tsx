@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithAppProviders } from '@/shared/test';
+import { renderWithAppProviders } from '../test/render';
 import { OwnerSignInForm } from './OwnerSignInForm';
 
 function renderOwnerSignInForm({

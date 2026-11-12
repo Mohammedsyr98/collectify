@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { renderWithAppProviders } from '@/shared/test';
+import { renderWithAppProviders } from './render';
 
 import { CurrencyBalancesCell } from '../list/CurrencyBalancesCell';
 import { customerDirectoryResources } from '../localization/resources';

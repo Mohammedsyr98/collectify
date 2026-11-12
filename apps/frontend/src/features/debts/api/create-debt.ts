@@ -4,7 +4,7 @@ import {
   type DebtResponse,
 } from '@collectify/contracts';
 
-import { fetchBackend } from '../../../shared/api/fetch-backend';
+import { fetchBackend } from '@/shared/api';
 
 export async function createDebt(
   customerId: string,

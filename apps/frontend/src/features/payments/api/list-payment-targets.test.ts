@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { PaymentTargetListResponse } from '@collectify/contracts';
 
-import { getBackendUrl } from '../../../shared/api/http';
-import { server } from '../../../shared/test/server';
+import { getBackendUrl } from '@/shared/api';
+import { server } from '@/shared/test';
 import { listPaymentTargets } from './list-payment-targets';
 
 describe('payment-target API', () => {

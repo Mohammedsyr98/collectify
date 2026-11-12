@@ -12,8 +12,7 @@ import type {
   Currency,
 } from '@collectify/contracts';
 
-import { FormInput } from '../../../../shared/ui/form/FormInput';
-import { FormSelect } from '../../../../shared/ui/form/FormSelect';
+import { FormInput, FormSelect } from '@/shared/ui/form';
 import { useDebtValidationErrorFormatter } from '../../localization/useDebtValidationErrorFormatter';
 import { DebtPlanFields } from './DebtPlanFields';
 import {

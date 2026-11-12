@@ -80,7 +80,7 @@ export function CustomerDebtLedger({
               }}
               type="button"
             >
-              {t('app.error.retry')}
+              {t('errors.retry')}
             </button>
           </section>
         ) : debtQuery.isLoading ? (

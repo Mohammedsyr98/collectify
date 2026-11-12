@@ -3,8 +3,8 @@ import { useRef } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { FormInput } from '../../../../shared/ui/form/FormInput';
-import { SegmentedControl } from '../../../../shared/ui/segmented-control/SegmentedControl';
+import { FormInput } from '@/shared/ui/form';
+import { SegmentedControl } from '@/shared/ui/segmented-control';
 import type { DebtDraft } from '../../model/debt-draft';
 import { InstallmentPlanFields } from './InstallmentPlanFields';
 

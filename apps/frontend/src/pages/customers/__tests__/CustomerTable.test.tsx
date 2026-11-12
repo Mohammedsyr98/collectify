@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithAppProviders } from '@/shared/test';
+import { renderWithAppProviders } from './render';
 
 import { CustomerTable } from '../list/CustomerTable';
 import { customerDirectoryResources } from '../localization/resources';

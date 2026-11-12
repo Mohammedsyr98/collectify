@@ -95,7 +95,7 @@ export function CustomersPage() {
               }}
               type="button"
             >
-              {t('app.error.retry')}
+              {t('errors.retry')}
             </button>
           </section>
         ) : null}

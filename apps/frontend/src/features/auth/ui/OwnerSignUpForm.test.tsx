@@ -13,7 +13,7 @@ import {
   type SupportedLocale,
 } from '@/shared/localization';
 import { authResources } from '../localization/resources';
-import { renderWithAppProviders } from '@/shared/test';
+import { renderWithAppProviders } from '../test/render';
 import { OwnerSignUpForm } from './OwnerSignUpForm';
 
 const authTestResources = {

@@ -14,7 +14,7 @@ import {
 } from '@collectify/contracts';
 
 import { getBackendUrl } from '@/shared/api';
-import { renderWithAppProviders, server } from '@/shared/test';
+import { renderWithAppProviders, server } from './render';
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
 import { paymentResources } from '@/features/payments';
 import { createPaymentTargetFixture } from './paymentTestData';

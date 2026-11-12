@@ -20,7 +20,7 @@ function App() {
   if (appSession.status === 'sessionUnavailable') {
     return (
       <ErrorStatePage
-        actionLabel={t('app.error.retry')}
+        actionLabel={t('errors.retry')}
         detail={t('app.error.sessionUnavailable.detail')}
         isActionPending={appSession.isRetrying}
         onAction={appSession.retry}

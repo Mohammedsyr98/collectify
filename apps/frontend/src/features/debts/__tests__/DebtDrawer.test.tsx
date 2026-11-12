@@ -9,8 +9,8 @@ import {
   type CreateDebtRequest,
 } from '@collectify/contracts';
 
-import { localeStorageKey } from '../../../shared/localization';
-import { renderWithAppProviders } from '../../../shared/test/render';
+import { localeStorageKey } from '@/shared/localization';
+import { renderWithAppProviders } from './render';
 import { DebtDrawer } from '../ui/editor/DebtDrawer';
 import { debtResources } from '../localization/resources';
 import { createDebtFixture } from './debtTestData';

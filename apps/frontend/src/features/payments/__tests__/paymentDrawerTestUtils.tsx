@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 
 import type { PaymentTarget } from '@collectify/contracts';
 
-import { renderWithAppProviders } from '../../../shared/test/render';
+import { renderWithAppProviders } from './render';
 import type { PaymentSubmissionRequest } from '../api/record-payment';
 import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 

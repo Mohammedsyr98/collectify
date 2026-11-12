@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router';
 
-import { renderWithAppProviders, RouterLocationProbe } from '@/shared/test';
+import { renderWithAppProviders, RouterLocationProbe } from './render';
 import { CustomersPage } from '../CustomersPage';
 
 export function renderCustomerRoutes(initialEntries: string[] = ['/customers']) {
