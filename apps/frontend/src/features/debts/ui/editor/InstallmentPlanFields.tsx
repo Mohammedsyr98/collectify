@@ -10,9 +10,9 @@ import {
   type InstallmentDueDateRange,
 } from '@collectify/domain/debt-plan';
 
-import { FormInput } from '../../../../shared/ui/form/FormInput';
-import { SegmentedControl } from '../../../../shared/ui/segmented-control/SegmentedControl';
-import { formatCurrencyAmount, useLocalization } from '../../../../shared/localization';
+import { formatCurrencyAmount, useLocalization } from '@/shared/localization';
+import { FormInput } from '@/shared/ui/form';
+import { SegmentedControl } from '@/shared/ui/segmented-control';
 import {
   buildAutomaticSchedulePreview,
   getManualScheduleMaximum,

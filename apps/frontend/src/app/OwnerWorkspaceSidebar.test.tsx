@@ -7,8 +7,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { OwnerWorkspaceSession } from './OwnerWorkspaceSidebar';
 import { OwnerWorkspaceSidebar } from './OwnerWorkspaceSidebar';
 import { createAppI18nInstance } from './localization/i18n';
+import { renderWithAppProviders } from './test/render';
 import { getBackendUrl } from '@/shared/api';
-import { renderWithAppProviders, server } from '@/shared/test';
+import { server } from '@/shared/test';
 
 const ownerSession: OwnerWorkspaceSession = {
   authenticated: true,

@@ -9,6 +9,7 @@ export const sharedLocalizationResources = {
         turkish: 'Turkish',
       },
       errors: {
+        retry: 'Try again',
         genericDescription: 'Something went wrong. Try again.',
       },
     },
@@ -21,6 +22,7 @@ export const sharedLocalizationResources = {
         turkish: 'T\u00fcrk\u00e7e',
       },
       errors: {
+        retry: 'Tekrar dene',
         genericDescription: 'Bir \u015feyler ters gitti. Tekrar deneyin.',
       },
     },
@@ -33,6 +35,7 @@ export const sharedLocalizationResources = {
         turkish: 'التركية',
       },
       errors: {
+        retry: '\u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649',
         genericDescription: 'حدث خطأ ما. حاول مرة أخرى.',
       },
     },

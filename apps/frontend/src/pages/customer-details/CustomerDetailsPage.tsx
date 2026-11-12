@@ -49,7 +49,7 @@ export function CustomerDetailsPage({ defaultCurrency }: { defaultCurrency: Curr
   if (customerQuery.isError || !customerQuery.data) {
     return (
       <ErrorStatePage
-        actionLabel={t('app.error.retry')}
+        actionLabel={t('errors.retry')}
         detail={t('errors.genericDescription')}
         isActionPending={customerQuery.isFetching}
         onAction={() => {

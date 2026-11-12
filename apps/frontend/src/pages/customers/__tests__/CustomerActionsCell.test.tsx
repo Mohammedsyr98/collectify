@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithAppProviders, RouterLocationProbe } from '@/shared/test';
+import { renderWithAppProviders, RouterLocationProbe } from './render';
 
 import { CustomerActionsCell } from '../list/CustomerActionsCell';
 import { customerDirectoryResources } from '../localization/resources';

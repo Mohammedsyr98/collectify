@@ -6,17 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { paymentApiErrorCode } from '@collectify/contracts';
 
-import { appShellResources } from '../../../app/localization/appShellResources';
-import { getBackendUrl } from '../../../shared/api/http';
-import { renderWithAppProviders } from '../../../shared/test/render';
-import { server } from '../../../shared/test/server';
+import { getBackendUrl } from '@/shared/api';
+import { sharedLocalizationResources } from '@/shared/localization';
+import { renderWithAppProviders } from './render';
+import { server } from '@/shared/test';
 import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';
 import { createPaymentTargetFixture } from './paymentTestData';
 
 const paymentMessages = paymentResources.en.common.payments;
-const appMessages = appShellResources.en.common.app;
+const retryLabel = sharedLocalizationResources.en.common.errors.retry;
 const installmentLabel = (position: number) =>
   paymentMessages.drawer.installmentLabel.replace('{{position}}', String(position));
 
@@ -310,7 +310,7 @@ describe('PaymentDrawer', () => {
     });
     expect(errorState).not.toHaveTextContent('Something went wrong.');
 
-    await user.click(within(errorState).getByRole('button', { name: appMessages.error.retry }));
+    await user.click(within(errorState).getByRole('button', { name: retryLabel }));
 
     expect(within(drawer).queryByRole('alert')).not.toBeInTheDocument();
     expect(

@@ -1,4 +1,4 @@
-import type { SupportedLocale } from '../../shared/localization';
+import type { SupportedLocale } from '@/shared/localization';
 
 export const appShellResources = {
   en: {
@@ -8,7 +8,6 @@ export const appShellResources = {
           ariaLabel: 'Loading Collectify',
         },
         error: {
-          retry: 'Try again',
           sessionUnavailable: {
             detail: 'Try again in a moment.',
             title: "We couldn't load Collectify",
@@ -29,7 +28,6 @@ export const appShellResources = {
           },
           navigationLabel: 'Workspace sections',
           signOut: 'Sign out',
-          signOutErrorTitle: 'Could not sign out',
           signingOut: 'Signing out',
           sidebarLabel: 'Workspace navigation',
           userLabel: 'User',
@@ -44,7 +42,6 @@ export const appShellResources = {
           ariaLabel: 'Collectify y\u00fckleniyor',
         },
         error: {
-          retry: 'Tekrar dene',
           sessionUnavailable: {
             detail: 'Birazdan tekrar deneyin.',
             title: 'Collectify y\u00fcklenemedi',
@@ -66,7 +63,6 @@ export const appShellResources = {
           },
           navigationLabel: 'Çalışma alanı bölümleri',
           signOut: 'Oturumu kapat',
-          signOutErrorTitle: 'Oturum kapat\u0131lamad\u0131',
           signingOut: 'Oturum kapat\u0131l\u0131yor',
           sidebarLabel: 'Çalışma alanı gezinmesi',
           userLabel: 'Kullanıcı',
@@ -81,7 +77,6 @@ export const appShellResources = {
           ariaLabel: 'جارٍ تحميل Collectify',
         },
         error: {
-          retry: 'حاول مرة أخرى',
           sessionUnavailable: {
             detail: 'حاول مرة أخرى بعد قليل.',
             title: 'تعذر تحميل Collectify',
@@ -102,7 +97,6 @@ export const appShellResources = {
           },
           navigationLabel: 'أقسام مساحة العمل',
           signOut: 'تسجيل الخروج',
-          signOutErrorTitle: 'تعذر تسجيل الخروج',
           signingOut: 'جارٍ تسجيل الخروج',
           sidebarLabel: 'تنقل مساحة العمل',
           userLabel: 'المستخدم',

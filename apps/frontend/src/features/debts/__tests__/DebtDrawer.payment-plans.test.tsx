@@ -9,7 +9,7 @@ import {
   type CreateDebtRequest,
 } from '@collectify/contracts';
 
-import { renderWithAppProviders } from '../../../shared/test/render';
+import { renderWithAppProviders } from './render';
 import { DebtDrawer } from '../ui/editor/DebtDrawer';
 import { debtResources } from '../localization/resources';
 

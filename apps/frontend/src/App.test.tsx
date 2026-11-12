@@ -8,8 +8,8 @@ import type { CustomerListResponse, SessionResponse } from '@collectify/contract
 
 import App from './App';
 import { createAppI18nInstance } from './app/localization/i18n';
+import { renderWithAppProviders } from './app/test/render';
 import { getBackendUrl } from './shared/api/http';
-import { renderWithAppProviders } from './shared/test/render';
 import { server } from './shared/test/server';
 
 const unauthenticatedSession: SessionResponse = {

@@ -8,7 +8,7 @@ import { debtApiErrorCode, type DebtResponse } from '@collectify/contracts';
 
 import { getBackendUrl } from '@/shared/api';
 import { localeStorageKey, sharedLocalizationResources } from '@/shared/localization';
-import { renderWithAppProviders, server } from '@/shared/test';
+import { renderWithAppProviders, server } from './render';
 import { baseCustomer, resetCustomerTestEnvironment } from './customerDetailsTestData';
 import { customerMessages, debtMessages } from './customerDetailsTestMessages';
 import { customerDetailsResources } from '../localization/resources';

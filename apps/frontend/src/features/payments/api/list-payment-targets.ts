@@ -4,7 +4,7 @@ import {
   type PaymentTargetQuery,
 } from '@collectify/contracts';
 
-import { fetchBackend } from '../../../shared/api/fetch-backend';
+import { fetchBackend } from '@/shared/api';
 
 export async function listPaymentTargets(
   customerId: string,

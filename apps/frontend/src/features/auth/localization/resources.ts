@@ -50,6 +50,9 @@ export const authResources = {
             successDescription: 'Welcome back to Collectify.',
             successTitle: 'Signed in',
           },
+          signOut: {
+            errorTitle: 'Could not sign out',
+          },
           signUp: {
             errorTitle: 'Could not create account',
             successDescription: 'Your Collectify workspace is ready.',
@@ -111,6 +114,9 @@ export const authResources = {
             successDescription: 'Collectify\u2019a tekrar ho\u015f geldiniz.',
             successTitle: 'Giri\u015f yap\u0131ld\u0131',
           },
+          signOut: {
+            errorTitle: 'Oturum kapat\u0131lamad\u0131',
+          },
           signUp: {
             errorTitle: 'Hesap olu\u015fturulamad\u0131',
             successDescription: 'Collectify \u00e7al\u0131\u015fma alan\u0131n\u0131z haz\u0131r.',
@@ -170,6 +176,9 @@ export const authResources = {
             errorTitle: 'تعذر تسجيل الدخول',
             successDescription: 'مرحبًا بعودتك إلى Collectify.',
             successTitle: 'تم تسجيل الدخول',
+          },
+          signOut: {
+            errorTitle: 'تعذر تسجيل الخروج',
           },
           signUp: {
             errorTitle: 'تعذر إنشاء الحساب',

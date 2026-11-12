@@ -20,7 +20,7 @@ export function useOwnerSignOut() {
     onError: (error) => {
       showToast({
         variant: 'error',
-        title: t('app.workspace.signOutErrorTitle'),
+        title: t('auth.toast.signOut.errorTitle'),
         description: getApiErrorDescription(
           error,
           t('errors.genericDescription'),

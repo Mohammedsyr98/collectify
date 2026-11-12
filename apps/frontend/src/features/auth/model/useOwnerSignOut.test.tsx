@@ -8,7 +8,7 @@ import type { SessionResponse } from '@collectify/contracts';
 
 import { useSessionQuery } from '@/entities/session';
 import { getBackendUrl } from '@/shared/api';
-import { renderWithAppProviders } from '@/shared/test';
+import { renderWithAppProviders } from '../test/render';
 import { server } from '@/shared/test';
 import { useOwnerSignOut } from './useOwnerSignOut';
 

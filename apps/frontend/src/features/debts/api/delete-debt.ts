@@ -1,4 +1,4 @@
-import { fetchBackend } from '../../../shared/api/fetch-backend';
+import { fetchBackend } from '@/shared/api';
 
 export async function deleteDebt(
   customerId: string,

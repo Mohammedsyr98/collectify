@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next';
 
 import type { EligiblePaymentState, PaymentTarget } from '@collectify/contracts';
 
-import { formatCurrencyAmount, formatDateOnly, useLocalization } from '../../../../shared/localization';
-import { PaginationControls } from '../../../../shared/ui/pagination/PaginationControls';
-import { SegmentedControl } from '../../../../shared/ui/segmented-control/SegmentedControl';
-import { useDebouncedValue } from '../../../../shared/useDebouncedValue';
+import { formatCurrencyAmount, formatDateOnly, useLocalization } from '@/shared/localization';
+import { useDebouncedValue } from '@/shared/useDebouncedValue';
+import { PaginationControls } from '@/shared/ui/pagination';
+import { SegmentedControl } from '@/shared/ui/segmented-control';
 import { usePaymentTargetListQuery } from '../../model/paymentTargetQueries';
 
 const paymentTargetSkeletonCards = [0, 1, 2];
@@ -268,7 +268,7 @@ function PaymentTargetError({ onRetry }: { onRetry: () => void }) {
           type="button"
         >
           <RefreshCw aria-hidden="true" size={15} strokeWidth={2.4} />
-          {t('app.error.retry')}
+          {t('errors.retry')}
         </button>
       </section>
     </FocusScope>

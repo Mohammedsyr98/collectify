@@ -4,15 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { appShellResources } from '../../../app/localization/appShellResources';
-import { getBackendUrl } from '../../../shared/api/http';
-import { renderWithAppProviders } from '../../../shared/test/render';
-import { server } from '../../../shared/test/server';
+import { getBackendUrl } from '@/shared/api';
+import { sharedLocalizationResources } from '@/shared/localization';
+import { renderWithAppProviders } from './render';
+import { server } from '@/shared/test';
 import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 import { paymentResources } from '../localization/resources';
 import { createPaymentTargetFixture } from './paymentTestData';
 
-const appMessages = appShellResources.en.common.app;
+const retryLabel = sharedLocalizationResources.en.common.errors.retry;
 const paymentMessages = paymentResources.en.common.payments;
 
 describe('PaymentDrawer', () => {
@@ -355,10 +355,10 @@ describe('PaymentDrawer', () => {
       'true',
     );
     expect(
-      within(errorState).getByRole('button', { name: appMessages.error.retry }),
+      within(errorState).getByRole('button', { name: retryLabel }),
     ).toHaveFocus();
 
-    await user.click(within(errorState).getByRole('button', { name: appMessages.error.retry }));
+    await user.click(within(errorState).getByRole('button', { name: retryLabel }));
 
     expect(within(drawer).queryByRole('alert')).not.toBeInTheDocument();
     expect(

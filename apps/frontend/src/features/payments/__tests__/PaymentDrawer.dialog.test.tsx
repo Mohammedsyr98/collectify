@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PaymentTarget } from '@collectify/contracts';
 
-import { localeStorageKey } from '../../../shared/localization';
-import { renderWithAppProviders } from '../../../shared/test/render';
+import { localeStorageKey } from '@/shared/localization';
+import { renderWithAppProviders } from './render';
 import { PaymentDrawer } from '../ui/editor/PaymentDrawer';
 import { paymentResources } from '../localization/resources';
 import { renderPaymentDrawer } from './paymentDrawerTestUtils';

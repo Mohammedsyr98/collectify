@@ -95,7 +95,9 @@ function mockOwnerSignInMalformedError() {
 }
 
 function renderAuthEntryPage() {
-  return renderWithAppProviders(<AuthEntryPage />);
+  return renderWithAppProviders(<AuthEntryPage />, {
+    createI18nInstance: createAuthTestI18nInstance,
+  });
 }
 
 function setBrowserLanguages(languages: readonly string[]) {

@@ -16,20 +16,9 @@ A module may depend on a strictly lower layer. It may not depend on a higher
 layer or on another slice on the same layer. `App` and `Shared` are not split
 into business-domain slices.
 
-The current frontend is still being migrated. Existing legacy boundaries are
-listed explicitly in `steiger.config.ts`; those entries are temporary and must
-be removed by the follow-up migration ticket that owns each boundary. New
-slices and new files must follow the rules below immediately.
-
-The current legacy feature slices and Shared segments also have a temporary
-public-interface-existence exception because they predate this contract. That
-exception only suppresses the missing-`index.ts` diagnostic; it does not grant
-permission for new import violations. New slices must provide a real named
-public interface from their first commit.
-
-Four existing App-localization files retain their original relative imports to
-Shared. They are listed as exact legacy files in `steiger.config.ts`; new App
-files must use the `@/*` alias for cross-layer imports.
+All frontend slices and segments follow this contract. The executable checks in
+`steiger.config.ts` enforce the same dependency direction, import locality, and
+public-interface rules for existing and new code.
 
 ## Layer responsibilities
 
@@ -89,7 +78,7 @@ Entities. Keep rendering-module props beside the rendering module unless a
 concept is shared within the slice.
 
 Do not create top-level `data`, `domain`, `useCases`, `workflows`, or Widgets
-layers during this migration. `ui`, `model`, `api`, `lib`, and localization
+layers. `ui`, `model`, `api`, `lib`, and localization
 segments are optional; they are added only when they improve navigation for a
 slice with enough code of distinct purposes.
 
@@ -115,9 +104,8 @@ slice unless they are genuinely generic Shared infrastructure.
 
 ## Migration and coordination
 
-This bootstrap is behavior-preserving. It does not redesign routes, copy,
-accessibility, localization, backend contracts, persistence, or customer,
-debt, and payment behavior.
+Architecture changes must preserve routes, copy, accessibility, localization,
+backend contracts, persistence, and customer, debt, and payment behavior.
 
 The payment-lifecycle work in issues #140-#149 overlaps with the customer
 details, payment drawer, debt constraints, cache, localization, and test

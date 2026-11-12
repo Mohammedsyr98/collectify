@@ -2,8 +2,7 @@ import { Hash, MapPin, Phone, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { FormField } from '../../../shared/ui/form/FormField';
-import { FormInput } from '../../../shared/ui/form/FormInput';
+import { FormField, FormInput } from '@/shared/ui/form';
 import { useCustomerValidationErrorFormatter } from '../localization/useCustomerValidationErrorFormatter';
 
 export type CustomerFormValues = {

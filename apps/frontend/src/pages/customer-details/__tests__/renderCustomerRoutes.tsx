@@ -1,4 +1,4 @@
-import { renderWithAppProviders, RouterLocationProbe } from '@/shared/test';
+import { renderWithAppProviders, RouterLocationProbe } from './render';
 import type { Currency } from '@collectify/contracts';
 import { Route, Routes } from 'react-router';
 

@@ -4,7 +4,7 @@ import {
   type RecordPaymentResponse,
 } from '@collectify/contracts';
 
-import { fetchBackend } from '../../../shared/api/fetch-backend';
+import { fetchBackend } from '@/shared/api';
 
 export type PaymentSubmissionRequest = Omit<
   RecordPaymentRequest,

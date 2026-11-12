@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { LocalizationProvider } from '../../shared/localization';
+import { LocalizationProvider } from '@/shared/localization';
 
 import { createAppI18nInstance } from './i18n';
 

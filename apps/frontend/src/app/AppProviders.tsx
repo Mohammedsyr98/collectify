@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
+import { ProviderStack } from '@/shared/lib';
+
 import { AppLocalizationProvider } from './localization/AppLocalizationProvider';
-import { ToastProvider } from '../shared/ui/toast/ToastProvider';
 
 const defaultQueryClient = new QueryClient();
 
@@ -14,10 +15,10 @@ export function AppProviders({
   queryClient?: QueryClient;
 }) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <ProviderStack queryClient={queryClient}>
       <AppLocalizationProvider>
-        <ToastProvider>{children}</ToastProvider>
+        {children}
       </AppLocalizationProvider>
-    </QueryClientProvider>
+    </ProviderStack>
   );
 }

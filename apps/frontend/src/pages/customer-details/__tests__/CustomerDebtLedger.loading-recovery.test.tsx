@@ -11,7 +11,7 @@ import { Route, Routes } from 'react-router';
 
 import { getBackendUrl } from '@/shared/api';
 import { sharedLocalizationResources } from '@/shared/localization';
-import { renderWithAppProviders, RouterLocationProbe, server } from '@/shared/test';
+import { renderWithAppProviders, RouterLocationProbe, server } from './render';
 
 import { CustomerDetailsPage } from '../CustomerDetailsPage';
 import { baseCustomer, resetCustomerTestEnvironment } from './customerDetailsTestData';
