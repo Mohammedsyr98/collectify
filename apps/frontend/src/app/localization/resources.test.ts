@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { supportedLocales } from '../../shared/localization';
+import { supportedLocales } from '@/shared/localization';
 
 import { createAppI18nInstance } from './i18n';
 import { appI18nResources } from './resources';

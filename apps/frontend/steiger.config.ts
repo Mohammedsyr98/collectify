@@ -42,29 +42,6 @@ const appAndSharedLegacyFiles = [
   './src/shared/test/render.tsx',
 ];
 
-// These existing App-localization files keep their original relative Shared
-// imports. New App files must use the source alias for cross-layer imports.
-const appLocalizationLegacyFiles = [
-  './src/app/localization/AppLocalizationProvider.tsx',
-  './src/app/localization/appShellResources.ts',
-  './src/app/localization/i18n.ts',
-  './src/app/localization/resources.test.ts',
-];
-
-const legacyPublicApiPaths = [
-  './src/shared/api/**',
-  './src/shared/test/**',
-  './src/shared/ui/anchored-menu/**',
-  './src/shared/ui/anchored-popup/**',
-  './src/shared/ui/error/**',
-  './src/shared/ui/form/**',
-  './src/shared/ui/loading/**',
-  './src/shared/ui/pagination/**',
-  './src/shared/ui/search/**',
-  './src/shared/ui/segmented-control/**',
-  './src/shared/ui/toast/**',
-];
-
 export default defineConfig([
   ...fsd.configs.recommended,
   {
@@ -90,24 +67,6 @@ export default defineConfig([
       'fsd/forbidden-imports': 'off',
       'fsd/import-locality': 'off',
       'fsd/no-public-api-sidestep': 'off',
-    },
-  },
-  {
-    // Preserve the four existing App-localization import paths without
-    // weakening other architecture checks for the App layer.
-    files: appLocalizationLegacyFiles,
-    rules: {
-      'fsd/import-locality': 'off',
-    },
-  },
-  {
-    // This is only a public-api-existence exception for named legacy
-    // slices/segments. Import-direction and locality rules remain active
-    // outside the exact file boundaries listed above.
-    // Follow-up migration tickets must add public APIs before removing it.
-    files: legacyPublicApiPaths,
-    rules: {
-      'fsd/public-api': 'off',
     },
   },
 ]);

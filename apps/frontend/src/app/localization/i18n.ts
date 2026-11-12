@@ -1,7 +1,7 @@
 import {
   createI18nInstance,
   type SupportedLocale,
-} from '../../shared/localization';
+} from '@/shared/localization';
 
 import { appI18nResources } from './resources';
 
