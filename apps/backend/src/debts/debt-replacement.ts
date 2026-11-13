@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { Database } from '../database/database.service';
 import { debtScheduleItems, debts } from '../database/schema';
-import { loadPaidTotalsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { findOwnedDebtForUpdate } from './debt-lock';
 import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { debtException } from './debts.errors';

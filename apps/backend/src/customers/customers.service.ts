@@ -20,7 +20,7 @@ import { customerConstraints, customers } from '../database/schema';
 import {
   CustomerReceivables,
   type CustomerCurrencySummary,
-} from '../receivables/customer-receivables';
+} from '../receivables';
 import { calculatePagination } from '../shared/pagination';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { customerException } from './customers.errors';
