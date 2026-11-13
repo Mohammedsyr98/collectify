@@ -78,3 +78,12 @@
 - New frontend code follows `App -> Pages -> Features -> Entities -> Shared`; lower layers must not import higher layers or peer slices.
 - Cross-slice imports use the frontend `@/*` alias and a target public interface; same-slice imports remain relative.
 - `pnpm --filter @collectify/frontend lint` runs ESLint and the Steiger architecture check. Do not widen temporary Steiger legacy exceptions; remove them in the migration ticket that owns the boundary.
+
+## Backend Architecture
+
+- The backend dependency contract is documented in [apps/backend/ARCHITECTURE.md](apps/backend/ARCHITECTURE.md).
+- Same-feature imports remain relative. Cross-feature imports must use the target feature's public `index.ts` interface.
+- Routine implementation changes behind an existing interface, and use of a configured dependency that follows capability ownership, may proceed without architectural approval.
+- Stop and request human approval before adding or reversing a feature edge, changing an edge's purpose, splitting or merging modules, introducing a shared abstraction, or adding a top-level business module.
+- Cycles are never an approved shortcut. Propose a different ownership or composition design instead.
+- `pnpm --filter @collectify/backend lint` runs both ESLint and the backend architecture check. Do not add broad or permanent Dependency Cruiser exceptions.
