@@ -1,7 +1,7 @@
 import { debtApiErrorCode } from '@collectify/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { checkDebtPaymentHistoryChange } from './debt-payment-history';
+import { checkDebtChange } from './debt-change-policy';
 
 const currentDebt = { currency: 'USD' };
 const onePaymentSchedule = [{ id: 'schedule_one' }];
@@ -12,10 +12,10 @@ function facts(
   return new Map(entries);
 }
 
-describe('checkDebtPaymentHistoryChange', () => {
+describe('checkDebtChange', () => {
   it('allows a replacement when no payment has been recorded', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
         paidTotalsByScheduleItemId: facts([]),
@@ -33,7 +33,7 @@ describe('checkDebtPaymentHistoryChange', () => {
 
   it('rejects deleting a debt with recorded payments', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
         paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
@@ -44,7 +44,7 @@ describe('checkDebtPaymentHistoryChange', () => {
 
   it('rejects changing currency after a payment is recorded', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
         paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
@@ -62,7 +62,7 @@ describe('checkDebtPaymentHistoryChange', () => {
 
   it('rejects changing between one payment and installments after a payment', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
         paidTotalsByScheduleItemId: facts([['schedule_one', '25.00']]),
@@ -83,7 +83,7 @@ describe('checkDebtPaymentHistoryChange', () => {
 
   it('rejects removing a schedule item with recorded payments', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: [
           { id: 'schedule_one' },
@@ -107,7 +107,7 @@ describe('checkDebtPaymentHistoryChange', () => {
 
   it('rejects reducing a schedule item below its recorded payments', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: onePaymentSchedule,
         paidTotalsByScheduleItemId: facts([['schedule_one', '25.30']]),
@@ -125,7 +125,7 @@ describe('checkDebtPaymentHistoryChange', () => {
 
   it('rejects reducing the debt total below all recorded payments', () => {
     expect(
-      checkDebtPaymentHistoryChange({
+      checkDebtChange({
         currentDebt,
         currentScheduleItems: [
           { id: 'schedule_one' },

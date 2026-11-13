@@ -6,7 +6,7 @@ import type { Database } from '../database/database.service';
 import { debtScheduleItems, debts } from '../database/schema';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { findOwnedDebtForUpdate } from './debt-lock';
-import { checkDebtPaymentHistoryChange } from './debt-payment-history';
+import { checkDebtChange } from './debt-change-policy';
 import { debtException } from './debts.errors';
 
 type DebtRow = typeof debts.$inferSelect;
@@ -52,7 +52,7 @@ export async function replaceDebt(
     currentSchedule,
     request.scheduleItems,
   );
-  const conflict = checkDebtPaymentHistoryChange({
+  const conflict = checkDebtChange({
     currentDebt: lockedDebt,
     currentScheduleItems: currentSchedule,
     paidTotalsByScheduleItemId,

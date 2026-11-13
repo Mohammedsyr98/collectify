@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth';
 import { DatabaseModule } from '../database/database.module';
-import { ReceivablesModule } from '../receivables/receivables.module';
+import { ReceivablesModule } from '../receivables';
 import { CustomersController } from './customers.controller';
 import { CustomersService } from './customers.service';
 

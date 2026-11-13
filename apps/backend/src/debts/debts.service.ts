@@ -15,12 +15,12 @@ import { randomUUID } from 'node:crypto';
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
-import { customerException } from '../customers/customers.errors';
+import { customerException } from '../customers';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
-import { checkDebtPaymentHistoryChange } from './debt-payment-history';
+import { checkDebtChange } from './debt-change-policy';
 import { findOwnedDebtForUpdate } from './debt-lock';
 import { loadDebtsWithPaymentDetails } from './debt-read-model';
 import { replaceDebt as replaceDebtInDatabase } from './debt-replacement';
@@ -152,7 +152,7 @@ export class DebtsService {
         tx,
         scheduleItems.map(({ id }) => id),
       );
-      const conflict = checkDebtPaymentHistoryChange({
+      const conflict = checkDebtChange({
         currentDebt: ownedDebt,
         currentScheduleItems: scheduleItems,
         paidTotalsByScheduleItemId,

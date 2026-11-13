@@ -3,6 +3,7 @@ export type {
   CustomerCurrencySummary,
   SummarizeCustomersRequest,
 } from './customer-receivables';
+export { ReceivablesModule } from './receivables.module';
 export { loadPaidTotalsByScheduleItemId } from './schedule-item-payment-amounts';
 export {
   createScheduleItemPaymentSummary,

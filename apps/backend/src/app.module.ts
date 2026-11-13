@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from './database/database.module';
-import { CustomersModule } from './customers/customers.module';
-import { DebtsModule } from './debts/debts.module';
+import { CustomersModule } from './customers';
+import { DebtsModule } from './debts';
 import { HealthController } from './health.controller';
 import { OwnerSignInModule } from './auth/owner/sign-in/owner-sign-in.module';
 import { OwnerSignOutModule } from './auth/owner/sign-out/owner-sign-out.module';
 import { OwnerSignUpModule } from './auth/owner/sign-up/owner-sign-up.module';
 import { SessionModule } from './auth/owner/session/session.module';
-import { PaymentsModule } from './payments/payments.module';
+import { PaymentsModule } from './payments';
 
 @Module({
   imports: [

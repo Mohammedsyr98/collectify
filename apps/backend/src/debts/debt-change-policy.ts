@@ -1,6 +1,6 @@
 import { debtApiErrorCode } from '@collectify/contracts';
 
-type DebtPaymentHistoryConflictCode =
+type DebtChangeConflictCode =
   | typeof debtApiErrorCode.debtHasPayments
   | typeof debtApiErrorCode.debtCurrencyChangeBlocked
   | typeof debtApiErrorCode.debtPaymentPlanChangeBlocked
@@ -8,7 +8,7 @@ type DebtPaymentHistoryConflictCode =
   | typeof debtApiErrorCode.debtScheduleItemAmountBelowPaid
   | typeof debtApiErrorCode.debtTotalAmountBelowPaid;
 
-type DebtPaymentHistoryChange =
+type DebtChange =
   | { kind: 'delete' }
   | {
       kind: 'replace';
@@ -22,18 +22,16 @@ type DebtPaymentHistoryChange =
       };
     };
 
-type DebtPaymentHistoryInput = {
+type DebtChangeInput = {
   currentDebt: {
     currency: string;
   };
   currentScheduleItems: readonly { id: string }[];
   paidTotalsByScheduleItemId: ReadonlyMap<string, string>;
-  change: DebtPaymentHistoryChange;
+  change: DebtChange;
 };
 
-export function checkDebtPaymentHistoryChange(
-  input: DebtPaymentHistoryInput,
-): DebtPaymentHistoryConflictCode | null {
+export function checkDebtChange(input: DebtChangeInput): DebtChangeConflictCode | null {
   const totalReceivedAmount = sumMinorUnits([
     ...[...input.paidTotalsByScheduleItemId.values()].map(toMinorUnits),
   ]);
