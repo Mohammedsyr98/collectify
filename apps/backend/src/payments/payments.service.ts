@@ -13,7 +13,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts, payments } from '../database/schema';
-import { findOwnedDebtForUpdate } from '../debts/debt-lock';
+import { findOwnedDebtForUpdate } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
