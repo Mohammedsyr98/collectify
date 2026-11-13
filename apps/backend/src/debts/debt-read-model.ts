@@ -6,7 +6,7 @@ import {
   loadPaymentDetailsByDebtId,
   type PaymentSummary,
   type ScheduleItemPaymentDetails,
-} from '../payments/payment-details-by-debt';
+} from '../receivables';
 import { getScheduleItemTiming } from './debt-timing';
 
 type SelectExecutor = Pick<Database, 'select'>;

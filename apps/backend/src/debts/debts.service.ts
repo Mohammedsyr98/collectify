@@ -19,7 +19,7 @@ import { customerException } from '../customers/customers.errors';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
-import { loadPaidTotalsByScheduleItemId } from '../payments/schedule-item-payment-amounts';
+import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { checkDebtPaymentHistoryChange } from './debt-payment-history';
 import { findOwnedDebtForUpdate } from './debt-lock';
 import { loadDebtsWithPaymentDetails } from './debt-read-model';

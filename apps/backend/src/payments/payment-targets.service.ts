@@ -12,11 +12,11 @@ import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts } from '../database/schema';
 import { customerException } from '../customers/customers.errors';
+import { createScheduleItemPaymentSummary, getPaymentState } from '../receivables';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { getScheduleItemTiming } from '../debts/debt-timing';
-import { createScheduleItemPaymentSummary, getPaymentState } from './schedule-item-payment-summary';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
