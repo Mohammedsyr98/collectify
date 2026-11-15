@@ -7,10 +7,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSetCookie, toCookieHeader } from '../test-support/http-cookies';
 import {
-  startIntegrationPostgres,
+  createIntegrationDatabase,
+  startIntegrationBackend,
   type IntegrationBackend,
-  type IntegrationPostgres,
-} from '../test-support/integration-postgres';
+  type IntegrationDatabase,
+} from '../test-support/integration-test-support';
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 
@@ -44,13 +45,13 @@ type DebtRouteOperation = (
 ) => Promise<Response>;
 
 describe('debt routes', () => {
-  let postgres: IntegrationPostgres | undefined;
+  let postgres: IntegrationDatabase | undefined;
   let backend: IntegrationBackend | undefined;
   let ownerAuth: ReturnType<typeof createOwnerAuthClient> | undefined;
 
   beforeAll(async () => {
-    postgres = await startIntegrationPostgres();
-    backend = await postgres.startBackend();
+    postgres = createIntegrationDatabase();
+    backend = await startIntegrationBackend();
     ownerAuth = createOwnerAuthClient(backend.baseUrl);
   });
 
@@ -60,7 +61,6 @@ describe('debt routes', () => {
 
   afterAll(async () => {
     await backend?.app.close();
-    await postgres?.stop();
   });
 
   it('projects an unpaid one-payment debt in create and list responses', async () => {

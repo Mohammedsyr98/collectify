@@ -10,9 +10,9 @@ import {
 } from '../index';
 import { getSetCookie, toCookieHeader } from '../../test-support/http-cookies';
 import {
-  startIntegrationPostgres,
-  type IntegrationPostgres,
-} from '../../test-support/integration-postgres';
+  createIntegrationDatabase,
+  type IntegrationDatabase,
+} from '../../test-support/integration-test-support';
 import { createOwnerAuthClient } from '../../test-support/owner-auth-client';
 
 @Controller('protected-probe')
@@ -24,13 +24,13 @@ class ProtectedProbeController {
 }
 
 describe('protected backend routes', () => {
-  let postgres: IntegrationPostgres | undefined;
+  let postgres: IntegrationDatabase | undefined;
   let app: INestApplication | undefined;
   let baseUrl: string | undefined;
   let ownerAuth: ReturnType<typeof createOwnerAuthClient> | undefined;
 
   beforeAll(async () => {
-    postgres = await startIntegrationPostgres();
+    postgres = createIntegrationDatabase();
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -51,7 +51,6 @@ describe('protected backend routes', () => {
 
   afterAll(async () => {
     await app?.close();
-    await postgres?.stop();
   });
 
   it('rejects anonymous requests to protected routes', async () => {

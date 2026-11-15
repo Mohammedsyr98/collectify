@@ -9,10 +9,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSetCookie, toCookieHeader } from '../test-support/http-cookies';
 import {
-  startIntegrationPostgres,
+  createIntegrationDatabase,
+  startIntegrationBackend,
   type IntegrationBackend,
-  type IntegrationPostgres,
-} from '../test-support/integration-postgres';
+  type IntegrationDatabase,
+} from '../test-support/integration-test-support';
 import { createOwnerAuthClient } from '../test-support/owner-auth-client';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 
@@ -20,13 +21,13 @@ describe('customer routes', () => {
   const customerCountWithSecondPage = customerListPageSize + 1;
   const expectedCustomerListTotalPages = 2;
 
-  let postgres: IntegrationPostgres | undefined;
+  let postgres: IntegrationDatabase | undefined;
   let backend: IntegrationBackend | undefined;
   let ownerAuth: ReturnType<typeof createOwnerAuthClient> | undefined;
 
   beforeAll(async () => {
-    postgres = await startIntegrationPostgres();
-    backend = await postgres.startBackend();
+    postgres = createIntegrationDatabase();
+    backend = await startIntegrationBackend();
     ownerAuth = createOwnerAuthClient(backend.baseUrl);
   });
 
@@ -36,7 +37,6 @@ describe('customer routes', () => {
 
   afterAll(async () => {
     await backend?.app.close();
-    await postgres?.stop();
   });
 
   it('creates a customer for the authenticated owner and retrieves durable details', async () => {
