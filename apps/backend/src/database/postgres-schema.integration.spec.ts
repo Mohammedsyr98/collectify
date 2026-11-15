@@ -1,9 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  startIntegrationPostgres,
-  type IntegrationPostgres,
-} from '../test-support/integration-postgres';
+  createIntegrationDatabase,
+  type IntegrationDatabase,
+} from '../test-support/integration-test-support';
 import {
   customerConstraints,
   debtConstraints,
@@ -13,14 +13,10 @@ import {
 } from './schema';
 
 describe('Postgres migrations', () => {
-  let postgres: IntegrationPostgres | undefined;
+  let postgres: IntegrationDatabase | undefined;
 
   beforeAll(async () => {
-    postgres = await startIntegrationPostgres();
-  });
-
-  afterAll(async () => {
-    await postgres?.stop();
+    postgres = createIntegrationDatabase();
   });
 
   it('stores a payment fact for an existing schedule item', async () => {
