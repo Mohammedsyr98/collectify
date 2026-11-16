@@ -54,3 +54,9 @@ function configureIntegrationEnvironment(): string {
 
   return connectionUri;
 }
+
+declare module 'vitest' {
+  interface ProvidedContext {
+    integrationDatabaseUrl: string;
+  }
+}

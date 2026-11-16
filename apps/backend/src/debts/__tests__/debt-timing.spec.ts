@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getScheduleItemTiming } from './debt-timing';
+import { getScheduleItemTiming } from '../debt-timing';
 
 describe('debt timing', () => {
   it('classifies a schedule date relative to one Istanbul business date', () => {
