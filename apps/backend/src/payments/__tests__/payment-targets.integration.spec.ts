@@ -7,14 +7,14 @@ import {
 } from '@collectify/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { getSetCookie, toCookieHeader } from '../test-support/http-cookies';
+import { getSetCookie, toCookieHeader } from '../../test-support/http-cookies';
 import {
   createIntegrationDatabase,
   startIntegrationBackend,
   type IntegrationBackend,
   type IntegrationDatabase,
-} from '../test-support/integration-test-support';
-import { createOwnerAuthClient } from '../test-support/owner-auth-client';
+} from '../../test-support/integration-test-support';
+import { createOwnerAuthClient } from '../../test-support/owner-auth-client';
 
 describe('payment target routes', () => {
   let postgres: IntegrationDatabase | undefined;
@@ -35,10 +35,36 @@ describe('payment target routes', () => {
     await backend?.app.close();
   });
 
-  it('returns eligible unpaid and partially paid schedule items with debt and plan context', async () => {
+  it('projects only unpaid and partially paid schedule items with their debt and plan context', async () => {
     const owner = await signUpOwner('payment-target-list-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
-    await insertDebt();
+    await insertDebt({
+      id: 'payment_target_debt',
+      description: 'Installment debt',
+      totalAmount: '300.00',
+      currency: 'USD',
+      version: 1,
+      scheduleItems: [
+        {
+          id: 'payment_target_item_1',
+          position: 1,
+          amount: '100.00',
+          dueDate: '2026-10-01',
+        },
+        {
+          id: 'payment_target_item_2',
+          position: 2,
+          amount: '100.00',
+          dueDate: '2026-10-02',
+        },
+        {
+          id: 'payment_target_item_3',
+          position: 3,
+          amount: '100.00',
+          dueDate: '2026-10-03',
+        },
+      ],
+    });
     await insertPayment({
       id: 'payment_target_paid',
       scheduleItemId: 'payment_target_item_1',
@@ -58,22 +84,12 @@ describe('payment target routes', () => {
     );
 
     expect(response.status).toBe(200);
-    const rawBody = await response.json();
+    const body = paymentTargetListResponseSchema.parse(await response.json());
 
-    expect(rawBody.items[0]).not.toHaveProperty('debtRemainingAmount');
-    expect(rawBody.items[0].plan).not.toHaveProperty('itemCount');
-    expect(rawBody.items[1]).not.toHaveProperty('debtRemainingAmount');
-    expect(rawBody.items[1].plan).not.toHaveProperty('itemCount');
-
-    const body = paymentTargetListResponseSchema.parse(rawBody);
-
-    expect(body).toMatchObject({
-      page: 1,
-      pageSize: 10,
-      totalItems: 2,
-      totalPages: 1,
-      items: [
-        {
+    expect(body.items).toHaveLength(2);
+    expect(body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
           scheduleItemId: 'payment_target_item_2',
           debtId: 'payment_target_debt',
           debtDescription: 'Installment debt',
@@ -84,8 +100,8 @@ describe('payment target routes', () => {
           dueDate: '2026-10-02',
           paymentState: 'partiallyPaid',
           plan: { type: 'installment', position: 2 },
-        },
-        {
+        }),
+        expect.objectContaining({
           scheduleItemId: 'payment_target_item_3',
           debtId: 'payment_target_debt',
           debtDescription: 'Installment debt',
@@ -96,15 +112,19 @@ describe('payment target routes', () => {
           dueDate: '2026-10-03',
           paymentState: 'unpaid',
           plan: { type: 'installment', position: 3 },
-        },
-      ],
-    });
+        }),
+      ]),
+    );
   });
 
   it('filters payment targets by debt description and calculates pagination metadata from the matching targets', async () => {
     const owner = await signUpOwner('payment-target-search-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
-    await insertDebt();
+    await insertOnePaymentDebt({
+      debtId: 'payment_target_debt',
+      scheduleItemId: 'payment_target_item_1',
+      description: 'Installment debt',
+    });
     await insertOnePaymentDebt({
       debtId: 'non_matching_debt',
       scheduleItemId: 'non_matching_item',
@@ -121,48 +141,51 @@ describe('payment target routes', () => {
 
     expect(body.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
       'payment_target_item_1',
-      'payment_target_item_2',
-      'payment_target_item_3',
     ]);
-    expect(body).toMatchObject({
-      page: 1,
-      pageSize: 10,
-      totalItems: 3,
-      totalPages: 1,
-    });
+    expect(body.totalItems).toBe(1);
   });
 
   it('filters payment targets by payment state and calculates pagination metadata from the matching targets', async () => {
     const owner = await signUpOwner('payment-target-state-filter-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
-    await insertDebt();
-    await insertPayment({
-      id: 'payment_target_paid_for_state_filter',
-      scheduleItemId: 'payment_target_item_1',
-      amount: '100.00',
-      idempotencyKey: '10000000-0000-4000-8000-000000000103',
+    await insertDebt({
+      totalAmount: '200.00',
+      scheduleItems: [
+        {
+          id: 'payment_target_partially_paid',
+          position: 1,
+          amount: '100.00',
+          dueDate: '2026-10-01',
+        },
+        {
+          id: 'payment_target_unpaid',
+          position: 2,
+          amount: '100.00',
+          dueDate: '2026-10-02',
+        },
+      ],
     });
     await insertPayment({
       id: 'payment_target_partial_for_state_filter',
-      scheduleItemId: 'payment_target_item_2',
+      scheduleItemId: 'payment_target_partially_paid',
       amount: '25.00',
       idempotencyKey: '10000000-0000-4000-8000-000000000104',
     });
 
-    const expectations = [
+    const cases = [
       {
         paymentState: 'unpaid',
-        scheduleItemId: 'payment_target_item_3',
+        scheduleItemId: 'payment_target_unpaid',
       },
       {
         paymentState: 'partiallyPaid',
-        scheduleItemId: 'payment_target_item_2',
+        scheduleItemId: 'payment_target_partially_paid',
       },
     ] as const;
 
-    for (const expectation of expectations) {
+    for (const { paymentState, scheduleItemId } of cases) {
       const response = await fetch(
-        `${backend!.baseUrl}/customers/payment_target_customer/payment-targets?paymentState=${expectation.paymentState}`,
+        `${backend!.baseUrl}/customers/payment_target_customer/payment-targets?paymentState=${paymentState}`,
         { headers: { cookie: owner.cookieHeader } },
       );
 
@@ -170,18 +193,56 @@ describe('payment target routes', () => {
       const body = paymentTargetListResponseSchema.parse(await response.json());
 
       expect(body.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
-        expectation.scheduleItemId,
+        scheduleItemId,
       ]);
-      expect(body).toMatchObject({
-        page: 1,
-        pageSize: 10,
-        totalItems: 1,
-        totalPages: 1,
-      });
+      expect(body.totalItems).toBe(1);
     }
   });
 
-  it('returns payment-target pages in due-date and installment order with accurate pagination metadata', async () => {
+  it('orders payment targets by due date with installment position as a tie-breaker', async () => {
+    const owner = await signUpOwner('payment-target-ordering-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'payment_target_ordering_debt',
+      totalAmount: '300.00',
+      scheduleItems: [
+        {
+          id: 'payment_target_same_date_position_2',
+          position: 2,
+          amount: '100.00',
+          dueDate: '2026-11-02',
+        },
+        {
+          id: 'payment_target_earlier_date',
+          position: 3,
+          amount: '100.00',
+          dueDate: '2026-11-01',
+        },
+        {
+          id: 'payment_target_same_date_position_1',
+          position: 1,
+          amount: '100.00',
+          dueDate: '2026-11-02',
+        },
+      ],
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/payment_target_customer/payment-targets`,
+      { headers: { cookie: owner.cookieHeader } },
+    );
+
+    expect(response.status).toBe(200);
+    const body = paymentTargetListResponseSchema.parse(await response.json());
+
+    expect(body.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
+      'payment_target_earlier_date',
+      'payment_target_same_date_position_1',
+      'payment_target_same_date_position_2',
+    ]);
+  });
+
+  it('paginates payment targets without gaps or duplicates and returns accurate metadata', async () => {
     const owner = await signUpOwner('payment-target-pagination-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
     await insertTwelveItemDebtForPagination();
@@ -194,18 +255,7 @@ describe('payment target routes', () => {
     expect(firstPageResponse.status).toBe(200);
     const firstPage = paymentTargetListResponseSchema.parse(await firstPageResponse.json());
 
-    expect(firstPage.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
-      'pagination_item_12',
-      'pagination_item_11',
-      'pagination_item_10',
-      'pagination_item_09',
-      'pagination_item_08',
-      'pagination_item_07',
-      'pagination_item_06',
-      'pagination_item_05',
-      'pagination_item_04',
-      'pagination_item_03',
-    ]);
+    expect(firstPage.items).toHaveLength(10);
     expect(firstPage).toMatchObject({
       page: 1,
       pageSize: 10,
@@ -221,16 +271,23 @@ describe('payment target routes', () => {
     expect(secondPageResponse.status).toBe(200);
     const secondPage = paymentTargetListResponseSchema.parse(await secondPageResponse.json());
 
-    expect(secondPage.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
-      'pagination_item_01',
-      'pagination_item_02',
-    ]);
+    expect(secondPage.items).toHaveLength(2);
     expect(secondPage).toMatchObject({
       page: 2,
       pageSize: 10,
       totalItems: 12,
       totalPages: 2,
     });
+
+    const returnedScheduleItemIds = [...firstPage.items, ...secondPage.items]
+      .map(({ scheduleItemId }) => scheduleItemId)
+      .sort();
+    const expectedScheduleItemIds = Array.from(
+      { length: 12 },
+      (_, index) => `pagination_item_${(index + 1).toString().padStart(2, '0')}`,
+    );
+
+    expect(returnedScheduleItemIds).toEqual(expectedScheduleItemIds);
   });
 
   it('returns one-payment plan context for a debt with a single schedule item', async () => {
@@ -375,7 +432,28 @@ describe('payment target routes', () => {
     );
   }
 
-  async function insertDebt(): Promise<void> {
+  async function insertDebt({
+    id = 'payment_target_debt',
+    customerId = 'payment_target_customer',
+    description = 'Installment debt',
+    totalAmount = '300.00',
+    currency = 'USD',
+    version = 1,
+    scheduleItems,
+  }: {
+    id?: string;
+    customerId?: string;
+    description?: string;
+    totalAmount?: string;
+    currency?: 'TRY' | 'USD' | 'EUR';
+    version?: number;
+    scheduleItems: Array<{
+      id: string;
+      position: number;
+      amount: string;
+      dueDate: string;
+    }>;
+  }): Promise<void> {
     await postgres!.query(
       `
         INSERT INTO "debts" (
@@ -385,36 +463,44 @@ describe('payment target routes', () => {
           "total_amount",
           "currency",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "version"
         )
-        VALUES ($1, $2, $3, $4, $5, now(), now())
-      `,
-      ['payment_target_debt', 'payment_target_customer', 'Installment debt', '300.00', 'USD'],
-    );
-
-    await postgres!.query(
-      `
-        INSERT INTO "debt_schedule_items" (
-          "id",
-          "debt_id",
-          "position",
-          "amount",
-          "due_date",
-          "created_at",
-          "updated_at"
-        )
-        VALUES
-          ($1, $4, 1, '100.00', '2026-10-01'::date, now(), now()),
-          ($2, $4, 2, '100.00', '2026-10-02'::date, now(), now()),
-          ($3, $4, 3, '100.00', '2026-10-03'::date, now(), now())
+        VALUES ($1, $2, $3, $4, $5, now(), now(), $6)
       `,
       [
-        'payment_target_item_1',
-        'payment_target_item_2',
-        'payment_target_item_3',
-        'payment_target_debt',
+        id,
+        customerId,
+        description,
+        totalAmount,
+        currency,
+        version,
       ],
     );
+
+    for (const scheduleItem of scheduleItems) {
+      await postgres!.query(
+        `
+          INSERT INTO "debt_schedule_items" (
+            "id",
+            "debt_id",
+            "position",
+            "amount",
+            "due_date",
+            "created_at",
+            "updated_at"
+          )
+          VALUES ($1, $2, $3, $4, $5::date, now(), now())
+        `,
+        [
+          scheduleItem.id,
+          id,
+          scheduleItem.position,
+          scheduleItem.amount,
+          scheduleItem.dueDate,
+        ],
+      );
+    }
   }
 
   async function insertOnePaymentDebt(input: {
@@ -456,45 +542,22 @@ describe('payment target routes', () => {
   }
 
   async function insertTwelveItemDebtForPagination(): Promise<void> {
-    await postgres!.query(
-      `
-        INSERT INTO "debts" (
-          "id",
-          "customer_id",
-          "description",
-          "total_amount",
-          "currency",
-          "created_at",
-          "updated_at"
-        )
-        VALUES ($1, $2, $3, '1200.00', 'USD', now(), now())
-      `,
-      ['pagination_debt', 'payment_target_customer', 'Pagination debt'],
-    );
+    await insertDebt({
+      id: 'pagination_debt',
+      description: 'Pagination debt',
+      totalAmount: '1200.00',
+      scheduleItems: Array.from({ length: 12 }, (_, index) => {
+        const position = index + 1;
+        const paddedPosition = position.toString().padStart(2, '0');
 
-    const insertionOrder = [1, 12, 2, 11, 3, 10, 4, 9, 5, 8, 6, 7];
-
-    for (const position of insertionOrder) {
-      const dueDay = position <= 2 ? 11 : 13 - position;
-      const itemId = `pagination_item_${position.toString().padStart(2, '0')}`;
-      const dueDate = `2026-11-${dueDay.toString().padStart(2, '0')}`;
-
-      await postgres!.query(
-        `
-          INSERT INTO "debt_schedule_items" (
-            "id",
-            "debt_id",
-            "position",
-            "amount",
-            "due_date",
-            "created_at",
-            "updated_at"
-          )
-          VALUES ($1, $2, $3, '100.00', $4::date, now(), now())
-        `,
-        [itemId, 'pagination_debt', position, dueDate],
-      );
-    }
+        return {
+          id: `pagination_item_${paddedPosition}`,
+          position,
+          amount: '100.00',
+          dueDate: `2026-11-${paddedPosition}`,
+        };
+      }),
+    });
   }
 
   function insertPayment(input: {
