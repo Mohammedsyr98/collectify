@@ -1,7 +1,7 @@
 import { debtApiErrorCode } from '@collectify/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { checkDebtChange } from './debt-change-policy';
+import { checkDebtChange } from '../debt-change-policy';
 
 const currentDebt = { currency: 'USD' };
 const onePaymentSchedule = [{ id: 'schedule_one' }];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveDebtValidationMessage } from './debts.errors';
+import { resolveDebtValidationMessage } from '../debts.errors';
 
 describe('resolveDebtValidationMessage', () => {
   it('resolves a debt validation code to a human-readable message', () => {

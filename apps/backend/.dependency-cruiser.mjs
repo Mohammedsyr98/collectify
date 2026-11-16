@@ -50,7 +50,7 @@ export default {
       severity: 'error',
       from: {
         path: '^src/',
-        pathNot: ['^src/test-support/', '\\.spec\\.ts$'],
+        pathNot: ['^src/test-support/', '\\.spec\\.ts$', '^src/.*/__tests__/'],
       },
       to: { path: '^src/test-support/' },
     },
