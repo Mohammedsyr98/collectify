@@ -15,9 +15,3 @@ export async function setup(project: TestProject): Promise<void> {
 export async function teardown(): Promise<void> {
   await postgres?.stop();
 }
-
-declare module 'vitest' {
-  interface ProvidedContext {
-    integrationDatabaseUrl: string;
-  }
-}
