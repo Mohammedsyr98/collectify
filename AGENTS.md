@@ -29,15 +29,17 @@
 
 ## Feature Workflow
 
-- For non-trivial new features, prefer this workflow:
-  1. Use `grill-me` to reach shared understanding before planning.
-  2. Use `to-spec` to turn the agreed context into an implementation-ready spec or PRD.
-  3. Use `to-tickets` to split the PRD into vertical tracer-bullet tickets.
-  4. Use `tdd` when implementing each ticket.
+- Use `grill-me` whenever product intent, design shape, or tradeoffs are unclear, including when an existing ticket reveals ambiguity.
+- Use `to-spec` and `to-tickets` only when the user wants to divide a large feature into multiple independently deliverable vertical tickets.
+- Do not recreate specifications or tickets for an existing implementation ticket unless the user requests it.
+- If one approved ticket is too large for one reliable agent context or one reviewable diff, stop and recommend `$plan-checkpoints`. Do not invoke it unless the user explicitly requests `$plan-checkpoints`.
+- Explicitly invoke `implement` for the complete ticket or for one approved checkpoint.
 - Skip this workflow for small fixes, chores, docs-only changes, or obvious local edits.
 - If a PRD or issue already exists, start from that artifact instead of recreating it.
 - Do not publish PRDs or issues without user approval and available issue-tracker context.
-- During implementation, use one behavior test at a time: red, green, then refactor.
+- Use `tdd` during implementation; `implement` invokes it automatically for complete tickets and checkpoints.
+- After completing all checkpoints, use `implement` in final-integration mode before using `pr`.
+- The `pr` skill writes a PR body only; opening, updating, or merging a pull request requires separate user authorization.
 
 ## Repo Shape
 
@@ -67,7 +69,7 @@
 - Keep shared API and request/response types in `packages/contracts`.
 - Keep edits scoped to the task unless a broader change is necessary for correctness.
 - Run the narrowest relevant verification before finishing.
-- For non-trivial features, checkpoint before widening into another layer or subsystem, such as contracts, backend, frontend, persistence, localization, or verification scope. Summarize what changed and any design concerns before asking whether to proceed.
+- Do not push, open or merge pull requests, deploy, or modify external systems without explicit user authorization.
 - Treat unexpected diffs as user-owned work. Do not revert, overwrite, or label them as tool noise until you inspect the diff and ask the user when the origin is unclear.
 - If the user says something smells complex, stop implementation, inspect the design, and either simplify it or explain why the complexity is essential.
 - Use `grill-me` when product intent, design shape, or tradeoffs are unclear; ask one question at a time.

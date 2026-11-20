@@ -1,0 +1,7 @@
+interface:
+  display_name: "Plan Checkpoints"
+  short_description: "Plan reviewable units for oversized tickets"
+  default_prompt: "Use $plan-checkpoints to create an approved checkpoint plan for this large ticket."
+
+policy:
+  allow_implicit_invocation: false
