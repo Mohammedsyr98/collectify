@@ -59,3 +59,21 @@ test('createUser makes user retrievable', async () => {
   expect(retrieved.name).toBe('Alice');
 });
 ```
+
+## Tautological Tests
+
+Expected values must not restate the implementation.
+
+```typescript
+// BAD: Recomputes the expected value using the production rule
+test('calculateTotal sums line items', () => {
+  const items = [{ price: 10 }, { price: 5 }];
+  const expected = items.reduce((sum, item) => sum + item.price, 0);
+  expect(calculateTotal(items)).toBe(expected);
+});
+
+// GOOD: Uses an independent, known result
+test('calculateTotal sums line items', () => {
+  expect(calculateTotal([{ price: 10 }, { price: 5 }])).toBe(15);
+});
+```
