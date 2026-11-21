@@ -1,4 +1,13 @@
-import type { CustomerDetailsResponse, CustomerListResponse } from '@collectify/contracts';
+import {
+  paymentHistoryPageSize,
+  type CustomerDetailsResponse,
+  type CustomerListResponse,
+} from '@collectify/contracts';
+import { http, HttpResponse } from 'msw';
+
+import { getBackendUrl } from '@/shared/api';
+
+import { server } from './render';
 
 export const baseCustomer: CustomerDetailsResponse = {
   id: 'customer_123',
@@ -45,4 +54,14 @@ export function resetCustomerTestEnvironment() {
     configurable: true,
     value: ['en-US'],
   });
+  server.use(
+    http.get(`${getBackendUrl()}/customers/:customerId/payments`, () =>
+      HttpResponse.json({
+        items: [],
+        pageSize: paymentHistoryPageSize,
+        totalItems: 0,
+        nextCursor: null,
+      }),
+    ),
+  );
 }

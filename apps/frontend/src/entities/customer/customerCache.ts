@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { CustomerDetailsResponse } from '@collectify/contracts';
 
 import { customerQueryKeys } from './customerQueries';
+import { customerPaymentHistoryQueryKeys } from './customerPaymentHistoryQueries';
 
 export const customerCache = {
   async synchronize(
@@ -31,5 +32,15 @@ export const customerCache = {
         queryKey: customerQueryKeys.lists(),
       }),
     ]);
+  },
+
+  async resetPaymentHistory(
+    queryClient: QueryClient,
+    customerId: string,
+  ): Promise<void> {
+    await queryClient.resetQueries({
+      queryKey: customerPaymentHistoryQueryKeys.customer(customerId),
+      exact: true,
+    });
   },
 };

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type {
   CustomerDetailsResponse,
   DebtResponse,
+  PaymentHistoryItem,
+  PaymentHistoryListResponse,
   RecordPaymentRequest,
   RecordPaymentResponse,
 } from '@collectify/contracts';
@@ -280,6 +282,118 @@ describe('CustomerDetailsPage payment actions', () => {
     expect(summary).toHaveTextContent('$75.00');
   });
 
+  it('resets loaded history to the newest page after recording a payment', async () => {
+    const user = userEvent.setup();
+    const customer = {
+      ...baseCustomer,
+      financialSummary: [
+        {
+          currency: 'USD' as const,
+          totalDebtAmount: '100.00',
+          totalPaidAmount: '0.00',
+          remainingAmount: '100.00',
+        },
+      ],
+    };
+    const target = createPaymentTargetFixture({
+      amount: '100.00',
+      remainingAmount: '100.00',
+    });
+    const initialPayment = createHistoryItem({
+      debtDescription: 'Initial newest payment',
+      id: 'initial_history_payment',
+    });
+    const olderPayment = createHistoryItem({
+      debtDescription: 'Previously loaded older payment',
+      id: 'older_history_payment',
+    });
+    const newlyRecordedPayment = createHistoryItem({
+      debtDescription: 'Newly recorded payment',
+      id: 'new_history_payment',
+    });
+    const requestedCursors: Array<string | null> = [];
+    let recordedRequest: RecordPaymentRequest | undefined;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+        HttpResponse.json(customer),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () =>
+        HttpResponse.json({
+          items: [target],
+          page: 1,
+          pageSize: 10,
+          totalItems: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.get(`${getBackendUrl()}/customers/:customerId/payments`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        requestedCursors.push(cursor);
+
+        if (recordedRequest) {
+          return HttpResponse.json({
+            items: [newlyRecordedPayment],
+            pageSize: 10,
+            totalItems: 3,
+            nextCursor: null,
+          } satisfies PaymentHistoryListResponse);
+        }
+
+        return HttpResponse.json(
+          cursor
+            ? ({
+                items: [olderPayment],
+                pageSize: 10,
+                totalItems: 2,
+                nextCursor: null,
+              } satisfies PaymentHistoryListResponse)
+            : ({
+                items: [initialPayment],
+                pageSize: 10,
+                totalItems: 2,
+                nextCursor: 'cursor-after-initial',
+              } satisfies PaymentHistoryListResponse),
+        );
+      }),
+      http.post(`${getBackendUrl()}/customers/:customerId/payments`, async ({ request }) => {
+        recordedRequest = (await request.json()) as RecordPaymentRequest;
+        return HttpResponse.json(createPaymentResponse(recordedRequest), { status: 201 });
+      }),
+    );
+
+    renderCustomerRoutes([`/customers/${customer.id}`]);
+
+    const payments = await screen.findByRole('region', { name: customerMessages.details.payments });
+    expect(await within(payments).findByText('Initial newest payment')).toBeInTheDocument();
+    await user.click(
+      within(payments).getByRole('button', { name: 'Load 10 older payments' }),
+    );
+    expect(
+      await within(payments).findByText('Previously loaded older payment'),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: paymentMessages.drawer.title }),
+    );
+    const drawer = await screen.findByRole('dialog', {
+      name: paymentMessages.drawer.title,
+    });
+    await user.type(
+      within(drawer).getByLabelText(paymentMessages.drawer.amountLabel),
+      '25',
+    );
+    await user.click(
+      within(drawer).getByRole('button', { name: paymentMessages.drawer.submit }),
+    );
+
+    expect(await within(payments).findByText('Newly recorded payment')).toBeInTheDocument();
+    expect(
+      within(payments).queryByText('Previously loaded older payment'),
+    ).not.toBeInTheDocument();
+    expect(requestedCursors).toEqual([null, 'cursor-after-initial', null]);
+  });
+
   it('records an installment payment against the selected schedule row', async () => {
     const user = userEvent.setup();
     const debt = createInstallmentDebtFixture(baseCustomer.id, {
@@ -466,5 +580,22 @@ function createPaymentResponse(request: RecordPaymentRequest): RecordPaymentResp
       createdAt: '2026-10-23T10:00:00.000Z',
       updatedAt: '2026-10-23T10:00:00.000Z',
     },
+  };
+}
+
+function createHistoryItem(
+  overrides: Pick<PaymentHistoryItem, 'debtDescription' | 'id'>,
+): PaymentHistoryItem {
+  return {
+    id: overrides.id,
+    scheduleItemId: 'history_schedule',
+    debtId: 'history_debt',
+    debtDescription: overrides.debtDescription,
+    debtVersion: 1,
+    amount: '25.00',
+    currency: 'USD',
+    paymentDate: '2026-10-20',
+    note: null,
+    plan: { type: 'onePayment' },
   };
 }

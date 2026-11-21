@@ -65,9 +65,12 @@ describe('CustomerDetailsPage view and lifecycle', () => {
       screen.getByRole('region', { name: customerMessages.details.financialSummary }),
     ).toHaveTextContent(customerMessages.details.noFinancialActivity);
     expect(screen.getByRole('region', { name: debtMessages.section.title })).toBeInTheDocument();
+    const payments = screen.getByRole('region', {
+      name: customerMessages.details.payments,
+    });
     expect(
-      screen.getByRole('region', { name: customerMessages.details.payments }),
-    ).toHaveTextContent(customerMessages.details.paymentsUnavailable);
+      await within(payments).findByText(customerMessages.details.paymentHistory.empty),
+    ).toBeInTheDocument();
     await waitFor(() => expect(detailsRequestCount).toBe(1));
   });
 

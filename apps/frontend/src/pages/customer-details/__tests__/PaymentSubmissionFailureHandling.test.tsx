@@ -6,6 +6,7 @@ import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  paymentHistoryPageSize,
   paymentApiErrorCode,
   type CustomerDetailsResponse,
   type PaymentTarget,
@@ -176,6 +177,14 @@ function renderPaymentSubmissionFailure(target: PaymentTarget) {
         pageSize: 5,
         totalItems: 0,
         totalPages: 0,
+      }),
+    ),
+    http.get(`${getBackendUrl()}/customers/:customerId/payments`, () =>
+      HttpResponse.json({
+        items: [],
+        pageSize: paymentHistoryPageSize,
+        totalItems: 0,
+        nextCursor: null,
       }),
     ),
     http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () =>
