@@ -1,4 +1,5 @@
 import { CreditCard } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { PaymentHistoryItem } from '@collectify/contracts';
@@ -16,9 +17,28 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const historyQuery = useCustomerPaymentHistoryQuery(customerId);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const previousItemCountRef = useRef(0);
   const items = historyQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const totalItems = historyQuery.data?.pages[0]?.totalItems ?? 0;
   const isInitialRetry = historyQuery.isError && historyQuery.isFetching;
+
+  useEffect(() => {
+    if (
+      previousItemCountRef.current > 0 &&
+      items.length > previousItemCountRef.current &&
+      !historyQuery.isFetchNextPageError &&
+      !historyQuery.hasNextPage
+    ) {
+      headingRef.current?.focus();
+    }
+
+    previousItemCountRef.current = items.length;
+  }, [
+    historyQuery.hasNextPage,
+    historyQuery.isFetchNextPageError,
+    items.length,
+  ]);
 
   return (
     <section
@@ -28,7 +48,11 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
       aria-label={t('customers.details.payments')}
       className="grid min-h-[190px] content-start gap-4 rounded-md border border-border bg-card p-4"
     >
-      <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
+      <h2
+        className="m-0 text-[0.95rem] font-black tracking-normal"
+        ref={headingRef}
+        tabIndex={-1}
+      >
         {t('customers.details.payments')}
       </h2>
 
@@ -174,7 +198,7 @@ function PaymentHistoryRow({
                 })}
           </span>
           {payment.note ? (
-            <p className="m-0 whitespace-pre-wrap text-[0.78rem] text-muted-foreground">
+            <p className="m-0 break-words whitespace-pre-wrap text-[0.78rem] text-muted-foreground">
               {payment.note}
             </p>
           ) : null}

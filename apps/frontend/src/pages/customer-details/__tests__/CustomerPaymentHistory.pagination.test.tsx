@@ -86,6 +86,9 @@ describe('CustomerPaymentHistory pagination', () => {
         name: 'Load 10 older payments',
       }),
     ).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(
+      within(payments).getByRole('heading', { name: 'Payments' }),
+    );
   });
 
   it('keeps loaded rows and retries the same cursor after an older-page failure', async () => {

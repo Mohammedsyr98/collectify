@@ -64,6 +64,44 @@ describe('CustomerPaymentHistory', () => {
     expect(payments).toHaveTextContent('Showing 1 of 1');
   });
 
+  it('renders the Turkish installment translation with interpolated positions', async () => {
+    Object.defineProperty(window.navigator, 'languages', {
+      configurable: true,
+      value: ['tr'],
+    });
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId/payments`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'payment_history_tr',
+              scheduleItemId: 'schedule_history_tr',
+              debtId: 'debt_history_tr',
+              debtDescription: 'Ofis ekipmanı',
+              debtVersion: 4,
+              amount: '25.00',
+              currency: 'TRY',
+              paymentDate: '2026-10-20',
+              note: null,
+              plan: { type: 'installment', position: 3, total: 5 },
+            },
+          ],
+          pageSize: 10,
+          totalItems: 1,
+          nextCursor: null,
+        } satisfies PaymentHistoryListResponse),
+      ),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+
+    const payments = await screen.findByRole('region', { name: 'Odemeler' });
+    const row = await within(payments).findByRole('listitem');
+
+    expect(row).toHaveTextContent('5 taksitten 3.');
+  });
+
   it('localizes installment context in Arabic RTL and isolates the monetary value', async () => {
     Object.defineProperty(window.navigator, 'languages', {
       configurable: true,

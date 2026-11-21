@@ -211,13 +211,13 @@ describe('payment history route', () => {
       ],
     });
 
-    for (const [index, id] of ['payment_tie_a', 'payment_tie_c', 'payment_tie_b'].entries()) {
+    for (const index of Array.from({ length: 12 }, (_, value) => value + 1)) {
       await insertSingleHistoryPayment(database!, {
-        id,
+        id: `payment_tie_${index.toString().padStart(2, '0')}`,
         scheduleItemId: 'payment_history_ties_schedule',
         paymentDate: '2026-10-20',
         createdAt: '2026-10-20 10:00:00.123456',
-        idempotencyKey: `30000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+        idempotencyKey: `30000000-0000-4000-8000-${index.toString().padStart(12, '0')}`,
       });
     }
 
@@ -228,10 +228,33 @@ describe('payment history route', () => {
     const body = paymentHistoryListResponseSchema.parse(await response.json());
 
     expect(body.items.map(({ id }) => id)).toEqual([
-      'payment_tie_c',
-      'payment_tie_b',
-      'payment_tie_a',
+      ...Array.from({ length: 10 }, (_, index) =>
+        `payment_tie_${(12 - index).toString().padStart(2, '0')}`,
+      ),
     ]);
+    expect(body.nextCursor).not.toBeNull();
+
+    const olderResponse = await fetch(
+      `${backend!.baseUrl}/customers/payment_history_ties_customer/payments?cursor=${encodeURIComponent(body.nextCursor!)}`,
+      { headers: { cookie: owner.cookieHeader } },
+    );
+    const olderBody = paymentHistoryListResponseSchema.parse(
+      await olderResponse.json(),
+    );
+
+    expect(olderBody.items.map(({ id }) => id)).toEqual([
+      'payment_tie_02',
+      'payment_tie_01',
+    ]);
+    expect(olderBody.nextCursor).toBeNull();
+    expect([
+      ...body.items.map(({ id }) => id),
+      ...olderBody.items.map(({ id }) => id),
+    ]).toEqual(
+      Array.from({ length: 12 }, (_, index) =>
+        `payment_tie_${(12 - index).toString().padStart(2, '0')}`,
+      ),
+    );
     expect(body.items.every(({ plan }) => plan.type === 'onePayment')).toBe(true);
   });
 
