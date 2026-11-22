@@ -21,6 +21,7 @@ export const customerDetailsResources = {
           paymentProgress: 'Payment progress for {{currency}}',
           payments: 'Payments',
           paymentHistory: {
+            allLoaded: 'All payments loaded',
             empty: 'No payments yet.',
             errorTitle: 'Could not load payments',
             installment: 'Installment {{position}} of {{total}}',
@@ -108,6 +109,7 @@ export const customerDetailsResources = {
           paymentProgress: '{{currency}} icin odeme ilerlemesi',
           payments: 'Odemeler',
           paymentHistory: {
+            allLoaded: 'Tüm ödemeler yüklendi',
             empty: 'Henüz ödeme yok.',
             errorTitle: 'Ödemeler yüklenemedi',
             installment: '{{total}} taksitten {{position}}.',
@@ -195,6 +197,7 @@ export const customerDetailsResources = {
           paymentProgress: 'تقدم السداد بعملة {{currency}}',
           payments: 'الدفعات',
           paymentHistory: {
+            allLoaded: 'تم تحميل جميع الدفعات',
             empty: 'لا توجد دفعات بعد.',
             errorTitle: 'تعذر تحميل الدفعات',
             installment: 'القسط {{position}} من {{total}}',

@@ -1,5 +1,4 @@
 import { CreditCard } from 'lucide-react';
-import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { PaymentHistoryItem } from '@collectify/contracts';
@@ -17,28 +16,9 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const historyQuery = useCustomerPaymentHistoryQuery(customerId);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const previousItemCountRef = useRef(0);
   const items = historyQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const totalItems = historyQuery.data?.pages[0]?.totalItems ?? 0;
   const isInitialRetry = historyQuery.isError && historyQuery.isFetching;
-
-  useEffect(() => {
-    if (
-      previousItemCountRef.current > 0 &&
-      items.length > previousItemCountRef.current &&
-      !historyQuery.isFetchNextPageError &&
-      !historyQuery.hasNextPage
-    ) {
-      headingRef.current?.focus();
-    }
-
-    previousItemCountRef.current = items.length;
-  }, [
-    historyQuery.hasNextPage,
-    historyQuery.isFetchNextPageError,
-    items.length,
-  ]);
 
   return (
     <section
@@ -48,11 +28,7 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
       aria-label={t('customers.details.payments')}
       className="grid min-h-[190px] content-start gap-4 rounded-md border border-border bg-card p-4"
     >
-      <h2
-        className="m-0 text-[0.95rem] font-black tracking-normal"
-        ref={headingRef}
-        tabIndex={-1}
-      >
+      <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
         {t('customers.details.payments')}
       </h2>
 
@@ -114,11 +90,19 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
             ))}
           </ol>
           <footer className="flex flex-wrap items-center justify-between gap-3">
-            <p className="m-0 text-[0.76rem] font-bold text-muted-foreground">
+            <p
+              aria-live="polite"
+              className="m-0 text-[0.76rem] font-bold text-muted-foreground"
+            >
               {t('customers.details.paymentHistory.showing', {
                 shown: items.length,
                 total: totalItems,
               })}
+              {!historyQuery.hasNextPage ? (
+                <span className="sr-only">
+                  {`. ${t('customers.details.paymentHistory.allLoaded')}`}
+                </span>
+              ) : null}
             </p>
             {historyQuery.isFetchNextPageError ? (
               <div
@@ -139,11 +123,20 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
                   {t('errors.retry')}
                 </button>
               </div>
-            ) : historyQuery.hasNextPage ? (
+            ) : (
               <button
-                className="rounded-[5px] border border-border bg-card px-3 py-2 text-[0.78rem] font-extrabold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={historyQuery.isFetchingNextPage}
+                aria-disabled={
+                  historyQuery.isFetchingNextPage || !historyQuery.hasNextPage
+                }
+                className="rounded-[5px] border border-border bg-card px-3 py-2 text-[0.78rem] font-extrabold text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                 onClick={() => {
+                  if (
+                    historyQuery.isFetchingNextPage ||
+                    !historyQuery.hasNextPage
+                  ) {
+                    return;
+                  }
+
                   void historyQuery.fetchNextPage();
                 }}
                 type="button"
@@ -151,10 +144,12 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
                 {t(
                   historyQuery.isFetchingNextPage
                     ? 'customers.details.paymentHistory.loadingOlder'
-                    : 'customers.details.paymentHistory.loadOlder',
+                    : historyQuery.hasNextPage
+                      ? 'customers.details.paymentHistory.loadOlder'
+                      : 'customers.details.paymentHistory.allLoaded',
                 )}
               </button>
-            ) : null}
+            )}
           </footer>
         </>
       )}

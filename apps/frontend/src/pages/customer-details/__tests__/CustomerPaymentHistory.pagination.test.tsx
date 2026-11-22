@@ -33,7 +33,7 @@ describe('CustomerPaymentHistory pagination', () => {
     cleanup();
   });
 
-  it('appends the page addressed by the opaque cursor and removes the action at the end', async () => {
+  it('appends the page addressed by the opaque cursor and keeps the completed action focused', async () => {
     const user = userEvent.setup();
     const requestedCursors: Array<string | null> = [];
     const firstItems = Array.from({ length: 10 }, (_, index) =>
@@ -70,25 +70,20 @@ describe('CustomerPaymentHistory pagination', () => {
     expect(await within(payments).findAllByRole('listitem')).toHaveLength(10);
     expect(payments).toHaveTextContent('Showing 10 of 12');
 
-    await user.click(
-      within(payments).getByRole('button', {
-        name: 'Load 10 older payments',
-      }),
-    );
+    const loadOlderButton = within(payments).getByRole('button', {
+      name: 'Load 10 older payments',
+    });
+
+    await user.click(loadOlderButton);
 
     await waitFor(() => {
       expect(within(payments).getAllByRole('listitem')).toHaveLength(12);
     });
     expect(requestedCursors).toEqual([null, 'cursor-after-10']);
     expect(payments).toHaveTextContent('Showing 12 of 12');
-    expect(
-      within(payments).queryByRole('button', {
-        name: 'Load 10 older payments',
-      }),
-    ).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(
-      within(payments).getByRole('heading', { name: 'Payments' }),
-    );
+    expect(loadOlderButton).toHaveAccessibleName('All payments loaded');
+    expect(loadOlderButton).toHaveAttribute('aria-disabled', 'true');
+    expect(document.activeElement).toBe(loadOlderButton);
   });
 
   it('keeps loaded rows and retries the same cursor after an older-page failure', async () => {
