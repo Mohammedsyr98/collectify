@@ -1,18 +1,17 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import {
-  customerApiErrorCode,
   paymentApiErrorCode,
   paymentHistoryPageSize,
   type PaymentHistoryItem,
   type PaymentHistoryListResponse,
   type PaymentHistoryQuery,
 } from '@collectify/contracts';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { count, eq, sql } from 'drizzle-orm';
 
 import type { AuthenticatedOwner } from '../auth';
-import { customerException } from '../customers';
+import { requireOwnedCustomer } from '../customers';
 import { DatabaseService, type Database } from '../database/database.service';
-import { customers, debtScheduleItems, debts, payments } from '../database/schema';
+import { debtScheduleItems, debts, payments } from '../database/schema';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -53,8 +52,10 @@ export class PaymentHistoryService {
       async (tx) => {
         await requireOwnedCustomer(
           tx,
-          currentOwner.ownerProfile.id,
-          customerId,
+          {
+            ownerProfileId: currentOwner.ownerProfile.id,
+            customerId,
+          },
         );
 
         const [{ totalItems } = { totalItems: 0 }] = await tx
@@ -86,27 +87,6 @@ export class PaymentHistoryService {
         accessMode: 'read only',
       },
     );
-  }
-}
-
-async function requireOwnedCustomer(
-  executor: Pick<Database, 'select'>,
-  ownerProfileId: string,
-  customerId: string,
-): Promise<void> {
-  const [customer] = await executor
-    .select({ id: customers.id })
-    .from(customers)
-    .where(
-      and(
-        eq(customers.id, customerId),
-        eq(customers.ownerProfileId, ownerProfileId),
-      ),
-    )
-    .limit(1);
-
-  if (!customer) {
-    throw customerException(customerApiErrorCode.customerNotFound);
   }
 }
 

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import {
-  customerApiErrorCode,
   paymentTargetPageSize,
   type PaymentTarget,
   type PaymentTargetListResponse,
@@ -10,8 +9,8 @@ import { and, asc, count, eq, sql, type SQLWrapper } from 'drizzle-orm';
 
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
-import { customers, debtScheduleItems, debts } from '../database/schema';
-import { customerException } from '../customers';
+import { debtScheduleItems, debts } from '../database/schema';
+import { requireOwnedCustomer } from '../customers';
 import { createScheduleItemPaymentSummary, getPaymentState } from '../receivables';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
@@ -47,7 +46,10 @@ export class PaymentTargetsService {
 
     return this.databaseService.db.transaction(
       async (tx) => {
-        await requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
+        await requireOwnedCustomer(tx, {
+          ownerProfileId: currentOwner.ownerProfile.id,
+          customerId,
+        });
 
         const page = await loadPaymentTargetPage(tx, customerId, query);
 
@@ -64,22 +66,6 @@ export class PaymentTargetsService {
         accessMode: 'read only',
       },
     );
-  }
-}
-
-async function requireOwnedCustomer(
-  executor: Pick<Database, 'select'>,
-  ownerProfileId: string,
-  customerId: string,
-): Promise<void> {
-  const [customer] = await executor
-    .select({ id: customers.id })
-    .from(customers)
-    .where(and(eq(customers.id, customerId), eq(customers.ownerProfileId, ownerProfileId)))
-    .limit(1);
-
-  if (!customer) {
-    throw customerException(customerApiErrorCode.customerNotFound);
   }
 }
 
