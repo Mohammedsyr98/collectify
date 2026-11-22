@@ -7,6 +7,7 @@ import {
   type PaymentHistoryQuery,
 } from '@collectify/contracts';
 import { count, eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
 
 import type { AuthenticatedOwner } from '../auth';
 import { requireOwnedCustomer } from '../customers';
@@ -30,12 +31,20 @@ type PaymentHistoryRow = {
   createdAtCursor: string;
 };
 
-type PaymentHistoryCursor = {
-  version: 1;
-  paymentDate: string;
-  createdAt: string;
-  id: string;
-};
+const paymentHistoryCursorTimestampPattern =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/;
+
+const paymentHistoryCursorSchema = z
+  .object({
+    paymentDate: z.iso.date(),
+    createdAt: z
+      .iso.datetime({ local: true, precision: 6 })
+      .regex(paymentHistoryCursorTimestampPattern),
+    id: z.string().min(1).max(500),
+  })
+  .strict();
+
+type PaymentHistoryCursor = z.infer<typeof paymentHistoryCursorSchema>;
 
 @Injectable()
 export class PaymentHistoryService {
@@ -181,7 +190,6 @@ function toPaymentHistoryItem(row: PaymentHistoryRow): PaymentHistoryItem {
 
 function encodeCursor(row: PaymentHistoryRow): string {
   const cursor: PaymentHistoryCursor = {
-    version: 1,
     paymentDate: row.paymentDate,
     createdAt: row.createdAtCursor,
     id: row.id,
@@ -193,65 +201,16 @@ function encodeCursor(row: PaymentHistoryRow): string {
 function decodeCursor(encodedCursor: string): PaymentHistoryCursor {
   try {
     const decoded = Buffer.from(encodedCursor, 'base64url').toString('utf8');
-    const cursor: unknown = JSON.parse(decoded);
+    const parsed = paymentHistoryCursorSchema.safeParse(JSON.parse(decoded));
 
-    if (isPaymentHistoryCursor(cursor)) {
-      return cursor;
+    if (parsed.success) {
+      return parsed.data;
     }
   } catch {
     // Invalid cursor details are deliberately hidden behind one stable response.
   }
 
   throw invalidCursorException();
-}
-
-function isPaymentHistoryCursor(value: unknown): value is PaymentHistoryCursor {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-
-  const cursor = value as Record<string, unknown>;
-  const keys = Object.keys(cursor).sort();
-
-  return (
-    keys.length === 4 &&
-    keys[0] === 'createdAt' &&
-    keys[1] === 'id' &&
-    keys[2] === 'paymentDate' &&
-    keys[3] === 'version' &&
-    cursor.version === 1 &&
-    typeof cursor.paymentDate === 'string' &&
-    isValidDateOnly(cursor.paymentDate) &&
-    typeof cursor.createdAt === 'string' &&
-    isValidCursorTimestamp(cursor.createdAt) &&
-    typeof cursor.id === 'string' &&
-    cursor.id.length > 0 &&
-    cursor.id.length <= 500
-  );
-}
-
-function isValidDateOnly(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-
-  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-function isValidCursorTimestamp(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/.test(value)) {
-    return false;
-  }
-
-  const millisecondTimestamp = `${value.slice(0, 23)}Z`;
-  const parsed = new Date(millisecondTimestamp);
-
-  return (
-    !Number.isNaN(parsed.valueOf()) &&
-    parsed.toISOString().slice(0, 23) === value.slice(0, 23)
-  );
 }
 
 function invalidCursorException(): HttpException {
