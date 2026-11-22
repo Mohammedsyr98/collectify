@@ -1,16 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { sql } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   createIntegrationDatabase,
-  startIntegrationBackend,
-  type IntegrationBackend,
   type IntegrationDatabase,
 } from '../../test-support/integration-test-support';
-import { createOwnerAuthClient } from '../../test-support/owner-auth-client';
-import {
-  createPaymentTestHelpers,
-  type PaymentTestContext,
-} from './payment-integration-test-support';
+import { buildPaymentHistoryRowsQuery } from '../payment-history.service';
 
 type ExplainNode = {
   'Actual Rows'?: number;
@@ -24,43 +20,17 @@ type ExplainNode = {
 
 describe('payment history query plan', () => {
   let database: IntegrationDatabase | undefined;
-  let backend: IntegrationBackend | undefined;
-  let ownerAuth: ReturnType<typeof createOwnerAuthClient> | undefined;
-  let context: PaymentTestContext;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     database = createIntegrationDatabase();
-    backend = await startIntegrationBackend();
-    ownerAuth = createOwnerAuthClient(backend.baseUrl);
-    context = { database, backend, ownerAuth };
   });
 
   beforeEach(async () => {
     await database!.reset();
   });
 
-  afterAll(async () => {
-    await backend?.app.close();
-  });
-
   it('uses indexed target filtering and bounded top-N work for 10,000 customer payments', async () => {
-    const helpers = createPaymentTestHelpers(() => context);
-    const owner = await helpers.signUpOwner('payment-history-plan-owner@example.com');
-    await helpers.insertCustomer(owner.ownerProfileId, {
-      id: 'payment_history_plan_customer',
-    });
-    await helpers.insertDebt({
-      id: 'payment_history_plan_debt',
-      customerId: 'payment_history_plan_customer',
-      totalAmount: '10000.00',
-      scheduleItems: [
-        {
-          id: 'payment_history_plan_schedule',
-          amount: '10000.00',
-          dueDate: '2026-12-31',
-        },
-      ],
-    });
+    await insertPaymentHistoryPlanFixture(database!);
     await database!.query(
       `
         INSERT INTO "payments" (
@@ -89,47 +59,13 @@ describe('payment history query plan', () => {
     await database!.query('ANALYZE "debt_schedule_items"');
     await database!.query('ANALYZE "debts"');
 
+    const explainQuery = new PgDialect().sqlToQuery(sql`
+      EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+      ${buildPaymentHistoryRowsQuery('payment_history_plan_customer')}
+    `);
     const [explainRow] = await database!.query<Record<string, unknown>>(
-      `
-        EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-        SELECT
-          "payment_page"."id",
-          "payment_page"."schedule_item_id",
-          "debts"."id" AS "debt_id",
-          "debts"."description",
-          "debts"."version",
-          "payment_page"."amount",
-          "debts"."currency",
-          "payment_page"."payment_date",
-          "payment_page"."note",
-          "debt_schedule_items"."position",
-          (
-            SELECT count(*)::integer
-            FROM "debt_schedule_items" AS "schedule_count_item"
-            WHERE "schedule_count_item"."debt_id" = "debt_schedule_items"."debt_id"
-          ) AS "schedule_count",
-          to_char("payment_page"."created_at", 'YYYY-MM-DD"T"HH24:MI:SS.US')
-        FROM "debts"
-        INNER JOIN "debt_schedule_items"
-          ON "debt_schedule_items"."debt_id" = "debts"."id"
-        INNER JOIN LATERAL (
-          SELECT "payments".*
-          FROM "payments"
-          WHERE "payments"."schedule_item_id" = "debt_schedule_items"."id"
-          ORDER BY
-            "payments"."payment_date" DESC,
-            "payments"."created_at" DESC,
-            "payments"."id" DESC
-          LIMIT 11
-        ) AS "payment_page" ON true
-        WHERE "debts"."customer_id" = $1
-        ORDER BY
-          "payment_page"."payment_date" DESC,
-          "payment_page"."created_at" DESC,
-          "payment_page"."id" DESC
-        LIMIT 11
-      `,
-      ['payment_history_plan_customer'],
+      explainQuery.sql,
+      explainQuery.params,
     );
 
     const plan = readPlan(explainRow);
@@ -162,6 +98,71 @@ describe('payment history query plan', () => {
     ).toBe(true);
   });
 });
+
+async function insertPaymentHistoryPlanFixture(
+  database: IntegrationDatabase,
+): Promise<void> {
+  await database.query(`
+    INSERT INTO "user"
+      ("id", "name", "email", "email_verified", "created_at", "updated_at")
+    VALUES (
+      'payment_history_plan_user',
+      'Plan Owner',
+      'payment-history-plan-owner@example.com',
+      true,
+      '2026-01-01 00:00:00',
+      '2026-01-01 00:00:00'
+    );
+
+    INSERT INTO "owner_profiles"
+      ("id", "user_id", "preferred_language", "default_currency", "created_at", "updated_at")
+    VALUES (
+      'payment_history_plan_owner',
+      'payment_history_plan_user',
+      'en',
+      'USD',
+      '2026-01-01 00:00:00',
+      '2026-01-01 00:00:00'
+    );
+
+    INSERT INTO "customers"
+      ("id", "owner_profile_id", "name", "code", "phone_number", "created_at", "updated_at")
+    VALUES (
+      'payment_history_plan_customer',
+      'payment_history_plan_owner',
+      'Plan Customer',
+      'PLAN-CUSTOMER',
+      '+90 555 123 45 67',
+      '2026-01-01 00:00:00',
+      '2026-01-01 00:00:00'
+    );
+
+    INSERT INTO "debts"
+      ("id", "customer_id", "description", "total_amount", "currency", "created_at", "updated_at", "version")
+    VALUES (
+      'payment_history_plan_debt',
+      'payment_history_plan_customer',
+      'Plan debt',
+      '10000.00',
+      'USD',
+      '2026-01-01 00:00:00',
+      '2026-01-01 00:00:00',
+      1
+    );
+
+    INSERT INTO "debt_schedule_items"
+      ("id", "debt_id", "position", "amount", "due_date", "created_at", "updated_at")
+    VALUES (
+      'payment_history_plan_schedule',
+      'payment_history_plan_debt',
+      1,
+      '10000.00',
+      '2026-12-31',
+      '2026-01-01 00:00:00',
+      '2026-01-01 00:00:00'
+    );
+  `);
+}
 
 function readPlan(row: Record<string, unknown> | undefined): ExplainNode {
   const explain = row?.['QUERY PLAN'];

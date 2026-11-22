@@ -115,6 +115,17 @@ async function loadPaymentRows(
   customerId: string,
   cursor: PaymentHistoryCursor | undefined,
 ): Promise<PaymentHistoryRow[]> {
+  const result = await tx.execute<PaymentHistoryRow>(
+    buildPaymentHistoryRowsQuery(customerId, cursor),
+  );
+
+  return result.rows;
+}
+
+export function buildPaymentHistoryRowsQuery(
+  customerId: string,
+  cursor?: PaymentHistoryCursor,
+) {
   const cursorBoundary = cursor
     ? sql`and (payment_date, created_at, id) < (
         ${cursor.paymentDate}::date,
@@ -122,7 +133,7 @@ async function loadPaymentRows(
         ${cursor.id}
       )`
     : sql``;
-  const result = await tx.execute<PaymentHistoryRow>(sql`
+  return sql`
     select
       payment_page.id as "id",
       payment_page.schedule_item_id as "scheduleItemId",
@@ -163,9 +174,7 @@ async function loadPaymentRows(
       payment_page.created_at desc,
       payment_page.id desc
     limit ${paymentHistoryPageSize + 1}
-  `);
-
-  return result.rows;
+  `;
 }
 
 function toPaymentHistoryItem(row: PaymentHistoryRow): PaymentHistoryItem {
