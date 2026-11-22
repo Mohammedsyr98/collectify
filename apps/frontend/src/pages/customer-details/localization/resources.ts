@@ -107,7 +107,7 @@ export const customerDetailsResources = {
           noAddress: 'Adres yok',
           paidInFull: 'Tamami odendi',
           paymentProgress: '{{currency}} icin odeme ilerlemesi',
-          payments: 'Odemeler',
+          payments: 'Ödemeler',
           paymentHistory: {
             allLoaded: 'Tüm ödemeler yüklendi',
             empty: 'Henüz ödeme yok.',

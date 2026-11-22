@@ -96,7 +96,7 @@ describe('CustomerPaymentHistory', () => {
 
     renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
-    const payments = await screen.findByRole('region', { name: 'Odemeler' });
+    const payments = await screen.findByRole('region', { name: 'Ödemeler' });
     const row = await within(payments).findByRole('listitem');
 
     expect(row).toHaveTextContent('5 taksitten 3.');
