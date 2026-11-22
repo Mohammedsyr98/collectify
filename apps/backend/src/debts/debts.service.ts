@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import {
-  customerApiErrorCode,
   debtApiErrorCode,
   debtListPageSize,
   type CreateDebtRequest,
@@ -14,8 +13,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
-import { customers, debtScheduleItems, debts } from '../database/schema';
-import { customerException } from '../customers';
+import { debtScheduleItems, debts } from '../database/schema';
+import { requireOwnedCustomer } from '../customers';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
@@ -55,7 +54,10 @@ export class DebtsService {
     const debtId = randomUUID();
 
     return this.databaseService.db.transaction(async (tx) => {
-      await this.requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
+      await requireOwnedCustomer(tx, {
+        ownerProfileId: currentOwner.ownerProfile.id,
+        customerId,
+      });
 
       const createdDebt = await insertDebtAndScheduleItems(tx, {
         debtId,
@@ -79,7 +81,10 @@ export class DebtsService {
 
     return this.databaseService.db.transaction(
       async (tx) => {
-        await this.requireOwnedCustomer(tx, currentOwner.ownerProfile.id, customerId);
+        await requireOwnedCustomer(tx, {
+          ownerProfileId: currentOwner.ownerProfile.id,
+          customerId,
+        });
 
         const page = await loadDebtPage(tx, customerId, query);
         const responses = await loadDebtsWithPaymentDetails(
@@ -174,21 +179,6 @@ export class DebtsService {
     });
   }
 
-  private async requireOwnedCustomer(
-    executor: Pick<Database, 'select'>,
-    ownerProfileId: string,
-    customerId: string,
-  ): Promise<void> {
-    const [customer] = await executor
-      .select({ id: customers.id })
-      .from(customers)
-      .where(and(eq(customers.id, customerId), eq(customers.ownerProfileId, ownerProfileId)))
-      .limit(1);
-
-    if (!customer) {
-      throw customerException(customerApiErrorCode.customerNotFound);
-    }
-  }
 }
 
 async function insertDebtAndScheduleItems(

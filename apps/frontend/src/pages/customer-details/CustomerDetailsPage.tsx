@@ -1,4 +1,4 @@
-import { CreditCard, Pencil, Plus, type LucideIcon } from 'lucide-react';
+import { CreditCard, Pencil, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 
@@ -19,6 +19,7 @@ import { ErrorStatePage } from '@/shared/ui/error';
 import { LoadingScreen } from '@/shared/ui/loading';
 
 import { CustomerDebtLedger } from './ledger/CustomerDebtLedger';
+import { CustomerPaymentHistory } from './payments/CustomerPaymentHistory';
 import { CustomerFinancialSummary } from './CustomerFinancialSummary';
 
 export function CustomerDetailsPage({ defaultCurrency }: { defaultCurrency: Currency }) {
@@ -180,11 +181,7 @@ function CustomerDetailsContent({
               onAddDebt={openDebtCreation}
               onRecordPayment={openDebtPayment}
             />
-            <EmptyLedgerSection
-              Icon={CreditCard}
-              emptyText={t('customers.details.paymentsUnavailable')}
-              title={t('customers.details.payments')}
-            />
+            <CustomerPaymentHistory customerId={customer.id} />
           </section>
         </div>
       </main>
@@ -201,28 +198,5 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-[0.68rem] font-black text-muted-foreground">{label}</span>
       <span className="text-[0.88rem] font-bold">{value}</span>
     </div>
-  );
-}
-
-function EmptyLedgerSection({
-  emptyText,
-  Icon,
-  title,
-}: {
-  emptyText: string;
-  Icon: LucideIcon;
-  title: string;
-}) {
-  return (
-    <section
-      aria-label={title}
-      className="grid min-h-[190px] gap-4 rounded-md border border-border bg-card p-4"
-    >
-      <h2 className="m-0 text-[0.95rem] font-black tracking-normal">{title}</h2>
-      <div className="grid place-items-center gap-2 self-stretch rounded-[5px] border border-dashed border-border bg-background p-5 text-center text-muted-foreground">
-        <Icon aria-hidden="true" size={22} strokeWidth={2.2} />
-        <p className="m-0 text-[0.82rem] font-bold">{emptyText}</p>
-      </div>
-    </section>
   );
 }

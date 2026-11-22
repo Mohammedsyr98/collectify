@@ -42,6 +42,7 @@ export function useRecordPaymentMutation({
       await Promise.all([
         debtCache.invalidateCustomerDebts(queryClient, customerId),
         customerCache.invalidateCustomer(queryClient, customerId),
+        customerCache.resetPaymentHistory(queryClient, customerId),
       ]);
       showToast({
         variant: 'success',

@@ -68,7 +68,9 @@ describe('CustomerDebtLedger', () => {
 
         expect(debtRegion).toHaveAttribute('aria-busy', 'true');
         expect(within(debtRegion).getAllByTestId('debt-card-skeleton')).toHaveLength(5);
-        expect(screen.getByRole('status')).toHaveTextContent(debtMessages.list.loading);
+        expect(within(debtRegion).getByRole('status')).toHaveTextContent(
+          debtMessages.list.loading,
+        );
         expect(
           screen.getByRole('region', { name: customerMessages.details.payments }),
         ).toBeInTheDocument();
