@@ -195,6 +195,20 @@ describe('payment history route', () => {
 
   it('orders equal payment dates and creation timestamps by descending ID', async () => {
     const helpers = createPaymentTestHelpers(() => context);
+    const expectedDescendingIds = [
+      'payment_tie_12',
+      'payment_tie_11',
+      'payment_tie_10',
+      'payment_tie_09',
+      'payment_tie_08',
+      'payment_tie_07',
+      'payment_tie_06',
+      'payment_tie_05',
+      'payment_tie_04',
+      'payment_tie_03',
+      'payment_tie_02',
+      'payment_tie_01',
+    ];
     const owner = await helpers.signUpOwner('payment-history-ties@example.com');
     await helpers.insertCustomer(owner.ownerProfileId, {
       id: 'payment_history_ties_customer',
@@ -227,11 +241,7 @@ describe('payment history route', () => {
     );
     const body = paymentHistoryListResponseSchema.parse(await response.json());
 
-    expect(body.items.map(({ id }) => id)).toEqual([
-      ...Array.from({ length: 10 }, (_, index) =>
-        `payment_tie_${(12 - index).toString().padStart(2, '0')}`,
-      ),
-    ]);
+    expect(body.items.map(({ id }) => id)).toEqual(expectedDescendingIds.slice(0, 10));
     expect(body.nextCursor).not.toBeNull();
 
     const olderResponse = await fetch(
@@ -242,19 +252,12 @@ describe('payment history route', () => {
       await olderResponse.json(),
     );
 
-    expect(olderBody.items.map(({ id }) => id)).toEqual([
-      'payment_tie_02',
-      'payment_tie_01',
-    ]);
+    expect(olderBody.items.map(({ id }) => id)).toEqual(expectedDescendingIds.slice(10));
     expect(olderBody.nextCursor).toBeNull();
     expect([
       ...body.items.map(({ id }) => id),
       ...olderBody.items.map(({ id }) => id),
-    ]).toEqual(
-      Array.from({ length: 12 }, (_, index) =>
-        `payment_tie_${(12 - index).toString().padStart(2, '0')}`,
-      ),
-    );
+    ]).toEqual(expectedDescendingIds);
     expect(body.items.every(({ plan }) => plan.type === 'onePayment')).toBe(true);
   });
 
