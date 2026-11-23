@@ -37,6 +37,7 @@ export const paymentHistoryItemSchema = z
     debtDescription: z.string().min(1).max(200),
     debtVersion: z.number().int().positive(),
     amount: moneySchema,
+    maximumReplacementAmount: moneySchema,
     currency: currencySchema,
     paymentDate: dateOnlySchema,
     note: z.string().max(500).nullable(),

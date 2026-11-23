@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   isPaymentApiErrorCode,
+  type ReplacePaymentRequest,
   type RecordPaymentRequest,
 } from '@collectify/contracts';
 
@@ -16,6 +17,22 @@ import {
   recordPayment as sendPayment,
   type PaymentSubmissionRequest,
 } from '../api/record-payment';
+import { replacePayment as sendReplacement } from '../api/replace-payment';
+import { paymentTargetListQueryKey } from './paymentTargetQueries';
+
+async function invalidatePaymentData(
+  queryClient: ReturnType<typeof useQueryClient>,
+  customerId: string,
+): Promise<void> {
+  await Promise.all([
+    debtCache.invalidateCustomerDebts(queryClient, customerId),
+    customerCache.invalidateCustomer(queryClient, customerId),
+    customerCache.invalidatePaymentHistory(queryClient, customerId),
+    queryClient.invalidateQueries({
+      queryKey: paymentTargetListQueryKey(customerId),
+    }),
+  ]);
+}
 
 export function useRecordPaymentMutation({
   customerId,
@@ -40,9 +57,7 @@ export function useRecordPaymentMutation({
     },
     onSuccess: async () => {
       await Promise.all([
-        debtCache.invalidateCustomerDebts(queryClient, customerId),
-        customerCache.invalidateCustomer(queryClient, customerId),
-        customerCache.resetPaymentHistory(queryClient, customerId),
+        invalidatePaymentData(queryClient, customerId),
       ]);
       showToast({
         variant: 'success',
@@ -73,6 +88,57 @@ export function useRecordPaymentMutation({
         await mutation.mutateAsync(submission);
       } catch {
         // Error presentation is handled by the mutation toast path.
+      }
+    },
+  };
+}
+
+export function useReplacePaymentMutation({
+  customerId,
+  onReplaced,
+}: {
+  customerId: string;
+  onReplaced?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const mutation = useMutation({
+    mutationFn: ({
+      paymentId,
+      request,
+    }: {
+      paymentId: string;
+      request: ReplacePaymentRequest;
+    }) => sendReplacement(customerId, paymentId, request),
+    onSuccess: async () => {
+      await invalidatePaymentData(queryClient, customerId);
+      showToast({
+        variant: 'success',
+        title: t('payments.toast.replace.successTitle'),
+        description: t('payments.toast.replace.successDescription'),
+      });
+      onReplaced?.();
+    },
+    onError: (error) => {
+      showToast({
+        variant: 'error',
+        title: t('payments.toast.replace.errorTitle'),
+        description: resolveApiErrorDescription(error, {
+          describeKnownCode: (code) => t(`payments.errors.${code}`),
+          fallbackDescription: t('errors.genericDescription'),
+          isKnownCode: isPaymentApiErrorCode,
+        }),
+      });
+    },
+  });
+
+  return {
+    replacePayment: async (paymentId: string, request: ReplacePaymentRequest) => {
+      try {
+        await mutation.mutateAsync({ paymentId, request });
+      } catch {
+        // Error presentation is handled by the mutation path.
       }
     },
   };

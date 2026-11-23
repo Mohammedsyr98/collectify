@@ -7,6 +7,7 @@ import {
   type CustomerDetailsResponse,
   type Currency,
   type DebtResponse,
+  type PaymentHistoryItem,
 } from '@collectify/contracts';
 import { parseMoney } from '@collectify/domain/money';
 
@@ -14,7 +15,7 @@ import { useCustomerDetailsQuery } from '@/entities/customer';
 import { isApiError } from '@/shared/api';
 import { useDebtCreator } from '@/features/debts';
 import { useCustomerEditor } from '@/features/customers';
-import { usePaymentRecorder } from '@/features/payments';
+import { usePaymentEditor } from '@/features/payments';
 import { ErrorStatePage } from '@/shared/ui/error';
 import { LoadingScreen } from '@/shared/ui/loading';
 
@@ -89,7 +90,7 @@ function CustomerDetailsContent({
     customerId: customer.id,
     defaultCurrency,
   });
-  const paymentRecorder = usePaymentRecorder({
+  const paymentEditor = usePaymentEditor({
     customerId: customer.id,
     customerName: customer.name,
   });
@@ -97,20 +98,24 @@ function CustomerDetailsContent({
     ({ remainingAmount }) => parseMoney(remainingAmount) > 0,
   );
 
-  const openPayment = (trigger: HTMLElement) => {
-    paymentRecorder.open(undefined, trigger);
+  const openPaymentRecording = (trigger: HTMLElement) => {
+    paymentEditor.openForRecord(undefined, trigger);
   };
 
   const openDebtCreation = (trigger: HTMLButtonElement) => {
     debtCreator.open(trigger);
   };
 
-  const openDebtPayment = (
+  const openPaymentRecordingForScheduleItem = (
     debt: DebtResponse,
     scheduleItemId: string,
     trigger: HTMLButtonElement,
   ) => {
-    paymentRecorder.open({ debt, scheduleItemId }, trigger);
+    paymentEditor.openForRecord({ debt, scheduleItemId }, trigger);
+  };
+
+  const openPaymentCorrection = (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => {
+    paymentEditor.openForEdit(payment, trigger);
   };
 
   return (
@@ -142,7 +147,7 @@ function CustomerDetailsContent({
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
                 onClick={(event) => {
                   if (hasEligiblePayment) {
-                    openPayment(event.currentTarget);
+                    openPaymentRecording(event.currentTarget);
                   } else {
                     openDebtCreation(event.currentTarget);
                   }
@@ -179,14 +184,17 @@ function CustomerDetailsContent({
             <CustomerDebtLedger
               customerId={customer.id}
               onAddDebt={openDebtCreation}
-              onRecordPayment={openDebtPayment}
+              onRecordPayment={openPaymentRecordingForScheduleItem}
             />
-            <CustomerPaymentHistory customerId={customer.id} />
+            <CustomerPaymentHistory
+              customerId={customer.id}
+              onEditPayment={openPaymentCorrection}
+            />
           </section>
         </div>
       </main>
 
-      {paymentRecorder.dialog}
+      {paymentEditor.dialog}
       {debtCreator.dialog}
     </>
   );

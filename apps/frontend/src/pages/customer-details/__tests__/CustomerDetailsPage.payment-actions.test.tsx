@@ -606,6 +606,7 @@ function createHistoryItem(
     debtDescription: overrides.debtDescription,
     debtVersion: 1,
     amount: '25.00',
+    maximumReplacementAmount: '100.00',
     currency: 'USD',
     paymentDate: '2026-10-20',
     note: null,

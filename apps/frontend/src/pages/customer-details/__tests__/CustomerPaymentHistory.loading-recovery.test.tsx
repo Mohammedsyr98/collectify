@@ -51,6 +51,7 @@ describe('CustomerPaymentHistory loading and recovery', () => {
               debtDescription: 'Recovered payment debt',
               debtVersion: 2,
               amount: '30.00',
+              maximumReplacementAmount: '100.00',
               currency: 'USD',
               paymentDate: '2026-10-20',
               note: null,

@@ -13,6 +13,7 @@ const validHistoryItem = {
   debtDescription: 'Office equipment',
   debtVersion: 4,
   amount: '25.00',
+  maximumReplacementAmount: '100.00',
   currency: 'USD',
   paymentDate: '2026-10-20',
   note: 'Paid in cash',

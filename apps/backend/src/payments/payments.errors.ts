@@ -2,6 +2,10 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { paymentApiErrorCode, type PaymentApiErrorCode } from '@collectify/contracts';
 
 const paymentApiErrors = {
+  [paymentApiErrorCode.paymentNotFound]: {
+    message: 'Payment was not found.',
+    status: HttpStatus.NOT_FOUND,
+  },
   [paymentApiErrorCode.paymentTargetNotFound]: {
     message: 'Payment target was not found.',
     status: HttpStatus.NOT_FOUND,

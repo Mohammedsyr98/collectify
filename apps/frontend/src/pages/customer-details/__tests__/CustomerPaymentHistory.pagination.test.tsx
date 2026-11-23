@@ -156,6 +156,7 @@ function createHistoryItem(sequence: number): PaymentHistoryItem {
     debtDescription: `Payment debt ${sequence}`,
     debtVersion: 1,
     amount: `${sequence}.00`,
+    maximumReplacementAmount: '100.00',
     currency: 'USD',
     paymentDate: '2026-10-20',
     note: null,
