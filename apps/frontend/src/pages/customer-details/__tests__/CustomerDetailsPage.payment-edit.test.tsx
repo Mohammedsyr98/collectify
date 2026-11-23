@@ -64,10 +64,15 @@ describe('CustomerDetailsPage payment editing', () => {
 
   afterEach(() => cleanup());
 
-  it('opens the shared drawer and sends a correction with no target or identity fields', async () => {
+  it('shows the corrected payment after submitting only editable fields', async () => {
     const user = userEvent.setup();
     let receivedBody: unknown;
-    let historyRequests = 0;
+    let replacementSaved = false;
+    const correctedPayment: PaymentHistoryItem = {
+      ...payment,
+      amount: '35.00',
+      debtVersion: 5,
+    };
     const response: ReplacePaymentResponse = {
       payment: {
         id: payment.id,
@@ -83,9 +88,8 @@ describe('CustomerDetailsPage payment editing', () => {
 
     server.use(
       http.get(`${getBackendUrl()}/customers/:customerId/payments`, () => {
-        historyRequests += 1;
         return HttpResponse.json({
-          items: [payment],
+          items: [replacementSaved ? correctedPayment : payment],
           pageSize: paymentHistoryPageSize,
           totalItems: 1,
           nextCursor: null,
@@ -95,6 +99,7 @@ describe('CustomerDetailsPage payment editing', () => {
         `${getBackendUrl()}/customers/:customerId/payments/:paymentId`,
         async ({ request }) => {
           receivedBody = await request.json();
+          replacementSaved = true;
           return HttpResponse.json(response);
         },
       ),
@@ -121,7 +126,7 @@ describe('CustomerDetailsPage payment editing', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: messages.drawer.editTitle })).not.toBeInTheDocument(),
     );
-    expect(historyRequests).toBeGreaterThan(1);
+    expect(await screen.findByText('$35.00')).toBeInTheDocument();
   });
 
   it('keeps the draft and does not refetch or expose a recovery control on conflict', async () => {
