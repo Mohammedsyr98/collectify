@@ -84,9 +84,13 @@ describe('PaymentDrawer edit mode', () => {
     expect(within(drawer).queryByRole('button', { name: /refresh|retry/i })).not.toBeInTheDocument();
   });
 
-  it('blocks a corrected amount above the snapshot maximum before submission', async () => {
+  it('blocks a corrected amount above the maximum from the payment snapshot', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
+    const paymentSnapshot = {
+      ...payment,
+      maximumReplacementAmount: '70.00',
+    };
 
     renderWithAppProviders(
       <PaymentDrawer
@@ -94,11 +98,13 @@ describe('PaymentDrawer edit mode', () => {
         mode="edit"
         onClose={vi.fn()}
         onSubmit={onSubmit}
-        payment={payment}
+        payment={paymentSnapshot}
       />,
     );
 
     const drawer = screen.getByRole('dialog', { name: messages.drawer.editTitle });
+    expect(drawer).toHaveTextContent(messages.drawer.maximumCorrectedAmountLabel);
+    expect(drawer).toHaveTextContent('$70.00');
     const amountInput = within(drawer).getByLabelText(messages.drawer.correctedAmountLabel);
     await user.clear(amountInput);
     await user.type(amountInput, '70.01');
