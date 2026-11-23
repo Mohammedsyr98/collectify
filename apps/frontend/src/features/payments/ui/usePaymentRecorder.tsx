@@ -32,7 +32,6 @@ type PaymentEditorSessionState =
       kind: 'edit';
       payment: PaymentHistoryItem;
       returnFocusTarget: HTMLElement | null;
-      conflictKind?: 'version' | 'capacity';
     };
 
 export function usePaymentEditor({
@@ -49,13 +48,6 @@ export function usePaymentEditor({
   });
   const { replacePayment } = useReplacePaymentMutation({
     customerId,
-    onConflict: (conflictKind) => {
-      setSession((currentSession) =>
-        currentSession?.kind === 'edit'
-          ? { ...currentSession, conflictKind }
-          : currentSession,
-      );
-    },
     onReplaced: () => setSession(null),
   });
 
@@ -78,7 +70,6 @@ export function usePaymentEditor({
           onSubmit={(request) => replacePayment(session.payment.id, request)}
           onClose={() => setSession(null)}
           payment={session.payment}
-          conflictKind={session.conflictKind}
           returnFocusTarget={session.returnFocusTarget}
         />
       )

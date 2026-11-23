@@ -129,7 +129,7 @@ describe('CustomerDetailsPage payment editing', () => {
     expect(await screen.findByText('$35.00')).toBeInTheDocument();
   });
 
-  it('keeps the draft and re-enables save after a conflict', async () => {
+  it('shows a conflict toast, keeps the draft, and re-enables save', async () => {
     const user = userEvent.setup();
 
     server.use(
@@ -163,8 +163,12 @@ describe('CustomerDetailsPage payment editing', () => {
 
     await user.click(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection }));
 
-    const alert = await within(drawer).findByRole('alert');
-    expect(alert).toHaveTextContent(messages.drawer.versionConflict);
+    const errorToast = await screen.findByRole('alert', {
+      name: messages.toast.replace.errorTitle,
+    });
+    expect(errorToast).toHaveTextContent(
+      messages.errors[paymentApiErrorCode.paymentDebtVersionConflict],
+    );
     expect(amountInput).toHaveValue('36.00');
     expect(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection })).toBeEnabled();
     expect(within(drawer).queryByRole('button', { name: /refresh|retry/i })).not.toBeInTheDocument();

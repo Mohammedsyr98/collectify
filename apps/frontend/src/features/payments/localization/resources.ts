@@ -57,8 +57,6 @@ export const paymentResources = {
           submitting: 'Recording',
           saveCorrection: 'Save correction',
           correcting: 'Saving correction',
-          versionConflict: 'This debt changed while you were editing. Refresh the page to load the latest payment facts.',
-          capacityConflict: 'The available target balance changed while you were editing. Refresh the page to load the latest payment facts.',
         },
         toast: {
           record: {
@@ -131,8 +129,6 @@ export const paymentResources = {
           submitting: 'Kaydediliyor',
           saveCorrection: 'Düzeltmeyi kaydet',
           correcting: 'Düzeltme kaydediliyor',
-          versionConflict: 'Siz düzenlerken borç değişti. Güncel ödeme bilgilerini yüklemek için sayfayı yenileyin.',
-          capacityConflict: 'Siz düzenlerken hedef bakiyesi değişti. Güncel ödeme bilgilerini yüklemek için sayfayı yenileyin.',
         },
         toast: {
           record: {
@@ -205,8 +201,6 @@ export const paymentResources = {
           submitting: 'جارٍ التسجيل',
           saveCorrection: 'حفظ التصحيح',
           correcting: 'جارٍ حفظ التصحيح',
-          versionConflict: 'تغير الدين أثناء التحرير. حدّث الصفحة لتحميل أحدث معلومات الدفع.',
-          capacityConflict: 'تغير رصيد الهدف أثناء التحرير. حدّث الصفحة لتحميل أحدث معلومات الدفع.',
         },
         toast: {
           record: {

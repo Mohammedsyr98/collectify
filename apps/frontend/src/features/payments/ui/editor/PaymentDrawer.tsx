@@ -46,14 +46,12 @@ export type PaymentDrawerProps = {
       initialTarget?: PaymentTarget;
       onSubmit: (request: PaymentSubmissionRequest) => Promise<void>;
       payment?: never;
-      conflictKind?: never;
     }
   | {
       mode: 'edit';
       payment: PaymentHistoryItem;
       onSubmit: (request: ReplacePaymentRequest) => Promise<void>;
       initialTarget?: never;
-      conflictKind?: 'version' | 'capacity';
     }
 );
 
@@ -67,7 +65,6 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   const initialTarget = props.mode === 'edit' ? undefined : props.initialTarget;
   const mode = props.mode ?? 'record';
   const payment = props.mode === 'edit' ? props.payment : undefined;
-  const conflictKind = props.mode === 'edit' ? props.conflictKind : undefined;
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const formatValidationError = usePaymentValidationErrorFormatter();
@@ -204,16 +201,6 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
                     target={screen.target!}
                   />
                 )}
-
-                {conflictKind ? (
-                  <div className="rounded-[5px] border border-destructive/40 bg-destructive/5 p-3 text-[0.8rem] font-bold text-destructive" role="alert">
-                    {t(
-                      conflictKind === 'version'
-                        ? 'payments.drawer.versionConflict'
-                        : 'payments.drawer.capacityConflict',
-                    )}
-                  </div>
-                ) : null}
 
                 <FormProvider {...form}>
                   <form className="grid gap-[13px]" id={formId} noValidate onSubmit={submit}>

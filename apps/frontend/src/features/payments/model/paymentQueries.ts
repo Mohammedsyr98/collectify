@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import {
   isPaymentApiErrorCode,
-  paymentApiErrorCode,
   type ReplacePaymentRequest,
   type RecordPaymentRequest,
 } from '@collectify/contracts';
@@ -12,7 +11,7 @@ import {
 import { customerCache } from '@/entities/customer';
 import { debtCache } from '@/entities/debt';
 
-import { isApiError, resolveApiErrorDescription } from '@/shared/api';
+import { resolveApiErrorDescription } from '@/shared/api';
 import { useToast } from '@/shared/ui/toast';
 import {
   recordPayment as sendPayment,
@@ -20,8 +19,6 @@ import {
 } from '../api/record-payment';
 import { replacePayment as sendReplacement } from '../api/replace-payment';
 import { paymentTargetListQueryKey } from './paymentTargetQueries';
-
-type PaymentConflictKind = 'version' | 'capacity';
 
 async function invalidatePaymentData(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -98,11 +95,9 @@ export function useRecordPaymentMutation({
 
 export function useReplacePaymentMutation({
   customerId,
-  onConflict,
   onReplaced,
 }: {
   customerId: string;
-  onConflict?: (kind: PaymentConflictKind) => void;
   onReplaced?: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -126,16 +121,6 @@ export function useReplacePaymentMutation({
       onReplaced?.();
     },
     onError: (error) => {
-      if (isApiError(error) && error.code === paymentApiErrorCode.paymentDebtVersionConflict) {
-        onConflict?.('version');
-        return;
-      }
-
-      if (isApiError(error) && error.code === paymentApiErrorCode.paymentAmountExceedsRemaining) {
-        onConflict?.('capacity');
-        return;
-      }
-
       showToast({
         variant: 'error',
         title: t('payments.toast.replace.errorTitle'),

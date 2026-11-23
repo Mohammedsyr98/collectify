@@ -66,24 +66,6 @@ describe('PaymentDrawer edit mode', () => {
     });
   });
 
-  it('keeps save enabled and shows a persistent conflict alert without recovery controls', () => {
-    renderWithAppProviders(
-      <PaymentDrawer
-        conflictKind="version"
-        customerId="customer_edit_123"
-        mode="edit"
-        onClose={vi.fn()}
-        onSubmit={vi.fn(async () => undefined)}
-        payment={payment}
-      />,
-    );
-
-    const drawer = screen.getByRole('dialog', { name: messages.drawer.editTitle });
-    expect(within(drawer).getByRole('alert')).toHaveTextContent(messages.drawer.versionConflict);
-    expect(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection })).toBeEnabled();
-    expect(within(drawer).queryByRole('button', { name: /refresh|retry/i })).not.toBeInTheDocument();
-  });
-
   it('blocks a corrected amount above the maximum from the payment snapshot', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
