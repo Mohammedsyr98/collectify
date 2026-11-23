@@ -98,7 +98,7 @@ function CustomerDetailsContent({
     ({ remainingAmount }) => parseMoney(remainingAmount) > 0,
   );
 
-  const openPayment = (trigger: HTMLElement) => {
+  const openPaymentRecording = (trigger: HTMLElement) => {
     paymentEditor.openForRecord(undefined, trigger);
   };
 
@@ -106,7 +106,7 @@ function CustomerDetailsContent({
     debtCreator.open(trigger);
   };
 
-  const openDebtPayment = (
+  const openPaymentRecordingForScheduleItem = (
     debt: DebtResponse,
     scheduleItemId: string,
     trigger: HTMLButtonElement,
@@ -114,7 +114,7 @@ function CustomerDetailsContent({
     paymentEditor.openForRecord({ debt, scheduleItemId }, trigger);
   };
 
-  const openPaymentEdit = (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => {
+  const openPaymentCorrection = (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => {
     paymentEditor.openForEdit(payment, trigger);
   };
 
@@ -147,7 +147,7 @@ function CustomerDetailsContent({
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-border bg-card px-4 text-[0.8rem] font-extrabold text-foreground transition duration-150 hover:bg-muted"
                 onClick={(event) => {
                   if (hasEligiblePayment) {
-                    openPayment(event.currentTarget);
+                    openPaymentRecording(event.currentTarget);
                   } else {
                     openDebtCreation(event.currentTarget);
                   }
@@ -184,11 +184,11 @@ function CustomerDetailsContent({
             <CustomerDebtLedger
               customerId={customer.id}
               onAddDebt={openDebtCreation}
-              onRecordPayment={openDebtPayment}
+              onRecordPayment={openPaymentRecordingForScheduleItem}
             />
             <CustomerPaymentHistory
               customerId={customer.id}
-              onEditPayment={openPaymentEdit}
+              onEditPayment={openPaymentCorrection}
             />
           </section>
         </div>
