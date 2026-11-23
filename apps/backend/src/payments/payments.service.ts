@@ -4,6 +4,8 @@ import {
   type Payment,
   type RecordPaymentRequest,
   type RecordPaymentResponse,
+  type ReplacePaymentRequest,
+  type ReplacePaymentResponse,
 } from '@collectify/contracts';
 import { formatMoney, parseMoney } from '@collectify/domain/money';
 import { validatePayment } from '@collectify/domain/payment';
@@ -17,6 +19,7 @@ import { findOwnedDebtForUpdate } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
+import { replacePayment as replacePaymentInDatabase } from './payment-replacement';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type PaymentRow = typeof payments.$inferSelect;
@@ -124,6 +127,24 @@ export class PaymentsService {
       if (!updatedDebt) {
         throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
       }
+
+      return { payment: toPaymentResponse(payment) };
+    });
+  }
+
+  async replacePayment(
+    currentOwner: AuthenticatedOwner,
+    customerId: string,
+    paymentId: string,
+    request: ReplacePaymentRequest,
+  ): Promise<ReplacePaymentResponse> {
+    return this.databaseService.db.transaction(async (tx) => {
+      const payment = await replacePaymentInDatabase(tx, {
+        ownerProfileId: currentOwner.ownerProfile.id,
+        customerId,
+        paymentId,
+        request,
+      });
 
       return { payment: toPaymentResponse(payment) };
     });

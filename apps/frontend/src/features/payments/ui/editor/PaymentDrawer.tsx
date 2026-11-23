@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { z } from 'zod';
 
 import { recordPaymentRequestSchema } from '@collectify/contracts';
-import type { PaymentTarget } from '@collectify/contracts';
+import type { PaymentHistoryItem, PaymentTarget, ReplacePaymentRequest } from '@collectify/contracts';
 import { formatMoney, parseMoney } from '@collectify/domain/money';
 import { validatePayment } from '@collectify/domain/payment';
 
@@ -27,7 +27,7 @@ type PaymentFormInput = z.input<typeof paymentFieldsSchema>;
 type PaymentFormOutput = z.output<typeof paymentFieldsSchema>;
 type PaymentDrawerScreen =
   | { kind: 'targetPicker'; target?: PaymentTarget }
-  | { kind: 'paymentForm'; target: PaymentTarget };
+  | { kind: 'paymentForm'; target?: PaymentTarget };
 
 const timingLabelKeys = {
   overdue: 'payments.drawer.timingOverdue',
@@ -38,37 +38,62 @@ const timingLabelKeys = {
 export type PaymentDrawerProps = {
   customerId: string;
   customerName?: string;
-  initialTarget?: PaymentTarget;
-  onSubmit: (request: PaymentSubmissionRequest) => Promise<void>;
   onClose: () => void;
   returnFocusTarget?: HTMLElement | null;
-};
+} & (
+  | {
+      mode?: 'record';
+      initialTarget?: PaymentTarget;
+      onSubmit: (request: PaymentSubmissionRequest) => Promise<void>;
+      payment?: never;
+      conflictKind?: never;
+    }
+  | {
+      mode: 'edit';
+      payment: PaymentHistoryItem;
+      onSubmit: (request: ReplacePaymentRequest) => Promise<void>;
+      initialTarget?: never;
+      conflictKind?: 'version' | 'capacity';
+    }
+);
 
-export function PaymentDrawer({
-  customerId,
-  customerName,
-  initialTarget,
-  onSubmit,
-  onClose,
-  returnFocusTarget,
-}: PaymentDrawerProps) {
+export function PaymentDrawer(props: PaymentDrawerProps) {
+  const {
+    customerId,
+    customerName,
+    onClose,
+    returnFocusTarget,
+  } = props;
+  const initialTarget = props.mode === 'edit' ? undefined : props.initialTarget;
+  const mode = props.mode ?? 'record';
+  const payment = props.mode === 'edit' ? props.payment : undefined;
+  const conflictKind = props.mode === 'edit' ? props.conflictKind : undefined;
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const formatValidationError = usePaymentValidationErrorFormatter();
   const today = getIstanbulBusinessDate();
+  const isEditMode = mode === 'edit';
   const [screen, setScreen] = useState<PaymentDrawerScreen>(
-    initialTarget
+    isEditMode
+      ? { kind: 'paymentForm' }
+      : initialTarget
       ? { kind: 'paymentForm', target: initialTarget }
       : { kind: 'targetPicker' },
   );
   const formId = useId();
   const amountPreviewId = useId();
   const target = screen.target;
-  const formSchema = createPaymentFormSchema(target?.remainingAmount ?? '0.00', today);
+  const remainingAmount = isEditMode
+    ? payment!.maximumReplacementAmount
+    : target?.remainingAmount ?? '0.00';
   const form = useForm<PaymentFormInput, unknown, PaymentFormOutput>({
-    defaultValues: { amount: '', paymentDate: today, note: '' },
+    defaultValues: {
+      amount: isEditMode ? payment!.amount : '',
+      paymentDate: isEditMode ? payment!.paymentDate : today,
+      note: isEditMode ? payment!.note ?? '' : '',
+    },
     criteriaMode: 'all',
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(createPaymentFormSchema(remainingAmount, today)),
   });
   const isSubmitting = form.formState.isSubmitting;
 
@@ -77,9 +102,18 @@ export function PaymentDrawer({
   };
 
   const submit = form.handleSubmit((values) => {
+    if (props.mode === 'edit') {
+      return props.onSubmit({
+        amount: values.amount,
+        paymentDate: values.paymentDate,
+        note: values.note || null,
+        expectedSourceDebtVersion: payment!.debtVersion,
+      });
+    }
+
     if (!target) return;
 
-    return onSubmit({
+    return props.onSubmit({
       ...values,
       expectedDebtVersion: target.debtVersion,
       targetScheduleItemId: target.scheduleItemId,
@@ -93,7 +127,7 @@ export function PaymentDrawer({
     setScreen({ kind: 'paymentForm', target: nextTarget });
   };
 
-  const preview = getPaymentPreview(form.watch('amount'), target?.remainingAmount);
+  const preview = getPaymentPreview(form.watch('amount'), remainingAmount);
   const amountHasError = Boolean(form.formState.errors.amount);
 
   return (
@@ -112,13 +146,13 @@ export function PaymentDrawer({
         >
           <header className="flex min-h-[84px] items-start justify-between gap-4 border-b border-border px-6 py-5 max-[620px]:min-h-[78px] max-[620px]:px-5 max-[620px]:py-4">
             <Dialog.Title className="sr-only">
-              {t('payments.drawer.title')}
+              {t(isEditMode ? 'payments.drawer.editTitle' : 'payments.drawer.title')}
             </Dialog.Title>
             <div className="min-w-0">
               <h2 className="m-0 text-base font-black leading-tight tracking-normal">
                 {screen.kind === 'targetPicker'
                   ? t('payments.drawer.chooseTargetTitle')
-                  : t('payments.drawer.title')}
+                  : t(isEditMode ? 'payments.drawer.editTitle' : 'payments.drawer.title')}
               </h2>
               {customerName ? (
                 <p className="mb-0 mt-1 truncate text-[0.75rem] text-muted-foreground">
@@ -140,6 +174,8 @@ export function PaymentDrawer({
           <Dialog.Description className="sr-only" id="payment-drawer-description">
             {target
               ? t('payments.drawer.description', { description: target.debtDescription })
+              : isEditMode
+                ? t('payments.drawer.editDescription', { description: payment!.debtDescription })
               : t('payments.drawer.selectionDescription')}
           </Dialog.Description>
 
@@ -156,14 +192,28 @@ export function PaymentDrawer({
               />
             ) : (
               <div className="mx-auto grid w-full max-w-[520px] gap-5 px-7 py-[22px] max-[620px]:px-5">
-                <SelectedTargetSummary
-                  isSubmitting={isSubmitting}
-                  locale={locale}
-                  onChangeTarget={() =>
-                    setScreen({ kind: 'targetPicker', target: screen.target })
-                  }
-                  target={screen.target}
-                />
+                {isEditMode ? (
+                  <SelectedPaymentSummary locale={locale} payment={payment!} />
+                ) : (
+                  <SelectedTargetSummary
+                    isSubmitting={isSubmitting}
+                    locale={locale}
+                    onChangeTarget={() =>
+                      setScreen({ kind: 'targetPicker', target: screen.target })
+                    }
+                    target={screen.target!}
+                  />
+                )}
+
+                {conflictKind ? (
+                  <div className="rounded-[5px] border border-destructive/40 bg-destructive/5 p-3 text-[0.8rem] font-bold text-destructive" role="alert">
+                    {t(
+                      conflictKind === 'version'
+                        ? 'payments.drawer.versionConflict'
+                        : 'payments.drawer.capacityConflict',
+                    )}
+                  </div>
+                ) : null}
 
                 <FormProvider {...form}>
                   <form className="grid gap-[13px]" id={formId} noValidate onSubmit={submit}>
@@ -175,30 +225,38 @@ export function PaymentDrawer({
                         dir="ltr"
                         endAdornment={
                           <span className="text-[0.78rem] font-black text-muted-foreground">
-                            {screen.target.currency}
+                            {isEditMode ? payment!.currency : target!.currency}
                           </span>
                         }
                         icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
-                        label={t('payments.drawer.amountLabel')}
+                        label={t(
+                          isEditMode
+                            ? 'payments.drawer.correctedAmountLabel'
+                            : 'payments.drawer.amountLabel',
+                        )}
                         name="amount"
                         placeholder={t('payments.drawer.amountPlaceholder')}
                         type="text"
                         inputMode="decimal"
                         formatError={formatValidationError}
                       />
-                      {!amountHasError ? (
+                      {!amountHasError && !isEditMode ? (
                         <div
                           aria-live="polite"
                           className="min-h-[1.05rem] text-[0.76rem] leading-[1.35] text-muted-foreground"
                           id={amountPreviewId}
                         >
                           <span>
-                            {t('payments.drawer.targetAfterLabel')}:{' '}
+                            {t(
+                              isEditMode
+                                ? 'payments.drawer.maximumCorrectedAmountLabel'
+                                : 'payments.drawer.targetAfterLabel',
+                            )}:{' '}
                             {preview ? (
                               <bdi className="font-black text-foreground" dir="ltr">
                                 {formatCurrencyAmount(
                                   preview,
-                                  screen.target.currency,
+                                  isEditMode ? payment!.currency : screen.target!.currency,
                                   locale,
                                 )}
                               </bdi>
@@ -254,7 +312,9 @@ export function PaymentDrawer({
               form={formId}
               type="submit"
             >
-              {isSubmitting ? t('payments.drawer.submitting') : t('payments.drawer.submit')}
+              {isSubmitting
+                ? t(isEditMode ? 'payments.drawer.correcting' : 'payments.drawer.submitting')
+                : t(isEditMode ? 'payments.drawer.saveCorrection' : 'payments.drawer.submit')}
             </button>
           </footer>
         </Dialog.Content>
@@ -322,6 +382,44 @@ function SelectedTargetSummary({
         </span>
         <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
           {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
+        </bdi>
+      </div>
+    </section>
+  );
+}
+
+function SelectedPaymentSummary({
+  locale,
+  payment,
+}: {
+  locale: string;
+  payment: PaymentHistoryItem;
+}) {
+  const { t } = useTranslation();
+  const planLabel =
+    payment.plan.type === 'installment'
+      ? t('payments.drawer.installmentLabel', { position: payment.plan.position })
+      : t('payments.drawer.onePaymentTarget');
+
+  return (
+    <section className="grid gap-3 rounded-[5px] border border-border bg-background p-4">
+      <div className="grid gap-1">
+        <span className="text-[0.72rem] font-black uppercase tracking-wide text-muted-foreground">
+          {t('payments.drawer.correctingPayment')}
+        </span>
+        <h2 className="m-0 text-[0.95rem] font-black text-foreground">
+          {payment.debtDescription}
+        </h2>
+        <p className="m-0 text-[0.76rem] font-bold text-muted-foreground">
+          {planLabel} · {formatCurrencyAmount(payment.amount, payment.currency, locale)}
+        </p>
+      </div>
+      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+        <span className="text-[0.72rem] font-bold text-muted-foreground">
+          {t('payments.drawer.maximumCorrectedAmountLabel')}
+        </span>
+        <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
+          {formatCurrencyAmount(payment.maximumReplacementAmount, payment.currency, locale)}
         </bdi>
       </div>
     </section>

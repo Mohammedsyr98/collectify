@@ -34,6 +34,18 @@ export const recordPaymentRequestSchema = z
   })
   .strict();
 
+export const replacePaymentRequestSchema = z
+  .object({
+    amount: paymentAmountSchema,
+    paymentDate: dateOnlySchema,
+    note: normalizedNoteSchema,
+    expectedSourceDebtVersion: z
+      .number()
+      .int()
+      .positive(paymentValidationCode.paymentExpectedDebtVersionInvalid),
+  })
+  .strict();
+
 export const paymentSchema = z.object({
   id: z.string().min(1),
   scheduleItemId: z.string().min(1),
@@ -49,6 +61,8 @@ export const recordPaymentResponseSchema = z.object({
   payment: paymentSchema,
 });
 
+export const replacePaymentResponseSchema = recordPaymentResponseSchema;
+
 export const paymentErrorCodeSchema = z.enum(paymentApiErrorCode);
 
 export const paymentErrorResponseSchema = z.object({
@@ -58,7 +72,9 @@ export const paymentErrorResponseSchema = z.object({
 });
 
 export type RecordPaymentRequest = z.infer<typeof recordPaymentRequestSchema>;
+export type ReplacePaymentRequest = z.infer<typeof replacePaymentRequestSchema>;
 export type Payment = z.infer<typeof paymentSchema>;
 export type RecordPaymentResponse = z.infer<typeof recordPaymentResponseSchema>;
+export type ReplacePaymentResponse = z.infer<typeof replacePaymentResponseSchema>;
 export type PaymentErrorCode = z.infer<typeof paymentErrorCodeSchema>;
 export type PaymentErrorResponse = z.infer<typeof paymentErrorResponseSchema>;

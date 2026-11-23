@@ -34,11 +34,11 @@ export const customerCache = {
     ]);
   },
 
-  async resetPaymentHistory(
+  async invalidatePaymentHistory(
     queryClient: QueryClient,
     customerId: string,
   ): Promise<void> {
-    await queryClient.resetQueries({
+    await queryClient.invalidateQueries({
       queryKey: customerPaymentHistoryQueryKeys.customer(customerId),
       exact: true,
     });

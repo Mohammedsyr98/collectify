@@ -1,56 +1,106 @@
 import { useState, type ReactNode } from 'react';
 
-import type { DebtResponse, PaymentTarget } from '@collectify/contracts';
+import type { DebtResponse, PaymentHistoryItem, PaymentTarget } from '@collectify/contracts';
 
 import { PaymentDrawer } from './editor/PaymentDrawer';
-import { useRecordPaymentMutation } from '../model/paymentQueries';
+import {
+  useRecordPaymentMutation,
+  useReplacePaymentMutation,
+} from '../model/paymentQueries';
 
 export type PaymentRecordingTarget = {
   debt: DebtResponse;
   scheduleItemId: string;
 };
 
-export type PaymentRecorder = {
+export type PaymentEditor = {
   dialog: ReactNode;
-  open: (target: PaymentRecordingTarget | undefined, returnFocusTarget: HTMLElement | null) => void;
+  openForRecord: (
+    target: PaymentRecordingTarget | undefined,
+    returnFocusTarget: HTMLElement | null,
+  ) => void;
+  openForEdit: (payment: PaymentHistoryItem, returnFocusTarget: HTMLElement | null) => void;
 };
 
-type PaymentRecorderSessionState = {
-  initialTarget?: PaymentTarget;
-  returnFocusTarget: HTMLElement | null;
-};
+type PaymentEditorSessionState =
+  | {
+      kind: 'record';
+      initialTarget?: PaymentTarget;
+      returnFocusTarget: HTMLElement | null;
+    }
+  | {
+      kind: 'edit';
+      payment: PaymentHistoryItem;
+      returnFocusTarget: HTMLElement | null;
+      conflictKind?: 'version' | 'capacity';
+    };
 
-export function usePaymentRecorder({
+export function usePaymentEditor({
   customerId,
   customerName,
 }: {
   customerId: string;
   customerName?: string;
-}): PaymentRecorder {
-  const [session, setSession] = useState<PaymentRecorderSessionState | null>(null);
+}): PaymentEditor {
+  const [session, setSession] = useState<PaymentEditorSessionState | null>(null);
   const { recordPayment, resetIdempotencyKey } = useRecordPaymentMutation({
     customerId,
     onRecorded: () => setSession(null),
   });
+  const { replacePayment } = useReplacePaymentMutation({
+    customerId,
+    onConflict: (conflictKind) => {
+      setSession((currentSession) =>
+        currentSession?.kind === 'edit'
+          ? { ...currentSession, conflictKind }
+          : currentSession,
+      );
+    },
+    onReplaced: () => setSession(null),
+  });
 
   return {
     dialog: session ? (
-      <PaymentDrawer
-        customerId={customerId}
-        customerName={customerName}
-        initialTarget={session.initialTarget}
-        onSubmit={recordPayment}
-        onClose={() => setSession(null)}
-        returnFocusTarget={session.returnFocusTarget}
-      />
+      session.kind === 'record' ? (
+        <PaymentDrawer
+          customerId={customerId}
+          customerName={customerName}
+          initialTarget={session.initialTarget}
+          onSubmit={recordPayment}
+          onClose={() => setSession(null)}
+          returnFocusTarget={session.returnFocusTarget}
+        />
+      ) : (
+        <PaymentDrawer
+          customerId={customerId}
+          customerName={customerName}
+          mode="edit"
+          onSubmit={(request) => replacePayment(session.payment.id, request)}
+          onClose={() => setSession(null)}
+          payment={session.payment}
+          conflictKind={session.conflictKind}
+          returnFocusTarget={session.returnFocusTarget}
+        />
+      )
     ) : null,
-    open: (target, returnFocusTarget) => {
+    openForRecord: (target, returnFocusTarget) => {
       const initialTarget = toPaymentTarget(target);
       if (target && !initialTarget) return;
       if (session) return;
 
       resetIdempotencyKey();
-      setSession((currentSession) => currentSession ?? { initialTarget, returnFocusTarget });
+      setSession(
+        (currentSession) =>
+          currentSession ?? { kind: 'record', initialTarget, returnFocusTarget },
+      );
+    },
+    openForEdit: (payment, returnFocusTarget) => {
+      if (session) return;
+      setSession({
+        kind: 'edit',
+        payment,
+        returnFocusTarget,
+      });
     },
   };
 }

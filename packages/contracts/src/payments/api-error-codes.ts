@@ -12,6 +12,7 @@ export const paymentApiErrorCode = {
   paymentAmountExceedsRemaining: paymentIssueCode.paymentAmountExceedsRemaining,
   paymentDebtVersionConflict: 'PAYMENT_DEBT_VERSION_CONFLICT',
   paymentIdempotencyKeyReused: 'PAYMENT_IDEMPOTENCY_KEY_REUSED',
+  paymentNotFound: 'PAYMENT_NOT_FOUND',
 } as const satisfies
   Record<keyof typeof paymentIssueCode, PaymentDomainIssueCode> &
     Record<string, string>;

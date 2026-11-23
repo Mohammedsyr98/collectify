@@ -1,4 +1,4 @@
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { PaymentHistoryItem } from '@collectify/contracts';
@@ -12,7 +12,13 @@ import {
 
 const paymentSkeletonRows = Array.from({ length: 3 }, (_, index) => index);
 
-export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
+export function CustomerPaymentHistory({
+  customerId,
+  onEditPayment,
+}: {
+  customerId: string;
+  onEditPayment: (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => void;
+}) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const historyQuery = useCustomerPaymentHistoryQuery(customerId);
@@ -86,7 +92,12 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
         <>
           <ol className="m-0 grid list-none gap-3 p-0">
             {items.map((payment) => (
-              <PaymentHistoryRow key={payment.id} locale={locale} payment={payment} />
+              <PaymentHistoryRow
+                key={payment.id}
+                locale={locale}
+                onEditPayment={onEditPayment}
+                payment={payment}
+              />
             ))}
           </ol>
           <footer className="flex flex-wrap items-center justify-between gap-3">
@@ -159,9 +170,11 @@ export function CustomerPaymentHistory({ customerId }: { customerId: string }) {
 
 function PaymentHistoryRow({
   locale,
+  onEditPayment,
   payment,
 }: {
   locale: string;
+  onEditPayment: (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => void;
   payment: PaymentHistoryItem;
 }) {
   const { t } = useTranslation();
@@ -199,7 +212,14 @@ function PaymentHistoryRow({
           ) : null}
         </div>
       </div>
-      <span aria-hidden="true" className="block min-h-9 min-w-9" />
+      <button
+        aria-label={t('customers.details.paymentHistory.editPayment')}
+        className="inline-flex min-h-9 min-w-9 items-center justify-center self-start rounded-[5px] border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        onClick={(event) => onEditPayment(payment, event.currentTarget)}
+        type="button"
+      >
+        <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />
+      </button>
     </li>
   );
 }

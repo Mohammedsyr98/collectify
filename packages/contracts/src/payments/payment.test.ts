@@ -7,6 +7,8 @@ import {
 } from './api-error-codes.js';
 import {
   paymentErrorResponseSchema,
+  replacePaymentRequestSchema,
+  replacePaymentResponseSchema,
   recordPaymentRequestSchema,
   recordPaymentResponseSchema,
 } from './payment.js';
@@ -110,6 +112,66 @@ describe('record payment response contract', () => {
   });
 });
 
+describe('replace payment request contract', () => {
+  const validReplacement = {
+    amount: '25.20',
+    paymentDate: '2026-10-20',
+    note: null,
+    expectedSourceDebtVersion: 4,
+  } as const;
+
+  it('accepts the complete editable payment state and normalizes blank notes', () => {
+    expect(
+      replacePaymentRequestSchema.parse({
+        ...validReplacement,
+        amount: ' 25.2 ',
+        note: '   ',
+      }),
+    ).toEqual(validReplacement);
+  });
+
+  it.each([
+    ['missing note', { note: undefined }],
+    ['non-positive source version', { expectedSourceDebtVersion: 0 }],
+    ['invalid date syntax', { paymentDate: '2026-1-1' }],
+    ['invalid amount', { amount: '0' }],
+  ])('rejects %s', (_description, change) => {
+    expect(
+      replacePaymentRequestSchema.safeParse({ ...validReplacement, ...change }),
+    ).toMatchObject({ success: false });
+  });
+
+  it('rejects fields that could change the payment target or identity', () => {
+    expect(
+      replacePaymentRequestSchema.safeParse({
+        ...validReplacement,
+        targetScheduleItemId: 'client_target',
+        paymentId: 'client_payment',
+        idempotencyKey: '10000000-0000-4000-8000-000000000001',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('replace payment response contract', () => {
+  it('uses the persisted payment response shape', () => {
+    const response = {
+      payment: {
+        id: 'payment_contract',
+        scheduleItemId: 'schedule_payment_contract',
+        amount: '25.20',
+        paymentDate: '2026-10-20',
+        note: null,
+        idempotencyKey: validRequest.idempotencyKey,
+        createdAt: '2026-10-20T07:00:00.000Z',
+        updatedAt: '2026-10-20T07:00:01.000Z',
+      },
+    };
+
+    expect(replacePaymentResponseSchema.parse(response)).toEqual(response);
+  });
+});
+
 describe('payment API error code contracts', () => {
   it('exports the stable payment API error vocabulary', () => {
     expect(paymentApiErrorCodes).toEqual([
@@ -120,6 +182,7 @@ describe('payment API error code contracts', () => {
       'PAYMENT_AMOUNT_EXCEEDS_REMAINING',
       'PAYMENT_DEBT_VERSION_CONFLICT',
       'PAYMENT_IDEMPOTENCY_KEY_REUSED',
+      'PAYMENT_NOT_FOUND',
     ]);
     expect(isPaymentApiErrorCode(paymentApiErrorCode.validationError)).toBe(true);
     expect(isPaymentApiErrorCode(paymentApiErrorCode.paymentTargetNotFound)).toBe(true);

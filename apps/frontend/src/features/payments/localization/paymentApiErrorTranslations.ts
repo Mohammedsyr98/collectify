@@ -16,6 +16,7 @@ export const paymentApiErrorTranslations = {
     [paymentApiErrorCode.paymentAmountExceedsRemaining]: 'Payment exceeds the target remaining amount.',
     [paymentApiErrorCode.paymentDebtVersionConflict]: 'The debt changed. Review the latest details before trying again.',
     [paymentApiErrorCode.paymentIdempotencyKeyReused]: 'We couldn\'t submit the payment. Refresh the page and try again.',
+    [paymentApiErrorCode.paymentNotFound]: 'The payment was not found. Refresh the page and try again.',
   },
   tr: {
     [paymentApiErrorCode.validationError]: 'Vurgulanan alanları kontrol edin.',
@@ -25,6 +26,7 @@ export const paymentApiErrorTranslations = {
     [paymentApiErrorCode.paymentAmountExceedsRemaining]: 'Ödeme hedefin kalan tutarını aşıyor.',
     [paymentApiErrorCode.paymentDebtVersionConflict]: 'Borç değişti. Tekrar denemeden önce güncel bilgileri inceleyin.',
     [paymentApiErrorCode.paymentIdempotencyKeyReused]: 'Ödeme gönderilemedi. Sayfayı yenileyip tekrar deneyin.',
+    [paymentApiErrorCode.paymentNotFound]: 'Ödeme bulunamadı. Sayfayı yenileyip tekrar deneyin.',
   },
   ar: {
     [paymentApiErrorCode.validationError]: 'تحقق من الحقول المميزة.',
@@ -34,5 +36,6 @@ export const paymentApiErrorTranslations = {
     [paymentApiErrorCode.paymentAmountExceedsRemaining]: 'يتجاوز الدفع المبلغ المتبقي للهدف.',
     [paymentApiErrorCode.paymentDebtVersionConflict]: 'تغير الدين. راجع أحدث التفاصيل قبل المحاولة مرة أخرى.',
     [paymentApiErrorCode.paymentIdempotencyKeyReused]: 'تعذر إرسال الدفعة. حدّث الصفحة ثم حاول مرة أخرى.',
+    [paymentApiErrorCode.paymentNotFound]: 'لم يتم العثور على الدفعة. حدّث الصفحة ثم حاول مرة أخرى.',
   },
 } satisfies Record<SupportedLocale, PaymentApiErrorTranslationMessages>;

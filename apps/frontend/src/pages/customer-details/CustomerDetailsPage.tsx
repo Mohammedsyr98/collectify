@@ -7,6 +7,7 @@ import {
   type CustomerDetailsResponse,
   type Currency,
   type DebtResponse,
+  type PaymentHistoryItem,
 } from '@collectify/contracts';
 import { parseMoney } from '@collectify/domain/money';
 
@@ -14,7 +15,7 @@ import { useCustomerDetailsQuery } from '@/entities/customer';
 import { isApiError } from '@/shared/api';
 import { useDebtCreator } from '@/features/debts';
 import { useCustomerEditor } from '@/features/customers';
-import { usePaymentRecorder } from '@/features/payments';
+import { usePaymentEditor } from '@/features/payments';
 import { ErrorStatePage } from '@/shared/ui/error';
 import { LoadingScreen } from '@/shared/ui/loading';
 
@@ -89,7 +90,7 @@ function CustomerDetailsContent({
     customerId: customer.id,
     defaultCurrency,
   });
-  const paymentRecorder = usePaymentRecorder({
+  const paymentEditor = usePaymentEditor({
     customerId: customer.id,
     customerName: customer.name,
   });
@@ -98,7 +99,7 @@ function CustomerDetailsContent({
   );
 
   const openPayment = (trigger: HTMLElement) => {
-    paymentRecorder.open(undefined, trigger);
+    paymentEditor.openForRecord(undefined, trigger);
   };
 
   const openDebtCreation = (trigger: HTMLButtonElement) => {
@@ -110,7 +111,11 @@ function CustomerDetailsContent({
     scheduleItemId: string,
     trigger: HTMLButtonElement,
   ) => {
-    paymentRecorder.open({ debt, scheduleItemId }, trigger);
+    paymentEditor.openForRecord({ debt, scheduleItemId }, trigger);
+  };
+
+  const openPaymentEdit = (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => {
+    paymentEditor.openForEdit(payment, trigger);
   };
 
   return (
@@ -181,12 +186,15 @@ function CustomerDetailsContent({
               onAddDebt={openDebtCreation}
               onRecordPayment={openDebtPayment}
             />
-            <CustomerPaymentHistory customerId={customer.id} />
+            <CustomerPaymentHistory
+              customerId={customer.id}
+              onEditPayment={openPaymentEdit}
+            />
           </section>
         </div>
       </main>
 
-      {paymentRecorder.dialog}
+      {paymentEditor.dialog}
       {debtCreator.dialog}
     </>
   );

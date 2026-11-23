@@ -1,6 +1,6 @@
 export { paymentResources } from './localization/resources';
-export { usePaymentRecorder } from './ui/usePaymentRecorder';
+export { usePaymentEditor } from './ui/usePaymentRecorder';
 export type {
-  PaymentRecorder,
+  PaymentEditor,
   PaymentRecordingTarget,
 } from './ui/usePaymentRecorder';

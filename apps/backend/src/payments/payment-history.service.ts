@@ -6,6 +6,7 @@ import {
   type PaymentHistoryListResponse,
   type PaymentHistoryQuery,
 } from '@collectify/contracts';
+import { formatMoney, parseMoney } from '@collectify/domain/money';
 import { count, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -13,6 +14,7 @@ import type { AuthenticatedOwner } from '../auth';
 import { requireOwnedCustomer } from '../customers';
 import { DatabaseService, type Database } from '../database/database.service';
 import { debtScheduleItems, debts, payments } from '../database/schema';
+import { loadPaidTotalsByScheduleItemId } from '../receivables';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -23,6 +25,7 @@ type PaymentHistoryRow = {
   debtDescription: string;
   debtVersion: number;
   amount: string;
+  scheduleItemAmount: string;
   currency: 'TRY' | 'USD' | 'EUR';
   paymentDate: string;
   note: string | null;
@@ -80,9 +83,13 @@ export class PaymentHistoryService {
         const rows = await loadPaymentRows(tx, customerId, cursor);
         const visibleRows = rows.slice(0, paymentHistoryPageSize);
         const lastVisibleRow = visibleRows.at(-1);
+        const paidTotals = await loadPaidTotalsByScheduleItemId(
+          tx,
+          [...new Set(visibleRows.map(({ scheduleItemId }) => scheduleItemId))],
+        );
 
         return {
-          items: visibleRows.map(toPaymentHistoryItem),
+          items: visibleRows.map((row) => toPaymentHistoryItem(row, paidTotals)),
           pageSize: paymentHistoryPageSize,
           totalItems,
           nextCursor:
@@ -130,6 +137,7 @@ export function buildPaymentHistoryRowsQuery(
       debt.description as "debtDescription",
       debt.version as "debtVersion",
       payment_page.amount as "amount",
+      schedule_item.amount as "scheduleItemAmount",
       debt.currency as "currency",
       payment_page.payment_date as "paymentDate",
       payment_page.note as "note",
@@ -166,7 +174,15 @@ export function buildPaymentHistoryRowsQuery(
   `;
 }
 
-function toPaymentHistoryItem(row: PaymentHistoryRow): PaymentHistoryItem {
+function toPaymentHistoryItem(
+  row: PaymentHistoryRow,
+  paidTotals: ReadonlyMap<string, string>,
+): PaymentHistoryItem {
+  const totalPaid = parseMoney(paidTotals.get(row.scheduleItemId) ?? '0.00');
+  const maximumReplacementAmount = formatMoney(
+    parseMoney(row.scheduleItemAmount) - totalPaid + parseMoney(row.amount),
+  );
+
   return {
     id: row.id,
     scheduleItemId: row.scheduleItemId,
@@ -174,6 +190,7 @@ function toPaymentHistoryItem(row: PaymentHistoryRow): PaymentHistoryItem {
     debtDescription: row.debtDescription,
     debtVersion: row.debtVersion,
     amount: row.amount,
+    maximumReplacementAmount,
     currency: row.currency,
     paymentDate: row.paymentDate,
     note: row.note,
