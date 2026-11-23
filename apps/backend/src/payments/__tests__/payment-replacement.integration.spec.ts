@@ -197,6 +197,7 @@ describe('payment replacement route', () => {
         ownerEmail: 'payment-replacement-stale-owner@example.com',
         customerId: 'customer_payment_replacement_stale',
         debtId: 'payment_replacement_stale_debt',
+        debt: { version: 1 },
       });
     const recordedResponse = await helpers.recordPayment(
       owner.cookieHeader,
