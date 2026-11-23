@@ -61,20 +61,15 @@ describe('payment replacement route', () => {
     const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
     const paymentId = recorded.payment.id;
 
-    const replacementResponse = await fetch(
-      `${backend.baseUrl}/customers/${customerId}/payments/${paymentId}`,
+    const replacementResponse = await helpers.replacePayment(
+      owner.cookieHeader,
+      customerId,
+      paymentId,
       {
-        method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          cookie: owner.cookieHeader,
-        },
-        body: JSON.stringify({
-          amount: '35.00',
-          paymentDate: '2026-10-21',
-          note: 'corrected note',
-          expectedSourceDebtVersion: 2,
-        }),
+        amount: '35.00',
+        paymentDate: '2026-10-21',
+        note: 'corrected note',
+        expectedSourceDebtVersion: 2,
       },
     );
 
