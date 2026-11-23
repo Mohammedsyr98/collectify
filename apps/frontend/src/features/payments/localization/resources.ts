@@ -7,6 +7,9 @@ export const paymentResources = {
     common: {
       payments: {
         drawer: {
+          changedFrom: 'Changed from {{description}}',
+          undoTargetChange: 'Undo target change',
+          crossCurrencyAmountReset: 'Enter an amount in the new currency; currencies are not converted.',
           close: 'Close payment form',
           title: 'Record payment',
           editTitle: 'Correct payment',
@@ -79,6 +82,9 @@ export const paymentResources = {
     common: {
       payments: {
         drawer: {
+          changedFrom: '{{description}} hedefinden değiştirildi',
+          undoTargetChange: 'Hedef değişikliğini geri al',
+          crossCurrencyAmountReset: 'Para birimleri dönüştürülmez; yeni para biriminde bir tutar girin.',
           close: 'Ödeme formunu kapat',
           title: 'Ödeme kaydet',
           editTitle: 'Ödemeyi düzelt',
@@ -151,6 +157,9 @@ export const paymentResources = {
     common: {
       payments: {
         drawer: {
+          changedFrom: 'تم التغيير من {{description}}',
+          undoTargetChange: 'التراجع عن تغيير الهدف',
+          crossCurrencyAmountReset: 'لا يتم تحويل العملات؛ أدخل مبلغًا بالعملة الجديدة.',
           close: 'إغلاق نموذج الدفع',
           title: 'تسجيل دفعة',
           editTitle: 'تصحيح دفعة',

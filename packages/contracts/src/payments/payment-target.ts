@@ -31,12 +31,14 @@ export const paymentTargetQuerySchema = z
     page: oneBasedPageSchema,
     search: z.string().trim().optional(),
     paymentState: eligiblePaymentStateSchema.optional(),
+    editingPaymentId: z.string().trim().min(1).optional(),
   })
   .strict()
-  .transform(({ page, search, paymentState }) => ({
+  .transform(({ page, search, paymentState, editingPaymentId }) => ({
     page,
     ...(search ? { search } : {}),
     ...(paymentState ? { paymentState } : {}),
+    ...(editingPaymentId ? { editingPaymentId } : {}),
   }));
 
 export const paymentTargetSchema = z

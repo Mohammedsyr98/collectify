@@ -1,61 +1,110 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { paymentApiErrorCode, type ReplacePaymentRequest } from '@collectify/contracts';
 import { formatMoney, parseMoney } from '@collectify/domain/money';
 import { validatePayment } from '@collectify/domain/payment';
 
 import type { Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts, payments } from '../database/schema';
-import { findOwnedDebtForUpdate } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type PaymentRow = typeof payments.$inferSelect;
+type DebtRow = typeof debts.$inferSelect;
+type ScheduleItemRow = typeof debtScheduleItems.$inferSelect;
 
-type ReplacePaymentCommand = {
+export type ReplacePaymentCommand = {
   ownerProfileId: string;
   customerId: string;
   paymentId: string;
   request: ReplacePaymentRequest;
 };
 
+export type ReplacePaymentResult = {
+  payment: PaymentRow;
+  sourceDebt: DebtRow;
+  destinationDebt: DebtRow;
+};
+
 export async function replacePayment(
   tx: Transaction,
   command: ReplacePaymentCommand,
-): Promise<PaymentRow> {
+): Promise<ReplacePaymentResult> {
   const source = await findOwnedPaymentSource(tx, command);
 
   if (!source) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  const debt = await findOwnedDebtForUpdate(tx, {
+  const target = await findOwnedPaymentTarget(tx, {
     ownerProfileId: command.ownerProfileId,
     customerId: command.customerId,
-    debtId: source.debtId,
+    scheduleItemId: command.request.targetScheduleItemId,
   });
 
-  if (!debt) {
+  if (!target) {
+    throw paymentException(paymentApiErrorCode.paymentTargetNotFound);
+  }
+
+  const debtIds = [...new Set([source.debtId, target.debtId])].sort();
+  const lockedDebts = await lockOwnedDebts(tx, {
+    ownerProfileId: command.ownerProfileId,
+    customerId: command.customerId,
+    debtIds,
+  });
+  const debtById = new Map(lockedDebts.map((debt) => [debt.id, debt]));
+  const sourceDebt = debtById.get(source.debtId);
+  const destinationDebt = debtById.get(target.debtId);
+
+  if (!sourceDebt || !destinationDebt) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  if (debt.version !== command.request.expectedSourceDebtVersion) {
+  if (sourceDebt.version !== command.request.expectedSourceDebtVersion) {
     throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
   }
 
-  const scheduleItem = await lockScheduleItem(tx, debt.id, source.scheduleItemId);
-  const payment = await lockPayment(tx, command.paymentId, source.scheduleItemId);
+  if (
+    sourceDebt.id !== destinationDebt.id &&
+    destinationDebt.version !== command.request.expectedDestinationDebtVersion
+  ) {
+    throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
+  }
 
-  if (!scheduleItem || !payment) {
+  const scheduleItemIds = [...new Set([source.scheduleItemId, target.scheduleItemId])].sort();
+  const lockedScheduleItems = await lockScheduleItems(tx, scheduleItemIds);
+  const scheduleItemById = new Map(
+    lockedScheduleItems.map((scheduleItem) => [scheduleItem.id, scheduleItem]),
+  );
+  const sourceScheduleItem = scheduleItemById.get(source.scheduleItemId);
+  const destinationScheduleItem = scheduleItemById.get(target.scheduleItemId);
+
+  if (!sourceScheduleItem || !destinationScheduleItem) {
+    throw paymentException(paymentApiErrorCode.paymentTargetNotFound);
+  }
+
+  const payment = await lockPayment(tx, command.paymentId);
+
+  if (!payment || payment.scheduleItemId !== sourceScheduleItem.id) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  const paidTotals = await loadPaidTotalsByScheduleItemId(tx, [scheduleItem.id]);
-  const totalPaid = parseMoney(paidTotals.get(scheduleItem.id) ?? '0.00');
+  const paidTotals = await loadPaidTotalsByScheduleItemId(tx, [
+    sourceScheduleItem.id,
+    destinationScheduleItem.id,
+  ]);
+  const sourcePaidAmount = parseMoney(paidTotals.get(sourceScheduleItem.id) ?? '0.00');
+  const destinationPaidAmount = parseMoney(
+    paidTotals.get(destinationScheduleItem.id) ?? '0.00',
+  );
   const persistedAmount = parseMoney(payment.amount);
+  const targetPaidAmount =
+    sourceScheduleItem.id === destinationScheduleItem.id
+      ? sourcePaidAmount - persistedAmount
+      : destinationPaidAmount;
   const maximumReplacementAmount = formatMoney(
-    parseMoney(scheduleItem.amount) - totalPaid + persistedAmount,
+    parseMoney(destinationScheduleItem.amount) - targetPaidAmount,
   );
   const operationInstant = new Date();
   const validation = validatePayment({
@@ -72,37 +121,42 @@ export async function replacePayment(
   const [updatedPayment] = await tx
     .update(payments)
     .set({
+      scheduleItemId: destinationScheduleItem.id,
       amount: command.request.amount,
       paymentDate: command.request.paymentDate,
       note: command.request.note,
       updatedAt: operationInstant,
     })
-    .where(
-      and(
-        eq(payments.id, payment.id),
-        eq(payments.scheduleItemId, scheduleItem.id),
-      ),
-    )
+    .where(eq(payments.id, payment.id))
     .returning();
 
   if (!updatedPayment) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  const [updatedDebt] = await tx
-    .update(debts)
-    .set({
-      version: debt.version + 1,
-      updatedAt: operationInstant,
-    })
-    .where(and(eq(debts.id, debt.id), eq(debts.version, debt.version)))
-    .returning({ id: debts.id });
+  const updatedDebts = new Map<string, DebtRow>();
+  for (const debt of lockedDebts) {
+    const [updatedDebt] = await tx
+      .update(debts)
+      .set({
+        version: debt.version + 1,
+        updatedAt: operationInstant,
+      })
+      .where(and(eq(debts.id, debt.id), eq(debts.version, debt.version)))
+      .returning();
 
-  if (!updatedDebt) {
-    throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
+    if (!updatedDebt) {
+      throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
+    }
+
+    updatedDebts.set(updatedDebt.id, updatedDebt);
   }
 
-  return updatedPayment;
+  return {
+    payment: updatedPayment,
+    sourceDebt: updatedDebts.get(sourceDebt.id)!,
+    destinationDebt: updatedDebts.get(destinationDebt.id)!,
+  };
 }
 
 async function findOwnedPaymentSource(
@@ -130,40 +184,80 @@ async function findOwnedPaymentSource(
   return row ?? null;
 }
 
-async function lockScheduleItem(
+async function findOwnedPaymentTarget(
   tx: Transaction,
-  debtId: string,
-  scheduleItemId: string,
-) {
+  input: {
+    ownerProfileId: string;
+    customerId: string;
+    scheduleItemId: string;
+  },
+): Promise<{ debtId: string; scheduleItemId: string } | null> {
   const [row] = await tx
-    .select()
+    .select({
+      debtId: debts.id,
+      scheduleItemId: debtScheduleItems.id,
+    })
     .from(debtScheduleItems)
+    .innerJoin(debts, eq(debts.id, debtScheduleItems.debtId))
+    .innerJoin(customers, eq(customers.id, debts.customerId))
     .where(
       and(
-        eq(debtScheduleItems.id, scheduleItemId),
-        eq(debtScheduleItems.debtId, debtId),
+        eq(debtScheduleItems.id, input.scheduleItemId),
+        eq(debts.customerId, input.customerId),
+        eq(customers.ownerProfileId, input.ownerProfileId),
       ),
     )
-    .limit(1)
-    .for('update');
+    .limit(1);
 
   return row ?? null;
 }
 
-async function lockPayment(
+async function lockOwnedDebts(
   tx: Transaction,
-  paymentId: string,
-  scheduleItemId: string,
-) {
+  input: {
+    ownerProfileId: string;
+    customerId: string;
+    debtIds: readonly string[];
+  },
+): Promise<DebtRow[]> {
+  if (input.debtIds.length === 0) return [];
+
+  return tx
+    .select({ debt: debts })
+    .from(debts)
+    .innerJoin(customers, eq(customers.id, debts.customerId))
+    .where(
+      and(
+        inArray(debts.id, input.debtIds),
+        eq(debts.customerId, input.customerId),
+        eq(customers.ownerProfileId, input.ownerProfileId),
+      ),
+    )
+    .orderBy(asc(debts.id))
+    .for('update', { of: debts })
+    .then((rows) => rows.map(({ debt }) => debt));
+}
+
+async function lockScheduleItems(
+  tx: Transaction,
+  scheduleItemIds: readonly string[],
+): Promise<ScheduleItemRow[]> {
+  if (scheduleItemIds.length === 0) return [];
+
+  return tx
+    .select()
+    .from(debtScheduleItems)
+    .where(inArray(debtScheduleItems.id, scheduleItemIds))
+    .orderBy(asc(debtScheduleItems.id))
+    .for('update')
+    .then((rows) => rows);
+}
+
+async function lockPayment(tx: Transaction, paymentId: string): Promise<PaymentRow | null> {
   const [row] = await tx
     .select()
     .from(payments)
-    .where(
-      and(
-        eq(payments.id, paymentId),
-        eq(payments.scheduleItemId, scheduleItemId),
-      ),
-    )
+    .where(eq(payments.id, paymentId))
     .limit(1)
     .for('update');
 

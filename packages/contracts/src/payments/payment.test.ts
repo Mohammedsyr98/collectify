@@ -114,6 +114,7 @@ describe('record payment response contract', () => {
 
 describe('replace payment request contract', () => {
   const validReplacement = {
+    targetScheduleItemId: 'schedule_payment_contract',
     amount: '25.20',
     paymentDate: '2026-10-20',
     note: null,
@@ -166,11 +167,44 @@ describe('replace payment response contract', () => {
         createdAt: '2026-10-20T07:00:00.000Z',
         updatedAt: '2026-10-20T07:00:01.000Z',
       },
+      sourceDebt: createDebtResponse('debt_source'),
+      destinationDebt: createDebtResponse('debt_destination'),
     };
 
     expect(replacePaymentResponseSchema.parse(response)).toEqual(response);
   });
 });
+
+function createDebtResponse(id: string) {
+  return {
+    id,
+    customerId: 'customer_contract',
+    description: 'Contract debt',
+    totalAmount: '100.00',
+    paidAmount: '25.20',
+    remainingAmount: '74.80',
+    paymentState: 'partiallyPaid' as const,
+    paymentCount: 1,
+    currency: 'USD' as const,
+    createdAt: '2026-10-20T07:00:00.000Z',
+    updatedAt: '2026-10-20T07:00:01.000Z',
+    version: 2,
+    paymentPlanType: 'onePayment' as const,
+    scheduleItems: [
+      {
+        id: 'schedule_payment_contract',
+        position: 1 as const,
+        amount: '100.00',
+        paidAmount: '25.20',
+        remainingAmount: '74.80',
+        paymentState: 'partiallyPaid' as const,
+        paymentCount: 1,
+        dueDate: '2026-10-20',
+        timing: 'upcoming' as const,
+      },
+    ],
+  };
+}
 
 describe('payment API error code contracts', () => {
   it('exports the stable payment API error vocabulary', () => {

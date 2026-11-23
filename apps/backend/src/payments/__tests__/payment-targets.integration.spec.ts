@@ -117,6 +117,56 @@ describe('payment target routes', () => {
     );
   });
 
+  it('rebases the editing payment so its original target is selectable while other paid targets stay hidden', async () => {
+    const owner = await signUpOwner('payment-target-editing-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'payment_target_editing_debt',
+      totalAmount: '200.00',
+      scheduleItems: [
+        {
+          id: 'payment_target_editing_original',
+          position: 1,
+          amount: '100.00',
+          dueDate: '2026-10-01',
+        },
+        {
+          id: 'payment_target_editing_other_paid',
+          position: 2,
+          amount: '100.00',
+          dueDate: '2026-10-02',
+        },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_target_editing_current',
+      scheduleItemId: 'payment_target_editing_original',
+      amount: '100.00',
+      idempotencyKey: '10000000-0000-4000-8000-000000000103',
+    });
+    await insertPayment({
+      id: 'payment_target_editing_other',
+      scheduleItemId: 'payment_target_editing_other_paid',
+      amount: '100.00',
+      idempotencyKey: '10000000-0000-4000-8000-000000000105',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/payment_target_customer/payment-targets?editingPaymentId=payment_target_editing_current`,
+      { headers: { cookie: owner.cookieHeader } },
+    );
+
+    expect(response.status).toBe(200);
+    const body = paymentTargetListResponseSchema.parse(await response.json());
+    expect(body.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
+      'payment_target_editing_original',
+    ]);
+    expect(body.items[0]).toMatchObject({
+      remainingAmount: '100.00',
+      paymentState: 'unpaid',
+    });
+  });
+
   it('filters payment targets by debt description and calculates pagination metadata from the matching targets', async () => {
     const owner = await signUpOwner('payment-target-search-owner@example.com');
     await insertCustomer(owner.ownerProfileId);

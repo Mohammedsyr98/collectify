@@ -15,7 +15,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts, payments } from '../database/schema';
-import { findOwnedDebtForUpdate } from '../debts';
+import { findOwnedDebtForUpdate, loadDebtsWithPaymentDetails } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
@@ -139,14 +139,33 @@ export class PaymentsService {
     request: ReplacePaymentRequest,
   ): Promise<ReplacePaymentResponse> {
     return this.databaseService.db.transaction(async (tx) => {
-      const payment = await replacePayment(tx, {
+      const replacement = await replacePayment(tx, {
         ownerProfileId: currentOwner.ownerProfile.id,
         customerId,
         paymentId,
         request,
       });
 
-      return { payment: toPaymentResponse(payment) };
+      const projections = await loadDebtsWithPaymentDetails(
+        tx,
+        [replacement.sourceDebt, replacement.destinationDebt].filter(
+          (debt, index, all) => all.findIndex(({ id }) => id === debt.id) === index,
+        ),
+        getIstanbulBusinessDate(new Date()),
+      );
+      const projectionById = new Map(projections.map((debt) => [debt.id, debt]));
+      const sourceDebt = projectionById.get(replacement.sourceDebt.id);
+      const destinationDebt = projectionById.get(replacement.destinationDebt.id);
+
+      if (!sourceDebt || !destinationDebt) {
+        throw new Error('Payment replacement debt projections were not returned.');
+      }
+
+      return {
+        payment: toPaymentResponse(replacement.payment),
+        sourceDebt,
+        destinationDebt,
+      };
     });
   }
 

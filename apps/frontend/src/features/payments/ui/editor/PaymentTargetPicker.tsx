@@ -17,10 +17,12 @@ type PaymentTargetStatusFilter = '' | EligiblePaymentState;
 
 export function PaymentTargetPicker({
   customerId,
+  editingPaymentId,
   onBack,
   onSelect,
 }: {
   customerId: string;
+  editingPaymentId?: string;
   onBack?: () => void;
   onSelect: (target: PaymentTarget) => void;
 }) {
@@ -33,6 +35,7 @@ export function PaymentTargetPicker({
   const [page, setPage] = useState(1);
 
   const targetQuery = usePaymentTargetListQuery(customerId, {
+    ...(editingPaymentId ? { editingPaymentId } : {}),
     page,
     search: effectiveSearch || undefined,
     paymentState: paymentState || undefined,
