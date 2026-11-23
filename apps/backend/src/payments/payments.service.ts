@@ -19,7 +19,7 @@ import { findOwnedDebtForUpdate } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
-import { replacePayment as replacePaymentInDatabase } from './payment-replacement';
+import { replacePayment } from './payment-replacement';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type PaymentRow = typeof payments.$inferSelect;
@@ -139,7 +139,7 @@ export class PaymentsService {
     request: ReplacePaymentRequest,
   ): Promise<ReplacePaymentResponse> {
     return this.databaseService.db.transaction(async (tx) => {
-      const payment = await replacePaymentInDatabase(tx, {
+      const payment = await replacePayment(tx, {
         ownerProfileId: currentOwner.ownerProfile.id,
         customerId,
         paymentId,
