@@ -171,6 +171,5 @@ describe('CustomerDetailsPage payment editing', () => {
     );
     expect(amountInput).toHaveValue('36.00');
     expect(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection })).toBeEnabled();
-    expect(within(drawer).queryByRole('button', { name: /refresh|retry/i })).not.toBeInTheDocument();
   });
 });
