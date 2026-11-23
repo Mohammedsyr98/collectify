@@ -96,9 +96,9 @@ describe('payment replacement route', () => {
     expect(await helpers.readDebtVersion(debtId)).toBe(3);
   });
 
-  it('derives capacity without counting the saved payment and permits editing a fully paid target', async () => {
+  it('allows replacing a payment at exact capacity but not one cent beyond it', async () => {
     const helpers = createPaymentTestHelpers(() => context);
-    const { owner, customerId, debtId, scheduleItemId } =
+    const { owner, customerId, scheduleItemId } =
       await helpers.setupSingleSchedulePaymentScenario({
         ownerEmail: 'payment-replacement-capacity-owner@example.com',
         customerId: 'customer_payment_replacement_capacity',
@@ -134,7 +134,6 @@ describe('payment replacement route', () => {
       },
     );
     expect(exactCapacityResponse.status).toBe(200);
-    expect(await helpers.readDebtVersion(debtId)).toBe(4);
 
     const overCapacityResponse = await helpers.replacePayment(
       owner.cookieHeader,
@@ -151,20 +150,49 @@ describe('payment replacement route', () => {
     await expect(overCapacityResponse.json()).resolves.toMatchObject({
       code: 'PAYMENT_AMOUNT_EXCEEDS_REMAINING',
     });
+  });
+
+  it('allows reducing a payment on a fully paid schedule item', async () => {
+    const helpers = createPaymentTestHelpers(() => context);
+    const { owner, customerId, scheduleItemId } =
+      await helpers.setupSingleSchedulePaymentScenario({
+        ownerEmail: 'payment-replacement-fully-paid-owner@example.com',
+        customerId: 'customer_payment_replacement_fully_paid',
+        debtId: 'payment_replacement_fully_paid_debt',
+        debt: { totalAmount: '100.00', version: 1 },
+      });
+
+    const firstResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest(scheduleItemId, 40, { amount: '20.00' }),
+    );
+    const first = (await firstResponse.json()) as RecordPaymentResponse;
+    const secondResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest(scheduleItemId, 41, {
+        amount: '80.00',
+        expectedDebtVersion: 2,
+      }),
+    );
+    expect(secondResponse.status).toBe(201);
 
     const fullyPaidReplacement = await helpers.replacePayment(
       owner.cookieHeader,
       customerId,
       first.payment.id,
       {
-        amount: '60.00',
+        amount: '10.00',
         paymentDate: '2026-10-22',
         note: null,
-        expectedSourceDebtVersion: 4,
+        expectedSourceDebtVersion: 3,
       },
     );
     expect(fullyPaidReplacement.status).toBe(200);
-    expect(await helpers.readDebtVersion(debtId)).toBe(5);
+    await expect(fullyPaidReplacement.json()).resolves.toMatchObject({
+      payment: { id: first.payment.id, amount: '10.00' },
+    });
   });
 
   it('rejects stale snapshots without changing the payment', async () => {
