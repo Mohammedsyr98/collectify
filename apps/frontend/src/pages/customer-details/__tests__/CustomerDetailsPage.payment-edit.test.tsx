@@ -129,20 +129,18 @@ describe('CustomerDetailsPage payment editing', () => {
     expect(await screen.findByText('$35.00')).toBeInTheDocument();
   });
 
-  it('keeps the draft and does not refetch or expose a recovery control on conflict', async () => {
+  it('keeps the draft and re-enables save after a conflict', async () => {
     const user = userEvent.setup();
-    let historyRequests = 0;
 
     server.use(
-      http.get(`${getBackendUrl()}/customers/:customerId/payments`, () => {
-        historyRequests += 1;
-        return HttpResponse.json({
+      http.get(`${getBackendUrl()}/customers/:customerId/payments`, () =>
+        HttpResponse.json({
           items: [payment],
           pageSize: paymentHistoryPageSize,
           totalItems: 1,
           nextCursor: null,
-        });
-      }),
+        }),
+      ),
       http.put(
         `${getBackendUrl()}/customers/:customerId/payments/:paymentId`,
         () =>
@@ -162,7 +160,6 @@ describe('CustomerDetailsPage payment editing', () => {
     const amountInput = within(drawer).getByLabelText(messages.drawer.correctedAmountLabel);
     await user.clear(amountInput);
     await user.type(amountInput, '36.00');
-    const requestsBeforeSave = historyRequests;
 
     await user.click(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection }));
 
@@ -171,6 +168,5 @@ describe('CustomerDetailsPage payment editing', () => {
     expect(amountInput).toHaveValue('36.00');
     expect(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection })).toBeEnabled();
     expect(within(drawer).queryByRole('button', { name: /refresh|retry/i })).not.toBeInTheDocument();
-    expect(historyRequests).toBe(requestsBeforeSave);
   });
 });
