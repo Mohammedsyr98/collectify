@@ -95,7 +95,9 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   });
   const isSubmitting = form.formState.isSubmitting;
   const isTargetChanged =
-    isEditMode && target !== undefined && target.scheduleItemId !== payment!.scheduleItemId;
+    props.mode === 'edit' &&
+    target !== undefined &&
+    target.scheduleItemId !== props.payment.scheduleItemId;
   const currentCurrency = target?.currency ?? payment?.currency;
 
   const requestClose = () => {
