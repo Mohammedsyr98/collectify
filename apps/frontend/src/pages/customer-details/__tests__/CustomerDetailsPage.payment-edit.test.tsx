@@ -15,6 +15,7 @@ import { getBackendUrl } from '@/shared/api';
 
 import { paymentResources } from '@/features/payments';
 import { baseCustomer, resetCustomerTestEnvironment } from './customerDetailsTestData';
+import { createDebtFixture } from './debtTestData';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 import { server } from './render';
 
@@ -84,6 +85,8 @@ describe('CustomerDetailsPage payment editing', () => {
         createdAt: '2026-10-20T07:00:00.000Z',
         updatedAt: '2026-10-21T07:00:00.000Z',
       },
+      sourceDebt: createDebtFixture(baseCustomer.id, { id: 'debt_history_edit' }),
+      destinationDebt: createDebtFixture(baseCustomer.id, { id: 'debt_history_edit' }),
     };
 
     server.use(
@@ -118,6 +121,7 @@ describe('CustomerDetailsPage payment editing', () => {
     await user.click(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection }));
 
     await waitFor(() => expect(receivedBody).toEqual({
+      targetScheduleItemId: payment.scheduleItemId,
       amount: '35.00',
       paymentDate: '2026-10-20',
       note: 'Original note',

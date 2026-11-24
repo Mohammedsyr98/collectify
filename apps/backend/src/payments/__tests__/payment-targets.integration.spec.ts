@@ -96,7 +96,7 @@ describe('payment target routes', () => {
           currency: 'USD',
           debtVersion: 1,
           amount: '100.00',
-          remainingAmount: '75.00',
+          availableToPayAmount: '75.00',
           dueDate: '2026-10-02',
           paymentState: 'partiallyPaid',
           plan: { type: 'installment', position: 2 },
@@ -108,13 +108,63 @@ describe('payment target routes', () => {
           currency: 'USD',
           debtVersion: 1,
           amount: '100.00',
-          remainingAmount: '100.00',
+          availableToPayAmount: '100.00',
           dueDate: '2026-10-03',
           paymentState: 'unpaid',
           plan: { type: 'installment', position: 3 },
         }),
       ]),
     );
+  });
+
+  it('shows the original fully paid target and hides other fully paid targets when editing', async () => {
+    const owner = await signUpOwner('payment-target-editing-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'payment_target_editing_debt',
+      totalAmount: '200.00',
+      scheduleItems: [
+        {
+          id: 'payment_target_editing_original',
+          position: 1,
+          amount: '100.00',
+          dueDate: '2026-10-01',
+        },
+        {
+          id: 'payment_target_editing_other_paid',
+          position: 2,
+          amount: '100.00',
+          dueDate: '2026-10-02',
+        },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_target_editing_current',
+      scheduleItemId: 'payment_target_editing_original',
+      amount: '100.00',
+      idempotencyKey: '10000000-0000-4000-8000-000000000103',
+    });
+    await insertPayment({
+      id: 'payment_target_editing_other',
+      scheduleItemId: 'payment_target_editing_other_paid',
+      amount: '100.00',
+      idempotencyKey: '10000000-0000-4000-8000-000000000105',
+    });
+
+    const response = await fetch(
+      `${backend!.baseUrl}/customers/payment_target_customer/payment-targets?editingPaymentId=payment_target_editing_current`,
+      { headers: { cookie: owner.cookieHeader } },
+    );
+
+    expect(response.status).toBe(200);
+    const body = paymentTargetListResponseSchema.parse(await response.json());
+    expect(body.items.map(({ scheduleItemId }) => scheduleItemId)).toEqual([
+      'payment_target_editing_original',
+    ]);
+    expect(body.items[0]).toMatchObject({
+      availableToPayAmount: '100.00',
+      paymentState: 'unpaid',
+    });
   });
 
   it('filters payment targets by debt description and calculates pagination metadata from the matching targets', async () => {

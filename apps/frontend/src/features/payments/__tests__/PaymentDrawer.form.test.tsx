@@ -59,7 +59,7 @@ describe('PaymentDrawer', () => {
     const user = userEvent.setup();
     const target = createPaymentTargetFixture({
       amount: '60.00',
-      remainingAmount: '45.05',
+      availableToPayAmount: '45.05',
       plan: { type: 'installment', position: 1 },
     });
 
@@ -97,7 +97,7 @@ describe('PaymentDrawer', () => {
     const onSubmit = vi.fn(async () => undefined);
     const target = createPaymentTargetFixture({
       scheduleItemId: 'schedule_123',
-      remainingAmount: '40.00',
+      availableToPayAmount: '40.00',
       dueDate: '2026-10-30',
       timing: 'upcoming',
     });

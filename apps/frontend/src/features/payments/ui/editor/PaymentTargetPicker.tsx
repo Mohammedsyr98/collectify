@@ -17,10 +17,12 @@ type PaymentTargetStatusFilter = '' | EligiblePaymentState;
 
 export function PaymentTargetPicker({
   customerId,
+  editingPaymentId,
   onBack,
   onSelect,
 }: {
   customerId: string;
+  editingPaymentId?: string;
   onBack?: () => void;
   onSelect: (target: PaymentTarget) => void;
 }) {
@@ -33,6 +35,7 @@ export function PaymentTargetPicker({
   const [page, setPage] = useState(1);
 
   const targetQuery = usePaymentTargetListQuery(customerId, {
+    ...(editingPaymentId ? { editingPaymentId } : {}),
     page,
     search: effectiveSearch || undefined,
     paymentState: paymentState || undefined,
@@ -367,7 +370,7 @@ function TargetOptions({
                     </span>
                     <span className="shrink-0 text-end">
                       <bdi className="block text-[0.78rem] font-black" dir="ltr">
-                        {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
+                        {formatCurrencyAmount(target.availableToPayAmount, target.currency, locale)}
                       </bdi>
                       <span className="mt-0.5 block text-[0.68rem] text-muted-foreground">
                         {paymentStateLabel}

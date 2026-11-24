@@ -18,7 +18,7 @@ describe('payment-target API', () => {
           currency: 'USD',
           debtVersion: 3,
           amount: '125.00',
-          remainingAmount: '75.00',
+          availableToPayAmount: '75.00',
           dueDate: '2026-11-10',
           timing: 'upcoming',
           paymentState: 'partiallyPaid',

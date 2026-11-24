@@ -1,21 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import {
+  paymentApiErrorCode,
   paymentTargetPageSize,
   type PaymentTarget,
   type PaymentTargetListResponse,
   type PaymentTargetQuery,
 } from '@collectify/contracts';
-import { and, asc, count, eq, sql, type SQLWrapper } from 'drizzle-orm';
+import { and, asc, count, eq, sql, type SQL } from 'drizzle-orm';
 
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
-import { debtScheduleItems, debts } from '../database/schema';
+import { customers, debtScheduleItems, debts, payments } from '../database/schema';
 import { requireOwnedCustomer } from '../customers';
 import { createScheduleItemPaymentSummary, getPaymentState } from '../receivables';
 import { caseInsensitiveLiteralSubstring } from '../shared/literal-search';
 import { calculatePagination } from '../shared/pagination';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { getScheduleItemTiming } from '../debts';
+import { paymentException } from './payments.errors';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -27,10 +29,15 @@ type PaymentTargetRow = {
   debtVersion: number;
   amount: string;
   paidAmount: string;
-  remainingAmount: string;
+  availableToPayAmount: string;
   dueDate: string;
   position: number;
   hasOtherScheduleItems: boolean;
+};
+
+type EditingPayment = {
+  scheduleItemId: string;
+  amount: string;
 };
 
 @Injectable()
@@ -51,7 +58,19 @@ export class PaymentTargetsService {
           customerId,
         });
 
-        const page = await loadPaymentTargetPage(tx, customerId, query);
+        const editingPayment = query.editingPaymentId
+          ? await findOwnedEditingPayment(tx, {
+              ownerProfileId: currentOwner.ownerProfile.id,
+              customerId,
+              paymentId: query.editingPaymentId,
+            })
+          : null;
+
+        if (query.editingPaymentId && !editingPayment) {
+          throw paymentException(paymentApiErrorCode.paymentNotFound);
+        }
+
+        const page = await loadPaymentTargetPage(tx, customerId, query, editingPayment);
 
         return {
           items: page.items.map((item) => buildPaymentTargetListItem(item, businessDate)),
@@ -73,6 +92,7 @@ async function loadPaymentTargetPage(
   tx: Transaction,
   customerId: string,
   query: PaymentTargetQuery,
+  editingPayment: EditingPayment | null,
 ): Promise<{
   items: PaymentTargetRow[];
   page: number;
@@ -81,11 +101,16 @@ async function loadPaymentTargetPage(
   totalPages: number;
 }> {
   const targetPaymentSummary = createScheduleItemPaymentSummary(tx);
+  const paidAmount = buildAdjustedPaidAmount(targetPaymentSummary.paidAmount, editingPayment);
+  const availableToPayAmount = buildAdjustedAvailableAmount(
+    targetPaymentSummary.remainingAmount,
+    editingPayment,
+  );
   const targetFilter = buildPaymentTargetFilter({
     customerId,
     query,
-    paidAmount: targetPaymentSummary.paidAmount,
-    remainingAmount: targetPaymentSummary.remainingAmount,
+    paidAmount,
+    availableToPayAmount,
   });
 
   const [{ totalItems } = { totalItems: 0 }] = await tx
@@ -112,8 +137,8 @@ async function loadPaymentTargetPage(
       currency: debts.currency,
       debtVersion: debts.version,
       amount: debtScheduleItems.amount,
-      paidAmount: targetPaymentSummary.paidAmount,
-      remainingAmount: targetPaymentSummary.remainingAmount,
+      paidAmount,
+      availableToPayAmount,
       dueDate: debtScheduleItems.dueDate,
       position: debtScheduleItems.position,
       hasOtherScheduleItems: sql<boolean>`exists (
@@ -149,10 +174,13 @@ async function loadPaymentTargetPage(
 function buildPaymentTargetFilter(input: {
   customerId: string;
   query: PaymentTargetQuery;
-  paidAmount: SQLWrapper;
-  remainingAmount: SQLWrapper;
+  paidAmount: SQL<string>;
+  availableToPayAmount: SQL<string>;
 }) {
-  const filters = [eq(debts.customerId, input.customerId), sql`${input.remainingAmount} > 0`];
+  const filters = [
+    eq(debts.customerId, input.customerId),
+    sql`${input.availableToPayAmount} > 0`,
+  ];
 
   if (input.query.search) {
     filters.push(caseInsensitiveLiteralSubstring(debts.description, input.query.search));
@@ -169,8 +197,69 @@ function buildPaymentTargetFilter(input: {
   return and(...filters);
 }
 
+function buildAdjustedPaidAmount(
+  paidAmount: SQL<string>,
+  editingPayment: EditingPayment | null,
+): SQL<string> {
+  if (!editingPayment) return paidAmount;
+
+  return sql<string>`cast(greatest(
+    ${paidAmount} - case
+      when ${debtScheduleItems.id} = ${editingPayment.scheduleItemId}
+        then ${editingPayment.amount}::numeric
+      else 0
+    end,
+    0
+  ) as numeric(18, 2))`;
+}
+
+function buildAdjustedAvailableAmount(
+  remainingAmount: SQL<string>,
+  editingPayment: EditingPayment | null,
+): SQL<string> {
+  if (!editingPayment) return remainingAmount;
+
+  return sql<string>`cast(
+    ${remainingAmount} + case
+      when ${debtScheduleItems.id} = ${editingPayment.scheduleItemId}
+        then ${editingPayment.amount}::numeric
+      else 0
+    end
+    as numeric(18, 2)
+  )`;
+}
+
+async function findOwnedEditingPayment(
+  tx: Transaction,
+  input: {
+    ownerProfileId: string;
+    customerId: string;
+    paymentId: string;
+  },
+): Promise<EditingPayment | null> {
+  const [row] = await tx
+    .select({
+      scheduleItemId: payments.scheduleItemId,
+      amount: payments.amount,
+    })
+    .from(payments)
+    .innerJoin(debtScheduleItems, eq(debtScheduleItems.id, payments.scheduleItemId))
+    .innerJoin(debts, eq(debts.id, debtScheduleItems.debtId))
+    .innerJoin(customers, eq(customers.id, debts.customerId))
+    .where(
+      and(
+        eq(payments.id, input.paymentId),
+        eq(debts.customerId, input.customerId),
+        eq(customers.ownerProfileId, input.ownerProfileId),
+      ),
+    )
+    .limit(1);
+
+  return row ?? null;
+}
+
 function buildPaymentTargetListItem(row: PaymentTargetRow, businessDate: string): PaymentTarget {
-  const paymentState = getPaymentState(row.paidAmount, row.remainingAmount);
+  const paymentState = getPaymentState(row.paidAmount, row.availableToPayAmount);
 
   if (paymentState === 'paid') {
     throw new Error(`Paid payment target returned: ${row.scheduleItemId}`);
@@ -183,7 +272,7 @@ function buildPaymentTargetListItem(row: PaymentTargetRow, businessDate: string)
     currency: row.currency,
     debtVersion: row.debtVersion,
     amount: row.amount,
-    remainingAmount: row.remainingAmount,
+    availableToPayAmount: row.availableToPayAmount,
     dueDate: row.dueDate,
     timing: getScheduleItemTiming(row.dueDate, businessDate),
     paymentState,

@@ -15,7 +15,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts, payments } from '../database/schema';
-import { findOwnedDebtForUpdate } from '../debts';
+import { findOwnedDebtForUpdate, loadDebtsWithPaymentDetails } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
@@ -139,14 +139,38 @@ export class PaymentsService {
     request: ReplacePaymentRequest,
   ): Promise<ReplacePaymentResponse> {
     return this.databaseService.db.transaction(async (tx) => {
-      const payment = await replacePayment(tx, {
+      const replacementResult = await replacePayment(tx, {
         ownerProfileId: currentOwner.ownerProfile.id,
         customerId,
         paymentId,
         request,
       });
 
-      return { payment: toPaymentResponse(payment) };
+      const debtsToProject =
+        replacementResult.sourceDebt.id === replacementResult.destinationDebt.id
+          ? [replacementResult.sourceDebt]
+          : [replacementResult.sourceDebt, replacementResult.destinationDebt];
+      const projections = await loadDebtsWithPaymentDetails(
+        tx,
+        debtsToProject,
+        getIstanbulBusinessDate(new Date()),
+      );
+      const sourceDebtProjection = projections.find(
+        ({ id }) => id === replacementResult.sourceDebt.id,
+      );
+      const destinationDebtProjection = projections.find(
+        ({ id }) => id === replacementResult.destinationDebt.id,
+      );
+
+      if (!sourceDebtProjection || !destinationDebtProjection) {
+        throw new Error('Payment replacement debt projections were not returned.');
+      }
+
+      return {
+        payment: toPaymentResponse(replacementResult.payment),
+        sourceDebt: sourceDebtProjection,
+        destinationDebt: destinationDebtProjection,
+      };
     });
   }
 

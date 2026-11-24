@@ -66,6 +66,7 @@ describe('payment replacement route', () => {
       customerId,
       paymentId,
       {
+        targetScheduleItemId: scheduleItemId,
         amount: '35.00',
         paymentDate: '2026-10-21',
         note: 'corrected note',
@@ -122,6 +123,7 @@ describe('payment replacement route', () => {
       customerId,
       first.payment.id,
       {
+        targetScheduleItemId: scheduleItemId,
         amount: '70.00',
         paymentDate: '2026-10-22',
         note: null,
@@ -135,6 +137,7 @@ describe('payment replacement route', () => {
       customerId,
       first.payment.id,
       {
+        targetScheduleItemId: scheduleItemId,
         amount: '70.01',
         paymentDate: '2026-10-22',
         note: null,
@@ -145,6 +148,256 @@ describe('payment replacement route', () => {
     await expect(overCapacityResponse.json()).resolves.toMatchObject({
       code: 'PAYMENT_AMOUNT_EXCEEDS_REMAINING',
     });
+  });
+
+  it('moves a payment between schedule items in the same debt and increments that debt once', async () => {
+    const helpers = createPaymentTestHelpers(() => context);
+    const owner = await helpers.signUpOwner('payment-replacement-same-debt-owner@example.com');
+    const customerId = 'customer_payment_replacement_same_debt';
+    const debtId = 'payment_replacement_same_debt';
+    await helpers.insertCustomer(owner.ownerProfileId, { id: customerId });
+    await helpers.insertDebt({
+      id: debtId,
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [
+        { id: 'payment_replacement_same_source', amount: '50.00', dueDate: '2026-10-30' },
+        { id: 'payment_replacement_same_destination', amount: '50.00', dueDate: '2026-11-30' },
+      ],
+    });
+
+    const recordedResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_same_source', 51, { amount: '20.00' }),
+    );
+    const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
+
+    const response = await helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+      targetScheduleItemId: 'payment_replacement_same_destination',
+      amount: '20.00',
+      paymentDate: '2026-10-21',
+      note: 'moved',
+      expectedSourceDebtVersion: 2,
+    });
+
+    expect(response.status).toBe(200);
+    const body = replacePaymentResponseSchema.parse(await response.json());
+    expect(body.payment.scheduleItemId).toBe('payment_replacement_same_destination');
+    expect(body.sourceDebt.id).toBe(debtId);
+    expect(body.destinationDebt).toEqual(body.sourceDebt);
+    expect(body.sourceDebt.version).toBe(3);
+    expect(await helpers.readPayments('payment_replacement_same_source')).toEqual([]);
+    expect(await helpers.readPayments('payment_replacement_same_destination')).toMatchObject([
+      { id: recorded.payment.id, amount: '20.00', note: 'moved' },
+    ]);
+  });
+
+  it('moves a payment across debts with independent destination version validation', async () => {
+    const helpers = createPaymentTestHelpers(() => context);
+    const owner = await helpers.signUpOwner('payment-replacement-cross-debt-owner@example.com');
+    const customerId = 'customer_payment_replacement_cross_debt';
+    await helpers.insertCustomer(owner.ownerProfileId, { id: customerId });
+    await helpers.insertDebt({
+      id: 'payment_replacement_cross_source_debt',
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_cross_source', amount: '100.00', dueDate: '2026-10-30' }],
+    });
+    await helpers.insertDebt({
+      id: 'payment_replacement_cross_destination_debt',
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_cross_destination', amount: '100.00', dueDate: '2026-11-30' }],
+    });
+
+    const recordedResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_cross_source', 52, { amount: '40.00' }),
+    );
+    const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
+
+    const response = await helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+      targetScheduleItemId: 'payment_replacement_cross_destination',
+      amount: '40.00',
+      paymentDate: '2026-10-21',
+      note: 'cross debt',
+      expectedSourceDebtVersion: 2,
+      expectedDestinationDebtVersion: 1,
+    });
+
+    expect(response.status).toBe(200);
+    const body = replacePaymentResponseSchema.parse(await response.json());
+    expect(body.payment.scheduleItemId).toBe('payment_replacement_cross_destination');
+    expect(body.sourceDebt).toMatchObject({
+      id: 'payment_replacement_cross_source_debt',
+      version: 3,
+      paidAmount: '0.00',
+      remainingAmount: '100.00',
+    });
+    expect(body.destinationDebt).toMatchObject({
+      id: 'payment_replacement_cross_destination_debt',
+      version: 2,
+      paidAmount: '40.00',
+      remainingAmount: '60.00',
+    });
+    expect(await helpers.readDebtVersion('payment_replacement_cross_source_debt')).toBe(3);
+    expect(await helpers.readDebtVersion('payment_replacement_cross_destination_debt')).toBe(2);
+  });
+
+  it('rejects a stale destination version without moving the payment', async () => {
+    const helpers = createPaymentTestHelpers(() => context);
+    const owner = await helpers.signUpOwner('payment-replacement-stale-destination-owner@example.com');
+    const customerId = 'customer_payment_replacement_stale_destination';
+    const sourceDebtId = 'payment_replacement_stale_destination_source';
+    const destinationDebtId = 'payment_replacement_stale_destination_target';
+    await helpers.insertCustomer(owner.ownerProfileId, { id: customerId });
+    await helpers.insertDebt({
+      id: sourceDebtId,
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_stale_destination_source_item', amount: '100.00', dueDate: '2026-10-30' }],
+    });
+    await helpers.insertDebt({
+      id: destinationDebtId,
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_stale_destination_target_item', amount: '100.00', dueDate: '2026-11-30' }],
+    });
+
+    const recordedResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_stale_destination_source_item', 53, { amount: '40.00' }),
+    );
+    const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
+    const destinationPaymentResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_stale_destination_target_item', 54, {
+        amount: '10.00',
+        expectedDebtVersion: 1,
+      }),
+    );
+    expect(destinationPaymentResponse.status).toBe(201);
+
+    const response = await helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+      targetScheduleItemId: 'payment_replacement_stale_destination_target_item',
+      amount: '40.00',
+      paymentDate: '2026-10-21',
+      note: 'stale destination',
+      expectedSourceDebtVersion: 2,
+      expectedDestinationDebtVersion: 1,
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ code: 'PAYMENT_DEBT_VERSION_CONFLICT' });
+    expect(await helpers.readPayments('payment_replacement_stale_destination_source_item')).toMatchObject([
+      { id: recorded.payment.id, amount: '40.00' },
+    ]);
+    expect(await helpers.readDebtVersion(sourceDebtId)).toBe(2);
+    expect(await helpers.readDebtVersion(destinationDebtId)).toBe(2);
+  });
+
+  it('rejects an over-capacity cross-debt move without changing the payment or debt versions', async () => {
+    const helpers = createPaymentTestHelpers(() => context);
+    const owner = await helpers.signUpOwner('payment-replacement-cross-capacity-owner@example.com');
+    const customerId = 'customer_payment_replacement_cross_capacity';
+    const sourceDebtId = 'payment_replacement_cross_capacity_source';
+    const destinationDebtId = 'payment_replacement_cross_capacity_target';
+    await helpers.insertCustomer(owner.ownerProfileId, { id: customerId });
+    await helpers.insertDebt({
+      id: sourceDebtId,
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_cross_capacity_source_item', amount: '100.00', dueDate: '2026-10-30' }],
+    });
+    await helpers.insertDebt({
+      id: destinationDebtId,
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_cross_capacity_target_item', amount: '50.00', dueDate: '2026-11-30' }],
+    });
+
+    const recordedResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_cross_capacity_source_item', 55, { amount: '20.00' }),
+    );
+    const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
+    const destinationPaymentResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_cross_capacity_target_item', 56, {
+        amount: '40.00',
+        expectedDebtVersion: 1,
+      }),
+    );
+    expect(destinationPaymentResponse.status).toBe(201);
+
+    const response = await helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+      targetScheduleItemId: 'payment_replacement_cross_capacity_target_item',
+      amount: '20.00',
+      paymentDate: '2026-10-21',
+      note: 'over capacity',
+      expectedSourceDebtVersion: 2,
+      expectedDestinationDebtVersion: 2,
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ code: 'PAYMENT_AMOUNT_EXCEEDS_REMAINING' });
+    expect(await helpers.readPayments('payment_replacement_cross_capacity_source_item')).toMatchObject([
+      { id: recorded.payment.id, amount: '20.00' },
+    ]);
+    expect(await helpers.readDebtVersion(sourceDebtId)).toBe(2);
+    expect(await helpers.readDebtVersion(destinationDebtId)).toBe(2);
+  });
+
+  it('rolls back a cross-debt move when the destination version increment fails', async () => {
+    const maximumIntegerVersion = 2_147_483_647;
+    const helpers = createPaymentTestHelpers(() => context);
+    const owner = await helpers.signUpOwner('payment-replacement-cross-rollback-owner@example.com');
+    const customerId = 'customer_payment_replacement_cross_rollback';
+    const sourceDebtId = 'payment_replacement_cross_rollback_source';
+    const destinationDebtId = 'payment_replacement_cross_rollback_target';
+    await helpers.insertCustomer(owner.ownerProfileId, { id: customerId });
+    await helpers.insertDebt({
+      id: sourceDebtId,
+      customerId,
+      totalAmount: '100.00',
+      scheduleItems: [{ id: 'payment_replacement_cross_rollback_source_item', amount: '100.00', dueDate: '2026-10-30' }],
+    });
+    await helpers.insertDebt({
+      id: destinationDebtId,
+      customerId,
+      totalAmount: '100.00',
+      version: maximumIntegerVersion,
+      scheduleItems: [{ id: 'payment_replacement_cross_rollback_target_item', amount: '100.00', dueDate: '2026-11-30' }],
+    });
+
+    const recordedResponse = await helpers.recordPayment(
+      owner.cookieHeader,
+      customerId,
+      makePaymentRequest('payment_replacement_cross_rollback_source_item', 57, { amount: '20.00' }),
+    );
+    const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
+
+    const response = await helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+      targetScheduleItemId: 'payment_replacement_cross_rollback_target_item',
+      amount: '20.00',
+      paymentDate: '2026-10-21',
+      note: 'should roll back',
+      expectedSourceDebtVersion: 2,
+      expectedDestinationDebtVersion: maximumIntegerVersion,
+    });
+
+    expect(response.status).toBe(500);
+    expect(await helpers.readPayments('payment_replacement_cross_rollback_source_item')).toMatchObject([
+      { id: recorded.payment.id, amount: '20.00', note: null },
+    ]);
+    expect(await helpers.readDebtVersion(sourceDebtId)).toBe(2);
+    expect(await helpers.readDebtVersion(destinationDebtId)).toBe(maximumIntegerVersion);
   });
 
   it('allows reducing a payment on a fully paid schedule item', async () => {
@@ -178,6 +431,7 @@ describe('payment replacement route', () => {
       customerId,
       first.payment.id,
       {
+        targetScheduleItemId: scheduleItemId,
         amount: '10.00',
         paymentDate: '2026-10-22',
         note: null,
@@ -211,6 +465,7 @@ describe('payment replacement route', () => {
       customerId,
       recorded.payment.id,
       {
+        targetScheduleItemId: scheduleItemId,
         amount: '12.00',
         paymentDate: '2026-10-22',
         note: 'stale',
@@ -265,6 +520,7 @@ describe('payment replacement route', () => {
       customerId,
       first.payment.id,
       {
+        targetScheduleItemId: 'payment_replacement_installment_first',
         amount: '25.00',
         paymentDate: '2026-10-22',
         note: null,
@@ -295,12 +551,14 @@ describe('payment replacement route', () => {
 
     const responses = await Promise.all([
       helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+        targetScheduleItemId: scheduleItemId,
         amount: '20.00',
         paymentDate: '2026-10-22',
         note: 'first correction',
         expectedSourceDebtVersion: 2,
       }),
       helpers.replacePayment(owner.cookieHeader, customerId, recorded.payment.id, {
+        targetScheduleItemId: scheduleItemId,
         amount: '30.00',
         paymentDate: '2026-10-22',
         note: 'second correction',
@@ -340,6 +598,7 @@ describe('payment replacement route', () => {
       customerId,
       paymentId,
       {
+        targetScheduleItemId: scheduleItemId,
         amount: '20.00',
         paymentDate: '2026-10-22',
         note: 'should roll back',
@@ -370,6 +629,7 @@ describe('payment replacement route', () => {
     );
     const recorded = (await recordedResponse.json()) as RecordPaymentResponse;
     const request = {
+      targetScheduleItemId: customerOwner.scheduleItemId,
       amount: '12.00',
       paymentDate: '2026-10-22',
       note: null,

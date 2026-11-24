@@ -22,6 +22,10 @@ export async function listPaymentTargets(
     searchParams.set('paymentState', query.paymentState);
   }
 
+  if (query.editingPaymentId) {
+    searchParams.set('editingPaymentId', query.editingPaymentId);
+  }
+
   return fetchBackend({
     path: `/customers/${encodeURIComponent(customerId)}/payment-targets?${searchParams.toString()}`,
     method: 'GET',

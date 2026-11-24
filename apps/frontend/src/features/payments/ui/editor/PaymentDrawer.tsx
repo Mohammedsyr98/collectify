@@ -80,9 +80,9 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   const formId = useId();
   const amountPreviewId = useId();
   const target = screen.target;
-  const remainingAmount = isEditMode
-    ? payment!.maximumReplacementAmount
-    : target?.remainingAmount ?? '0.00';
+  const availableToPayAmount = isEditMode
+    ? target?.availableToPayAmount ?? payment!.maximumReplacementAmount
+    : target?.availableToPayAmount ?? '0.00';
   const form = useForm<PaymentFormInput, unknown, PaymentFormOutput>({
     defaultValues: {
       amount: isEditMode ? payment!.amount : '',
@@ -90,9 +90,14 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
       note: isEditMode ? payment!.note ?? '' : '',
     },
     criteriaMode: 'all',
-    resolver: zodResolver(createPaymentFormSchema(remainingAmount, today)),
+    resolver: zodResolver(createPaymentFormSchema(availableToPayAmount, today)),
   });
   const isSubmitting = form.formState.isSubmitting;
+  const isTargetChanged =
+    props.mode === 'edit' &&
+    target !== undefined &&
+    target.scheduleItemId !== props.payment.scheduleItemId;
+  const currentCurrency = target?.currency ?? payment?.currency;
 
   const requestClose = () => {
     if (!isSubmitting) onClose();
@@ -100,12 +105,19 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
 
   const submit = form.handleSubmit((values) => {
     if (props.mode === 'edit') {
-      return props.onSubmit({
+      const request: ReplacePaymentRequest = {
+        targetScheduleItemId: target?.scheduleItemId ?? payment!.scheduleItemId,
         amount: values.amount,
         paymentDate: values.paymentDate,
         note: values.note || null,
         expectedSourceDebtVersion: payment!.debtVersion,
-      });
+      };
+
+      if (target && target.debtId !== payment!.debtId) {
+        request.expectedDestinationDebtVersion = target.debtVersion;
+      }
+
+      return props.onSubmit(request);
     }
 
     if (!target) return;
@@ -118,13 +130,18 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   });
 
   const selectTarget = (nextTarget: PaymentTarget) => {
-    if (target && target.currency !== nextTarget.currency) {
-      form.resetField('amount');
+    const previousCurrency = target?.currency ?? payment?.currency;
+    if (previousCurrency !== nextTarget.currency) {
+      form.setValue('amount', '', { shouldDirty: true, shouldValidate: false });
+      form.clearErrors('amount');
     }
     setScreen({ kind: 'paymentForm', target: nextTarget });
   };
 
-  const preview = getPaymentPreview(form.watch('amount'), remainingAmount);
+  const openTargetPicker = () => setScreen({ kind: 'targetPicker', target });
+
+  const amount = form.watch('amount');
+  const preview = getPaymentPreview(amount, availableToPayAmount);
   const amountHasError = Boolean(form.formState.errors.amount);
 
   return (
@@ -169,19 +186,22 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
           </header>
 
           <Dialog.Description className="sr-only" id="payment-drawer-description">
-            {target
-              ? t('payments.drawer.description', { description: target.debtDescription })
-              : isEditMode
-                ? t('payments.drawer.editDescription', { description: payment!.debtDescription })
-              : t('payments.drawer.selectionDescription')}
+            {isEditMode
+              ? t('payments.drawer.editDescription', {
+                  description: target?.debtDescription ?? payment!.debtDescription,
+                })
+              : target
+                ? t('payments.drawer.description', { description: target.debtDescription })
+                : t('payments.drawer.selectionDescription')}
           </Dialog.Description>
 
           <main className="min-h-0 overflow-y-auto overscroll-contain">
             {screen.kind === 'targetPicker' ? (
               <PaymentTargetPicker
                 customerId={customerId}
+                editingPaymentId={isEditMode ? payment!.id : undefined}
                 onBack={
-                  target
+                  isEditMode || target
                     ? () => setScreen({ kind: 'paymentForm', target })
                     : undefined
                 }
@@ -190,7 +210,15 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
             ) : (
               <div className="mx-auto grid w-full max-w-[520px] gap-5 px-7 py-[22px] max-[620px]:px-5">
                 {isEditMode ? (
-                  <SelectedPaymentSummary locale={locale} payment={payment!} />
+                  <SelectedPaymentSummary
+                    isSubmitting={isSubmitting}
+                    isTargetChanged={isTargetChanged}
+                    locale={locale}
+                    onChangeTarget={openTargetPicker}
+                    amount={amount}
+                    payment={payment!}
+                    target={target}
+                  />
                 ) : (
                   <SelectedTargetSummary
                     isSubmitting={isSubmitting}
@@ -212,7 +240,7 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
                         dir="ltr"
                         endAdornment={
                           <span className="text-[0.78rem] font-black text-muted-foreground">
-                            {isEditMode ? payment!.currency : target!.currency}
+                            {currentCurrency}
                           </span>
                         }
                         icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
@@ -227,7 +255,12 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
                         inputMode="decimal"
                         formatError={formatValidationError}
                       />
-                      {!amountHasError && !isEditMode ? (
+                      {isEditMode && target && target.currency !== payment!.currency ? (
+                        <p className="m-0 text-[0.76rem] text-muted-foreground" role="status">
+                          {t('payments.drawer.crossCurrencyAmountReset')}
+                        </p>
+                      ) : null}
+                      {!amountHasError ? (
                         <div
                           aria-live="polite"
                           className="min-h-[1.05rem] text-[0.76rem] leading-[1.35] text-muted-foreground"
@@ -241,11 +274,7 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
                             )}:{' '}
                             {preview ? (
                               <bdi className="font-black text-foreground" dir="ltr">
-                                {formatCurrencyAmount(
-                                  preview,
-                                  isEditMode ? payment!.currency : screen.target!.currency,
-                                  locale,
-                                )}
+                                {formatCurrencyAmount(preview, currentCurrency!, locale)}
                               </bdi>
                             ) : (
                               <>
@@ -368,7 +397,7 @@ function SelectedTargetSummary({
           {t('payments.drawer.targetRemainingLabel')}
         </span>
         <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
-          {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
+          {formatCurrencyAmount(target.availableToPayAmount, target.currency, locale)}
         </bdi>
       </div>
     </section>
@@ -376,37 +405,77 @@ function SelectedTargetSummary({
 }
 
 function SelectedPaymentSummary({
+  isSubmitting,
+  isTargetChanged,
   locale,
+  onChangeTarget,
+  amount,
   payment,
+  target,
 }: {
   locale: string;
+  isSubmitting: boolean;
+  isTargetChanged: boolean;
+  onChangeTarget: () => void;
+  amount: string;
   payment: PaymentHistoryItem;
+  target?: PaymentTarget;
 }) {
   const { t } = useTranslation();
   const planLabel =
     payment.plan.type === 'installment'
       ? t('payments.drawer.installmentLabel', { position: payment.plan.position })
       : t('payments.drawer.onePaymentTarget');
+  const displayPlanLabel = target
+    ? target.plan.type === 'installment'
+      ? t('payments.drawer.installmentLabel', { position: target.plan.position })
+      : t('payments.drawer.onePaymentTarget')
+    : planLabel;
+  const displayCurrency = target?.currency ?? payment.currency;
 
   return (
     <section className="grid gap-3 rounded-[5px] border border-border bg-background p-4">
-      <div className="grid gap-1">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-[0.72rem] font-black uppercase tracking-wide text-muted-foreground">
           {t('payments.drawer.correctingPayment')}
         </span>
+        <button
+          className="cursor-pointer border-0 bg-transparent p-0 text-[0.74rem] font-extrabold text-primary transition hover:underline disabled:cursor-wait disabled:opacity-70"
+          disabled={isSubmitting}
+          onClick={onChangeTarget}
+          type="button"
+        >
+          {t('payments.drawer.changeTarget')}
+        </button>
+      </div>
+      <div className="grid gap-1">
         <h2 className="m-0 text-[0.95rem] font-black text-foreground">
-          {payment.debtDescription}
+          {target?.debtDescription ?? payment.debtDescription}
         </h2>
         <p className="m-0 text-[0.76rem] font-bold text-muted-foreground">
-          {planLabel} · {formatCurrencyAmount(payment.amount, payment.currency, locale)}
+          {displayPlanLabel} ·{' '}
+          {amount
+            ? formatCurrencyAmount(amount, displayCurrency, locale)
+            : t('payments.drawer.amountPlaceholder')}
         </p>
       </div>
+      {isTargetChanged ? (
+        <div className="grid gap-1 border-t border-border pt-3 text-[0.76rem]">
+          <span className="font-bold text-muted-foreground">
+            {t('payments.drawer.changedFrom', { description: payment.debtDescription })}
+          </span>
+        </div>
+      ) : null}
       <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
         <span className="text-[0.72rem] font-bold text-muted-foreground">
           {t('payments.drawer.maximumCorrectedAmountLabel')}
         </span>
         <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
-          {formatCurrencyAmount(payment.maximumReplacementAmount, payment.currency, locale)}
+          {formatCurrencyAmount(
+            target?.availableToPayAmount ?? payment.maximumReplacementAmount,
+            displayCurrency,
+            locale,
+          )}
         </bdi>
       </div>
     </section>

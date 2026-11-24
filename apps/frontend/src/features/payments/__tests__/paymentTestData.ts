@@ -8,7 +8,7 @@ export function createPaymentTargetFixture(overrides: Partial<PaymentTarget> = {
     currency: 'USD',
     debtVersion: 1,
     amount: '100.00',
-    remainingAmount: '75.00',
+    availableToPayAmount: '75.00',
     dueDate: '2026-10-01',
     timing: 'overdue',
     paymentState: 'partiallyPaid',

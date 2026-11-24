@@ -60,7 +60,7 @@ describe('CustomerDetailsPage payment actions', () => {
     };
     const target = createPaymentTargetFixture({
       debtDescription: 'Header target',
-      remainingAmount: '75.00',
+      availableToPayAmount: '75.00',
     });
     let targetRequestCount = 0;
 
@@ -118,7 +118,7 @@ describe('CustomerDetailsPage payment actions', () => {
     };
     const target = createPaymentTargetFixture({
       amount: '10.00',
-      remainingAmount: '10.00',
+      availableToPayAmount: '10.00',
     });
     let recordedRequest: RecordPaymentRequest | undefined;
 
@@ -508,7 +508,7 @@ function servePaymentHistoryResetScenario() {
       },
     ],
   };
-  const target = createPaymentTargetFixture({ remainingAmount: '100.00' });
+  const target = createPaymentTargetFixture({ availableToPayAmount: '100.00' });
   const initialPayment = createHistoryItem({
     debtDescription: 'Initial newest payment',
     id: 'initial_history_payment',

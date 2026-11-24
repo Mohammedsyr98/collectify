@@ -115,7 +115,7 @@ function toPaymentTarget(
     currency: debt.currency,
     debtVersion: debt.version,
     amount: scheduleItem.amount,
-    remainingAmount: scheduleItem.remainingAmount,
+    availableToPayAmount: scheduleItem.remainingAmount,
     dueDate: scheduleItem.dueDate,
     timing: scheduleItem.timing,
     paymentState: scheduleItem.paymentState,

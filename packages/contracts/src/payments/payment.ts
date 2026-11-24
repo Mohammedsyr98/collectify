@@ -1,6 +1,7 @@
 import { formatMoney, isMoneyWithinNumeric182Precision, parseMoney } from '@collectify/domain/money';
 import { z } from 'zod';
 
+import { debtResponseSchema } from '../debts/debt.js';
 import { moneySchema } from '../money.js';
 import {
   paymentApiErrorCode,
@@ -36,6 +37,10 @@ export const recordPaymentRequestSchema = z
 
 export const replacePaymentRequestSchema = z
   .object({
+    targetScheduleItemId: z
+      .string()
+      .trim()
+      .min(1, paymentValidationCode.paymentTargetScheduleItemIdRequired),
     amount: paymentAmountSchema,
     paymentDate: dateOnlySchema,
     note: normalizedNoteSchema,
@@ -43,6 +48,11 @@ export const replacePaymentRequestSchema = z
       .number()
       .int()
       .positive(paymentValidationCode.paymentExpectedDebtVersionInvalid),
+    expectedDestinationDebtVersion: z
+      .number()
+      .int()
+      .positive(paymentValidationCode.paymentExpectedDebtVersionInvalid)
+      .optional(),
   })
   .strict();
 
@@ -61,7 +71,11 @@ export const recordPaymentResponseSchema = z.object({
   payment: paymentSchema,
 });
 
-export const replacePaymentResponseSchema = recordPaymentResponseSchema;
+export const replacePaymentResponseSchema = z.object({
+  payment: paymentSchema,
+  sourceDebt: debtResponseSchema,
+  destinationDebt: debtResponseSchema,
+});
 
 export const paymentErrorCodeSchema = z.enum(paymentApiErrorCode);
 
