@@ -370,7 +370,7 @@ function TargetOptions({
                     </span>
                     <span className="shrink-0 text-end">
                       <bdi className="block text-[0.78rem] font-black" dir="ltr">
-                        {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
+                        {formatCurrencyAmount(target.availableToPayAmount, target.currency, locale)}
                       </bdi>
                       <span className="mt-0.5 block text-[0.68rem] text-muted-foreground">
                         {paymentStateLabel}

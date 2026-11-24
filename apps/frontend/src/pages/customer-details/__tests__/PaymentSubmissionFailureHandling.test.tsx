@@ -161,9 +161,9 @@ function renderPaymentSubmissionFailure(target: PaymentTarget) {
     financialSummary: [
       {
         currency: target.currency,
-        totalDebtAmount: target.remainingAmount,
+        totalDebtAmount: target.availableToPayAmount,
         totalPaidAmount: '0.00',
-        remainingAmount: target.remainingAmount,
+        remainingAmount: target.availableToPayAmount,
       },
     ],
   } satisfies CustomerDetailsResponse;

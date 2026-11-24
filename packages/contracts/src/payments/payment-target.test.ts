@@ -16,7 +16,7 @@ const validOnePaymentTarget = {
   currency: 'USD',
   debtVersion: 3,
   amount: '125.50',
-  remainingAmount: '100.00',
+  availableToPayAmount: '100.00',
   dueDate: '2026-10-30',
   timing: 'upcoming',
   paymentState: 'partiallyPaid',

@@ -81,9 +81,9 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   const formId = useId();
   const amountPreviewId = useId();
   const target = screen.target;
-  const remainingAmount = isEditMode
-    ? target?.remainingAmount ?? payment!.maximumReplacementAmount
-    : target?.remainingAmount ?? '0.00';
+  const availableToPayAmount = isEditMode
+    ? target?.availableToPayAmount ?? payment!.maximumReplacementAmount
+    : target?.availableToPayAmount ?? '0.00';
   const form = useForm<PaymentFormInput, unknown, PaymentFormOutput>({
     defaultValues: {
       amount: isEditMode ? payment!.amount : '',
@@ -91,7 +91,7 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
       note: isEditMode ? payment!.note ?? '' : '',
     },
     criteriaMode: 'all',
-    resolver: zodResolver(createPaymentFormSchema(remainingAmount, today)),
+    resolver: zodResolver(createPaymentFormSchema(availableToPayAmount, today)),
   });
   const isSubmitting = form.formState.isSubmitting;
   const isTargetChanged =
@@ -155,7 +155,7 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   };
 
   const amount = form.watch('amount');
-  const preview = getPaymentPreview(amount, remainingAmount);
+  const preview = getPaymentPreview(amount, availableToPayAmount);
   const amountHasError = Boolean(form.formState.errors.amount);
 
   return (
@@ -412,7 +412,7 @@ function SelectedTargetSummary({
           {t('payments.drawer.targetRemainingLabel')}
         </span>
         <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
-          {formatCurrencyAmount(target.remainingAmount, target.currency, locale)}
+          {formatCurrencyAmount(target.availableToPayAmount, target.currency, locale)}
         </bdi>
       </div>
     </section>
@@ -497,7 +497,7 @@ function SelectedPaymentSummary({
         </span>
         <bdi className="shrink-0 text-lg font-black text-foreground" dir="ltr">
           {formatCurrencyAmount(
-            target?.remainingAmount ?? payment.maximumReplacementAmount,
+            target?.availableToPayAmount ?? payment.maximumReplacementAmount,
             displayCurrency,
             locale,
           )}

@@ -29,7 +29,7 @@ type PaymentTargetRow = {
   debtVersion: number;
   amount: string;
   paidAmount: string;
-  remainingAmount: string;
+  availableToPayAmount: string;
   dueDate: string;
   position: number;
   hasOtherScheduleItems: boolean;
@@ -102,7 +102,7 @@ async function loadPaymentTargetPage(
 }> {
   const targetPaymentSummary = createScheduleItemPaymentSummary(tx);
   const paidAmount = buildRebasedPaidAmount(targetPaymentSummary.paidAmount, editingPayment);
-  const remainingAmount = buildRebasedRemainingAmount(
+  const availableToPayAmount = buildAvailableToPayAmount(
     targetPaymentSummary.remainingAmount,
     editingPayment,
   );
@@ -110,7 +110,7 @@ async function loadPaymentTargetPage(
     customerId,
     query,
     paidAmount,
-    remainingAmount,
+    availableToPayAmount,
   });
 
   const [{ totalItems } = { totalItems: 0 }] = await tx
@@ -138,7 +138,7 @@ async function loadPaymentTargetPage(
       debtVersion: debts.version,
       amount: debtScheduleItems.amount,
       paidAmount,
-      remainingAmount,
+      availableToPayAmount,
       dueDate: debtScheduleItems.dueDate,
       position: debtScheduleItems.position,
       hasOtherScheduleItems: sql<boolean>`exists (
@@ -175,11 +175,11 @@ function buildPaymentTargetFilter(input: {
   customerId: string;
   query: PaymentTargetQuery;
   paidAmount: SQL<string>;
-  remainingAmount: SQL<string>;
+  availableToPayAmount: SQL<string>;
 }) {
   const filters = [
     eq(debts.customerId, input.customerId),
-    sql`${input.remainingAmount} > 0`,
+    sql`${input.availableToPayAmount} > 0`,
   ];
 
   if (input.query.search) {
@@ -213,7 +213,7 @@ function buildRebasedPaidAmount(
   ) as numeric(18, 2))`;
 }
 
-function buildRebasedRemainingAmount(
+function buildAvailableToPayAmount(
   remainingAmount: SQL<string>,
   editingPayment: EditingPayment | null,
 ): SQL<string> {
@@ -259,7 +259,7 @@ async function findOwnedEditingPayment(
 }
 
 function buildPaymentTargetListItem(row: PaymentTargetRow, businessDate: string): PaymentTarget {
-  const paymentState = getPaymentState(row.paidAmount, row.remainingAmount);
+  const paymentState = getPaymentState(row.paidAmount, row.availableToPayAmount);
 
   if (paymentState === 'paid') {
     throw new Error(`Paid payment target returned: ${row.scheduleItemId}`);
@@ -272,7 +272,7 @@ function buildPaymentTargetListItem(row: PaymentTargetRow, businessDate: string)
     currency: row.currency,
     debtVersion: row.debtVersion,
     amount: row.amount,
-    remainingAmount: row.remainingAmount,
+    availableToPayAmount: row.availableToPayAmount,
     dueDate: row.dueDate,
     timing: getScheduleItemTiming(row.dueDate, businessDate),
     paymentState,

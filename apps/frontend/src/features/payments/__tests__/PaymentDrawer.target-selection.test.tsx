@@ -74,13 +74,13 @@ describe('PaymentDrawer', () => {
     const onSubmit = vi.fn(async () => undefined);
     const initialTarget = createPaymentTargetFixture({
       debtDescription: 'Office equipment',
-      remainingAmount: '75.00',
+      availableToPayAmount: '75.00',
     });
     const replacementTarget = createPaymentTargetFixture({
       scheduleItemId: 'schedule_replacement',
       debtId: 'debt_replacement',
       debtDescription: 'Replacement equipment',
-      remainingAmount: '10.00',
+      availableToPayAmount: '10.00',
     });
     const otherTarget = createPaymentTargetFixture({
       scheduleItemId: 'schedule_other',
@@ -323,7 +323,7 @@ describe('PaymentDrawer', () => {
   });
 
   it('opens the payment form automatically when only one target is available', async () => {
-    const target = createPaymentTargetFixture({ remainingAmount: '42.50' });
+    const target = createPaymentTargetFixture({ availableToPayAmount: '42.50' });
 
     server.use(
       http.get(`${getBackendUrl()}/customers/:customerId/payment-targets`, () =>
@@ -359,7 +359,7 @@ describe('PaymentDrawer', () => {
       debtId: 'debt_2',
       debtDescription: 'Warehouse rent',
       amount: '50.00',
-      remainingAmount: '30.00',
+      availableToPayAmount: '30.00',
     });
 
     server.use(
@@ -414,7 +414,7 @@ describe('PaymentDrawer', () => {
       scheduleItemId: 'schedule_1',
       debtId: 'debt_installments',
       debtDescription: 'Website redesign',
-      remainingAmount: '20.00',
+      availableToPayAmount: '20.00',
       dueDate: '2026-10-01',
       timing: 'overdue',
       paymentState: 'partiallyPaid',
@@ -424,7 +424,7 @@ describe('PaymentDrawer', () => {
       scheduleItemId: 'schedule_2',
       debtId: 'debt_installments',
       debtDescription: 'Website redesign',
-      remainingAmount: '50.00',
+      availableToPayAmount: '50.00',
       dueDate: '2026-11-01',
       timing: 'upcoming',
       paymentState: 'unpaid',

@@ -96,7 +96,7 @@ describe('payment target routes', () => {
           currency: 'USD',
           debtVersion: 1,
           amount: '100.00',
-          remainingAmount: '75.00',
+          availableToPayAmount: '75.00',
           dueDate: '2026-10-02',
           paymentState: 'partiallyPaid',
           plan: { type: 'installment', position: 2 },
@@ -108,7 +108,7 @@ describe('payment target routes', () => {
           currency: 'USD',
           debtVersion: 1,
           amount: '100.00',
-          remainingAmount: '100.00',
+          availableToPayAmount: '100.00',
           dueDate: '2026-10-03',
           paymentState: 'unpaid',
           plan: { type: 'installment', position: 3 },
@@ -162,7 +162,7 @@ describe('payment target routes', () => {
       'payment_target_editing_original',
     ]);
     expect(body.items[0]).toMatchObject({
-      remainingAmount: '100.00',
+      availableToPayAmount: '100.00',
       paymentState: 'unpaid',
     });
   });

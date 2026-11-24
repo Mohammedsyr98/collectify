@@ -49,7 +49,7 @@ export const paymentTargetSchema = z
     currency: currencySchema,
     debtVersion: z.number().int().positive(),
     amount: moneySchema,
-    remainingAmount: moneySchema,
+    availableToPayAmount: moneySchema,
     dueDate: dateOnlySchema,
     timing: scheduleItemTimingSchema,
     paymentState: eligiblePaymentStateSchema,

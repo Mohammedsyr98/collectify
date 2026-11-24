@@ -118,7 +118,7 @@ describe('PaymentDrawer edit mode', () => {
       debtId: 'debt_replacement',
       debtDescription: 'Travel expenses',
       debtVersion: 11,
-      remainingAmount: '50.00',
+      availableToPayAmount: '50.00',
     });
     const otherTarget = createPaymentTargetFixture({
       scheduleItemId: 'schedule_other',
@@ -188,7 +188,7 @@ describe('PaymentDrawer edit mode', () => {
       debtId: 'debt_cross_currency',
       debtDescription: 'Travel expenses',
       currency: 'EUR',
-      remainingAmount: '50.00',
+      availableToPayAmount: '50.00',
     });
     const otherTarget = createPaymentTargetFixture({
       scheduleItemId: 'schedule_cross_currency_other',
