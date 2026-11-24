@@ -300,7 +300,7 @@ describe('payment replacement route', () => {
     expect(await helpers.readDebtVersion(destinationDebtId)).toBe(2);
   });
 
-  it('rolls back a cross-debt move when destination capacity is insufficient', async () => {
+  it('rejects an over-capacity cross-debt move without changing the payment or debt versions', async () => {
     const helpers = createPaymentTestHelpers(() => context);
     const owner = await helpers.signUpOwner('payment-replacement-cross-capacity-owner@example.com');
     const customerId = 'customer_payment_replacement_cross_capacity';
