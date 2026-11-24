@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { z } from 'zod';
@@ -97,12 +97,6 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
   const isTargetChanged =
     isEditMode && target !== undefined && target.scheduleItemId !== payment!.scheduleItemId;
   const currentCurrency = target?.currency ?? payment?.currency;
-
-  useEffect(() => {
-    if (screen.kind !== 'paymentForm' || !isEditMode || !target) return;
-    const timeout = window.setTimeout(() => form.setFocus('amount'), 0);
-    return () => window.clearTimeout(timeout);
-  }, [form, isEditMode, screen.kind, target]);
 
   const requestClose = () => {
     if (!isSubmitting) onClose();
