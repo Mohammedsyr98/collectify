@@ -139,32 +139,37 @@ export class PaymentsService {
     request: ReplacePaymentRequest,
   ): Promise<ReplacePaymentResponse> {
     return this.databaseService.db.transaction(async (tx) => {
-      const replacement = await replacePayment(tx, {
+      const replacementResult = await replacePayment(tx, {
         ownerProfileId: currentOwner.ownerProfile.id,
         customerId,
         paymentId,
         request,
       });
 
+      const debtsToProject =
+        replacementResult.sourceDebt.id === replacementResult.destinationDebt.id
+          ? [replacementResult.sourceDebt]
+          : [replacementResult.sourceDebt, replacementResult.destinationDebt];
       const projections = await loadDebtsWithPaymentDetails(
         tx,
-        [replacement.sourceDebt, replacement.destinationDebt].filter(
-          (debt, index, all) => all.findIndex(({ id }) => id === debt.id) === index,
-        ),
+        debtsToProject,
         getIstanbulBusinessDate(new Date()),
       );
-      const projectionById = new Map(projections.map((debt) => [debt.id, debt]));
-      const sourceDebt = projectionById.get(replacement.sourceDebt.id);
-      const destinationDebt = projectionById.get(replacement.destinationDebt.id);
+      const sourceDebtProjection = projections.find(
+        ({ id }) => id === replacementResult.sourceDebt.id,
+      );
+      const destinationDebtProjection = projections.find(
+        ({ id }) => id === replacementResult.destinationDebt.id,
+      );
 
-      if (!sourceDebt || !destinationDebt) {
+      if (!sourceDebtProjection || !destinationDebtProjection) {
         throw new Error('Payment replacement debt projections were not returned.');
       }
 
       return {
-        payment: toPaymentResponse(replacement.payment),
-        sourceDebt,
-        destinationDebt,
+        payment: toPaymentResponse(replacementResult.payment),
+        sourceDebt: sourceDebtProjection,
+        destinationDebt: destinationDebtProjection,
       };
     });
   }
