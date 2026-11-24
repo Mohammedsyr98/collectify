@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, CircleDollarSign, FileText, X } from 'lucide-react';
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { z } from 'zod';
@@ -77,7 +77,6 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
       ? { kind: 'paymentForm', target: initialTarget }
       : { kind: 'targetPicker' },
   );
-  const capturedAmountBeforeTargetChange = useRef<string | undefined>(undefined);
   const formId = useId();
   const amountPreviewId = useId();
   const target = screen.target;
@@ -139,20 +138,7 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
     setScreen({ kind: 'paymentForm', target: nextTarget });
   };
 
-  const openTargetPicker = () => {
-    if (isEditMode && capturedAmountBeforeTargetChange.current === undefined) {
-      capturedAmountBeforeTargetChange.current = form.getValues('amount');
-    }
-    setScreen({ kind: 'targetPicker', target });
-  };
-
-  const undoTargetChange = () => {
-    const amountToRestore = capturedAmountBeforeTargetChange.current ?? payment!.amount;
-    capturedAmountBeforeTargetChange.current = undefined;
-    setScreen({ kind: 'paymentForm' });
-    form.setValue('amount', amountToRestore, { shouldDirty: true, shouldValidate: true });
-    window.setTimeout(() => form.setFocus('amount'), 0);
-  };
+  const openTargetPicker = () => setScreen({ kind: 'targetPicker', target });
 
   const amount = form.watch('amount');
   const preview = getPaymentPreview(amount, availableToPayAmount);
@@ -229,7 +215,6 @@ export function PaymentDrawer(props: PaymentDrawerProps) {
                     isTargetChanged={isTargetChanged}
                     locale={locale}
                     onChangeTarget={openTargetPicker}
-                    onUndoTargetChange={undoTargetChange}
                     amount={amount}
                     payment={payment!}
                     target={target}
@@ -424,7 +409,6 @@ function SelectedPaymentSummary({
   isTargetChanged,
   locale,
   onChangeTarget,
-  onUndoTargetChange,
   amount,
   payment,
   target,
@@ -433,7 +417,6 @@ function SelectedPaymentSummary({
   isSubmitting: boolean;
   isTargetChanged: boolean;
   onChangeTarget: () => void;
-  onUndoTargetChange: () => void;
   amount: string;
   payment: PaymentHistoryItem;
   target?: PaymentTarget;
@@ -481,14 +464,6 @@ function SelectedPaymentSummary({
           <span className="font-bold text-muted-foreground">
             {t('payments.drawer.changedFrom', { description: payment.debtDescription })}
           </span>
-          <button
-            className="w-fit cursor-pointer border-0 bg-transparent p-0 text-start font-extrabold text-primary hover:underline disabled:cursor-wait disabled:opacity-70"
-            disabled={isSubmitting}
-            onClick={onUndoTargetChange}
-            type="button"
-          >
-            {t('payments.drawer.undoTargetChange')}
-          </button>
         </div>
       ) : null}
       <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">

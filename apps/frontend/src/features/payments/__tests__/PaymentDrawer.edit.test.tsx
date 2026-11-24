@@ -108,7 +108,7 @@ describe('PaymentDrawer edit mode', () => {
     );
   });
 
-  it('moves the target, submits both debt versions, and can undo the target snapshot', async () => {
+  it('moves the target, keeps the changed-from summary, and submits both debt versions', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<(request: ReplacePaymentRequest) => Promise<void>>(
       async () => undefined,
@@ -159,25 +159,14 @@ describe('PaymentDrawer edit mode', () => {
     expect(within(drawer).getByText(messages.drawer.changedFrom.replace('{{description}}', payment.debtDescription))).toBeInTheDocument();
     expect(within(drawer).getByLabelText(messages.drawer.correctedAmountLabel)).toHaveValue('30.00');
 
-    await user.click(within(drawer).getByRole('button', { name: messages.drawer.undoTargetChange }));
-    expect(within(drawer).getByLabelText(messages.drawer.correctedAmountLabel)).toHaveValue('30.00');
-
-    const restoredAmountInput = within(drawer).getByLabelText(messages.drawer.correctedAmountLabel);
-    await user.click(restoredAmountInput);
-    await user.clear(restoredAmountInput);
-    await user.type(restoredAmountInput, '40.00');
-    await user.click(within(drawer).getByRole('button', { name: messages.drawer.changeTarget }));
-    await user.click(await within(drawer).findByRole('button', { name: /Travel expenses/ }));
-    await user.click(within(drawer).getByRole('button', { name: messages.drawer.undoTargetChange }));
-    expect(within(drawer).getByLabelText(messages.drawer.correctedAmountLabel)).toHaveValue('40.00');
-
     await user.click(within(drawer).getByRole('button', { name: messages.drawer.saveCorrection }));
     expect(onSubmit).toHaveBeenCalledWith({
-      targetScheduleItemId: payment.scheduleItemId,
-      amount: '40.00',
+      targetScheduleItemId: replacementTarget.scheduleItemId,
+      amount: '30.00',
       paymentDate: payment.paymentDate,
       note: payment.note,
       expectedSourceDebtVersion: payment.debtVersion,
+      expectedDestinationDebtVersion: replacementTarget.debtVersion,
     });
   });
 
