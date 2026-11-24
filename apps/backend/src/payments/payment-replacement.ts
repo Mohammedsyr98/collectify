@@ -13,6 +13,21 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type PaymentRow = typeof payments.$inferSelect;
 type DebtRow = typeof debts.$inferSelect;
 type ScheduleItemRow = typeof debtScheduleItems.$inferSelect;
+type PaymentLocation = { debtId: string; scheduleItemId: string };
+
+type PaymentReplacementTargets = {
+  source: PaymentLocation;
+  destination: PaymentLocation;
+};
+
+type LockedPaymentReplacement = {
+  lockedDebts: DebtRow[];
+  sourceDebt: DebtRow;
+  destinationDebt: DebtRow;
+  sourceScheduleItem: ScheduleItemRow;
+  destinationScheduleItem: ScheduleItemRow;
+  payment: PaymentRow;
+};
 
 export type ReplacePaymentCommand = {
   ownerProfileId: string;
@@ -31,111 +46,183 @@ export async function replacePayment(
   tx: Transaction,
   command: ReplacePaymentCommand,
 ): Promise<ReplacePaymentResult> {
+  const targets = await findOwnedPaymentReplacementTargets(tx, command);
+  const lockedDebts = await lockPaymentReplacementDebts(tx, command, targets);
+
+  assertExpectedDebtVersions(command.request, lockedDebts);
+
+  const replacement = await lockReplacementScheduleItemsAndPayment(
+    tx,
+    command.paymentId,
+    targets,
+    lockedDebts,
+  );
+  const availableToPayAmount = await calculateAvailableToPayAmountForReplacement(tx, replacement);
+  const operationInstant = new Date();
+  validateReplacementAmount(command.request, availableToPayAmount, operationInstant);
+
+  return persistPaymentReplacement(tx, command.request, replacement, operationInstant);
+}
+
+async function findOwnedPaymentReplacementTargets(
+  tx: Transaction,
+  command: ReplacePaymentCommand,
+): Promise<PaymentReplacementTargets> {
   const source = await findOwnedPaymentSource(tx, command);
 
   if (!source) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  const target = await findOwnedPaymentTarget(tx, {
+  const destination = await findOwnedPaymentTarget(tx, {
     ownerProfileId: command.ownerProfileId,
     customerId: command.customerId,
     scheduleItemId: command.request.targetScheduleItemId,
   });
 
-  if (!target) {
+  if (!destination) {
     throw paymentException(paymentApiErrorCode.paymentTargetNotFound);
   }
 
-  const debtIds = [...new Set([source.debtId, target.debtId])].sort();
+  return { source, destination };
+}
+
+async function lockPaymentReplacementDebts(
+  tx: Transaction,
+  command: ReplacePaymentCommand,
+  targets: PaymentReplacementTargets,
+): Promise<Pick<LockedPaymentReplacement, 'lockedDebts' | 'sourceDebt' | 'destinationDebt'>> {
+  const debtIds = [...new Set([targets.source.debtId, targets.destination.debtId])].sort();
   const lockedDebts = await lockOwnedDebts(tx, {
     ownerProfileId: command.ownerProfileId,
     customerId: command.customerId,
     debtIds,
   });
-  const debtById = new Map(lockedDebts.map((debt) => [debt.id, debt]));
-  const sourceDebt = debtById.get(source.debtId);
-  const destinationDebt = debtById.get(target.debtId);
+  const sourceDebt = lockedDebts.find(({ id }) => id === targets.source.debtId);
+  const destinationDebt = lockedDebts.find(({ id }) => id === targets.destination.debtId);
 
   if (!sourceDebt || !destinationDebt) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  if (sourceDebt.version !== command.request.expectedSourceDebtVersion) {
+  return { lockedDebts, sourceDebt, destinationDebt };
+}
+
+function assertExpectedDebtVersions(
+  request: ReplacePaymentRequest,
+  replacementDebts: Pick<LockedPaymentReplacement, 'sourceDebt' | 'destinationDebt'>,
+): void {
+  if (replacementDebts.sourceDebt.version !== request.expectedSourceDebtVersion) {
     throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
   }
 
   if (
-    sourceDebt.id !== destinationDebt.id &&
-    destinationDebt.version !== command.request.expectedDestinationDebtVersion
+    replacementDebts.sourceDebt.id !== replacementDebts.destinationDebt.id &&
+    replacementDebts.destinationDebt.version !== request.expectedDestinationDebtVersion
   ) {
     throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
   }
+}
 
-  const scheduleItemIds = [...new Set([source.scheduleItemId, target.scheduleItemId])].sort();
+async function lockReplacementScheduleItemsAndPayment(
+  tx: Transaction,
+  paymentId: string,
+  targets: PaymentReplacementTargets,
+  lockedDebts: Pick<LockedPaymentReplacement, 'lockedDebts' | 'sourceDebt' | 'destinationDebt'>,
+): Promise<LockedPaymentReplacement> {
+  // Debt rows are locked by the caller; lock schedule rows before the payment row.
+  const scheduleItemIds = [
+    ...new Set([targets.source.scheduleItemId, targets.destination.scheduleItemId]),
+  ].sort();
   const lockedScheduleItems = await lockScheduleItems(tx, scheduleItemIds);
-  const scheduleItemById = new Map(
-    lockedScheduleItems.map((scheduleItem) => [scheduleItem.id, scheduleItem]),
+  const sourceScheduleItem = lockedScheduleItems.find(
+    ({ id }) => id === targets.source.scheduleItemId,
   );
-  const sourceScheduleItem = scheduleItemById.get(source.scheduleItemId);
-  const destinationScheduleItem = scheduleItemById.get(target.scheduleItemId);
+  const destinationScheduleItem = lockedScheduleItems.find(
+    ({ id }) => id === targets.destination.scheduleItemId,
+  );
 
   if (!sourceScheduleItem || !destinationScheduleItem) {
     throw paymentException(paymentApiErrorCode.paymentTargetNotFound);
   }
 
-  const payment = await lockPayment(tx, command.paymentId);
+  const payment = await lockPayment(tx, paymentId);
 
   if (!payment || payment.scheduleItemId !== sourceScheduleItem.id) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
+  return {
+    ...lockedDebts,
+    sourceScheduleItem,
+    destinationScheduleItem,
+    payment,
+  };
+}
+
+async function calculateAvailableToPayAmountForReplacement(
+  tx: Transaction,
+  replacement: LockedPaymentReplacement,
+): Promise<string> {
+  const { sourceScheduleItem, destinationScheduleItem, payment } = replacement;
   const paidTotals = await loadPaidTotalsByScheduleItemId(tx, [
     sourceScheduleItem.id,
     destinationScheduleItem.id,
   ]);
   const sourcePaidAmount = parseMoney(paidTotals.get(sourceScheduleItem.id) ?? '0.00');
-  const destinationPaidAmount = parseMoney(
-    paidTotals.get(destinationScheduleItem.id) ?? '0.00',
-  );
+  const destinationPaidAmount = parseMoney(paidTotals.get(destinationScheduleItem.id) ?? '0.00');
   const persistedAmount = parseMoney(payment.amount);
-  const targetPaidAmount =
+  const destinationPaidAmountAfterRemovingPayment =
     sourceScheduleItem.id === destinationScheduleItem.id
       ? sourcePaidAmount - persistedAmount
       : destinationPaidAmount;
-  const maximumReplacementAmount = formatMoney(
-    parseMoney(destinationScheduleItem.amount) - targetPaidAmount,
+  return formatMoney(
+    parseMoney(destinationScheduleItem.amount) - destinationPaidAmountAfterRemovingPayment,
   );
-  const operationInstant = new Date();
+}
+
+function validateReplacementAmount(
+  request: ReplacePaymentRequest,
+  availableToPayAmount: string,
+  operationInstant: Date,
+): void {
   const validation = validatePayment({
-    amount: command.request.amount,
-    remainingAmount: maximumReplacementAmount,
-    paymentDate: command.request.paymentDate,
+    amount: request.amount,
+    remainingAmount: availableToPayAmount,
+    paymentDate: request.paymentDate,
     businessDate: getIstanbulBusinessDate(operationInstant),
   });
 
   if (!validation.success) {
     throw paymentException(validation.issues[0]!.code);
   }
+}
 
-  const [updatedPayment] = await tx
+async function persistPaymentReplacement(
+  tx: Transaction,
+  request: ReplacePaymentRequest,
+  replacement: LockedPaymentReplacement,
+  operationInstant: Date,
+): Promise<ReplacePaymentResult> {
+  const [payment] = await tx
     .update(payments)
     .set({
-      scheduleItemId: destinationScheduleItem.id,
-      amount: command.request.amount,
-      paymentDate: command.request.paymentDate,
-      note: command.request.note,
+      scheduleItemId: replacement.destinationScheduleItem.id,
+      amount: request.amount,
+      paymentDate: request.paymentDate,
+      note: request.note,
       updatedAt: operationInstant,
     })
-    .where(eq(payments.id, payment.id))
+    .where(eq(payments.id, replacement.payment.id))
     .returning();
 
-  if (!updatedPayment) {
+  if (!payment) {
     throw paymentException(paymentApiErrorCode.paymentNotFound);
   }
 
-  const updatedDebts = new Map<string, DebtRow>();
-  for (const debt of lockedDebts) {
+  const updatedDebts: DebtRow[] = [];
+
+  for (const debt of replacement.lockedDebts) {
     const [updatedDebt] = await tx
       .update(debts)
       .set({
@@ -149,20 +236,23 @@ export async function replacePayment(
       throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
     }
 
-    updatedDebts.set(updatedDebt.id, updatedDebt);
+    updatedDebts.push(updatedDebt);
   }
 
-  return {
-    payment: updatedPayment,
-    sourceDebt: updatedDebts.get(sourceDebt.id)!,
-    destinationDebt: updatedDebts.get(destinationDebt.id)!,
-  };
+  const sourceDebt = updatedDebts.find(({ id }) => id === replacement.sourceDebt.id);
+  const destinationDebt = updatedDebts.find(({ id }) => id === replacement.destinationDebt.id);
+
+  if (!sourceDebt || !destinationDebt) {
+    throw new Error('Payment replacement did not update all affected debts.');
+  }
+
+  return { payment, sourceDebt, destinationDebt };
 }
 
 async function findOwnedPaymentSource(
   tx: Transaction,
   command: ReplacePaymentCommand,
-): Promise<{ debtId: string; scheduleItemId: string } | null> {
+): Promise<PaymentLocation | null> {
   const [row] = await tx
     .select({
       debtId: debts.id,
@@ -191,7 +281,7 @@ async function findOwnedPaymentTarget(
     customerId: string;
     scheduleItemId: string;
   },
-): Promise<{ debtId: string; scheduleItemId: string } | null> {
+): Promise<PaymentLocation | null> {
   const [row] = await tx
     .select({
       debtId: debts.id,
