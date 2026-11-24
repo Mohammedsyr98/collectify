@@ -117,7 +117,7 @@ describe('payment target routes', () => {
     );
   });
 
-  it('rebases the editing payment so its original target is selectable while other paid targets stay hidden', async () => {
+  it('shows the original fully paid target and hides other fully paid targets when editing', async () => {
     const owner = await signUpOwner('payment-target-editing-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
     await insertDebt({
