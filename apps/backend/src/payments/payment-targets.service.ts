@@ -101,8 +101,8 @@ async function loadPaymentTargetPage(
   totalPages: number;
 }> {
   const targetPaymentSummary = createScheduleItemPaymentSummary(tx);
-  const paidAmount = buildRebasedPaidAmount(targetPaymentSummary.paidAmount, editingPayment);
-  const availableToPayAmount = buildAvailableToPayAmount(
+  const paidAmount = buildAdjustedPaidAmount(targetPaymentSummary.paidAmount, editingPayment);
+  const availableToPayAmount = buildAdjustedAvailableAmount(
     targetPaymentSummary.remainingAmount,
     editingPayment,
   );
@@ -197,7 +197,7 @@ function buildPaymentTargetFilter(input: {
   return and(...filters);
 }
 
-function buildRebasedPaidAmount(
+function buildAdjustedPaidAmount(
   paidAmount: SQL<string>,
   editingPayment: EditingPayment | null,
 ): SQL<string> {
@@ -213,7 +213,7 @@ function buildRebasedPaidAmount(
   ) as numeric(18, 2))`;
 }
 
-function buildAvailableToPayAmount(
+function buildAdjustedAvailableAmount(
   remainingAmount: SQL<string>,
   editingPayment: EditingPayment | null,
 ): SQL<string> {
