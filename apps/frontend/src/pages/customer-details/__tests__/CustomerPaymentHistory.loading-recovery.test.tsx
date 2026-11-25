@@ -52,6 +52,7 @@ describe('CustomerPaymentHistory loading and recovery', () => {
               debtVersion: 2,
               amount: '30.00',
               maximumReplacementAmount: '100.00',
+              paymentStateAfterDeletion: 'unpaid',
               currency: 'USD',
               paymentDate: '2026-10-20',
               note: null,

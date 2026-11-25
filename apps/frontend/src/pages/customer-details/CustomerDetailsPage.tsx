@@ -15,7 +15,7 @@ import { useCustomerDetailsQuery } from '@/entities/customer';
 import { isApiError } from '@/shared/api';
 import { useDebtCreator } from '@/features/debts';
 import { useCustomerEditor } from '@/features/customers';
-import { usePaymentEditor } from '@/features/payments';
+import { usePaymentDeleter, usePaymentEditor } from '@/features/payments';
 import { ErrorStatePage } from '@/shared/ui/error';
 import { LoadingScreen } from '@/shared/ui/loading';
 
@@ -94,6 +94,7 @@ function CustomerDetailsContent({
     customerId: customer.id,
     customerName: customer.name,
   });
+  const paymentDeleter = usePaymentDeleter({ customerId: customer.id });
   const hasEligiblePayment = customer.financialSummary.some(
     ({ remainingAmount }) => parseMoney(remainingAmount) > 0,
   );
@@ -188,6 +189,12 @@ function CustomerDetailsContent({
             />
             <CustomerPaymentHistory
               customerId={customer.id}
+              onDeletePayment={(payment, trigger, historyHeading) =>
+                paymentDeleter.open(payment, {
+                  returnFocusTarget: trigger,
+                  afterDelete: historyHeading,
+                })
+              }
               onEditPayment={openPaymentCorrection}
             />
           </section>
@@ -195,6 +202,7 @@ function CustomerDetailsContent({
       </main>
 
       {paymentEditor.dialog}
+      {paymentDeleter.dialog}
       {debtCreator.dialog}
     </>
   );

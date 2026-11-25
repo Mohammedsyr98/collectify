@@ -2,6 +2,7 @@ import { formatMoney, isMoneyWithinNumeric182Precision, parseMoney } from '@coll
 import { z } from 'zod';
 
 import { debtResponseSchema } from '../debts/debt.js';
+import { customerFinancialSummarySchema } from '../customers/customer.js';
 import { moneySchema } from '../money.js';
 import {
   paymentApiErrorCode,
@@ -56,6 +57,15 @@ export const replacePaymentRequestSchema = z
   })
   .strict();
 
+export const deletePaymentRequestSchema = z
+  .object({
+    expectedDebtVersion: z
+      .number()
+      .int()
+      .positive(paymentValidationCode.paymentExpectedDebtVersionInvalid),
+  })
+  .strict();
+
 export const paymentSchema = z.object({
   id: z.string().min(1),
   scheduleItemId: z.string().min(1),
@@ -77,6 +87,12 @@ export const replacePaymentResponseSchema = z.object({
   destinationDebt: debtResponseSchema,
 });
 
+export const deletePaymentResponseSchema = z.object({
+  deletedPaymentId: z.string().min(1),
+  debt: debtResponseSchema,
+  customerFinancialSummary: customerFinancialSummarySchema,
+});
+
 export const paymentErrorCodeSchema = z.enum(paymentApiErrorCode);
 
 export const paymentErrorResponseSchema = z.object({
@@ -87,8 +103,10 @@ export const paymentErrorResponseSchema = z.object({
 
 export type RecordPaymentRequest = z.infer<typeof recordPaymentRequestSchema>;
 export type ReplacePaymentRequest = z.infer<typeof replacePaymentRequestSchema>;
+export type DeletePaymentRequest = z.infer<typeof deletePaymentRequestSchema>;
 export type Payment = z.infer<typeof paymentSchema>;
 export type RecordPaymentResponse = z.infer<typeof recordPaymentResponseSchema>;
 export type ReplacePaymentResponse = z.infer<typeof replacePaymentResponseSchema>;
+export type DeletePaymentResponse = z.infer<typeof deletePaymentResponseSchema>;
 export type PaymentErrorCode = z.infer<typeof paymentErrorCodeSchema>;
 export type PaymentErrorResponse = z.infer<typeof paymentErrorResponseSchema>;

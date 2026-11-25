@@ -4,7 +4,7 @@ import type {
   IntegrationDatabase,
 } from '../../test-support/integration-test-support';
 import type { createOwnerAuthClient } from '../../test-support/owner-auth-client';
-import type { ReplacePaymentRequest } from '@collectify/contracts';
+import type { DeletePaymentRequest, ReplacePaymentRequest } from '@collectify/contracts';
 
 export type PaymentTestOwner = {
   cookieHeader: string;
@@ -252,6 +252,24 @@ export function createPaymentTestHelpers(
     });
   }
 
+  function deletePayment(
+    cookieHeader: string | undefined,
+    customerId: string,
+    paymentId: string,
+    body: DeletePaymentRequest,
+  ): Promise<Response> {
+    const { backend } = getContext();
+
+    return fetch(`${backend.baseUrl}/customers/${customerId}/payments/${paymentId}`, {
+      method: 'DELETE',
+      headers: {
+        'content-type': 'application/json',
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
   async function countPayments(scheduleItemId: string): Promise<number> {
     const { database } = getContext();
     const [row] = await database.query<{ count: number }>(
@@ -332,6 +350,7 @@ export function createPaymentTestHelpers(
     insertDebt,
     recordPayment,
     replacePayment,
+    deletePayment,
     countPayments,
     readPayments,
     readPaymentAmount,

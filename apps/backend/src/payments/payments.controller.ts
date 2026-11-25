@@ -1,10 +1,13 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import {
+  deletePaymentRequestSchema,
   paymentHistoryQuerySchema,
   replacePaymentRequestSchema,
   recordPaymentRequestSchema,
   type PaymentHistoryListResponse,
   type PaymentHistoryQuery,
+  type DeletePaymentRequest,
+  type DeletePaymentResponse,
   type ReplacePaymentRequest,
   type ReplacePaymentResponse,
   type RecordPaymentRequest,
@@ -24,6 +27,9 @@ const paymentHistoryQueryValidationPipe = new ZodValidationPipe(
 );
 const replacePaymentValidationPipe = new ZodValidationPipe(
   replacePaymentRequestSchema,
+);
+const deletePaymentValidationPipe = new ZodValidationPipe(
+  deletePaymentRequestSchema,
 );
 
 @Controller('customers/:customerId/payments')
@@ -64,6 +70,22 @@ export class PaymentsController {
     @Body(replacePaymentValidationPipe) body: ReplacePaymentRequest,
   ): Promise<ReplacePaymentResponse> {
     return this.paymentsService.replacePayment(
+      currentOwner,
+      customerId,
+      paymentId,
+      body,
+    );
+  }
+
+  @Delete(':paymentId')
+  @HttpCode(200)
+  deletePayment(
+    @CurrentOwner() currentOwner: AuthenticatedOwner,
+    @Param('customerId') customerId: string,
+    @Param('paymentId') paymentId: string,
+    @Body(deletePaymentValidationPipe) body: DeletePaymentRequest,
+  ): Promise<DeletePaymentResponse> {
+    return this.paymentsService.deletePayment(
       currentOwner,
       customerId,
       paymentId,

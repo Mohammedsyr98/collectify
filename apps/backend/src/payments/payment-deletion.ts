@@ -1,0 +1,132 @@
+import { and, eq } from 'drizzle-orm';
+
+import {
+  paymentApiErrorCode,
+  type DeletePaymentRequest,
+} from '@collectify/contracts';
+
+import type { Database } from '../database/database.service';
+import { customers, debtScheduleItems, debts, payments } from '../database/schema';
+import { findOwnedDebtForUpdate } from '../debts';
+import { paymentException } from './payments.errors';
+
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+export type PaymentDeletionCommand = {
+  ownerProfileId: string;
+  customerId: string;
+  paymentId: string;
+  request: DeletePaymentRequest;
+};
+
+export type PaymentDeletionResult = {
+  paymentId: string;
+  debt: typeof debts.$inferSelect;
+};
+
+export async function deletePayment(
+  tx: Transaction,
+  command: PaymentDeletionCommand,
+  operationInstant: Date,
+): Promise<PaymentDeletionResult> {
+  const source = await findOwnedPaymentSource(tx, command);
+
+  if (!source) {
+    throw paymentException(paymentApiErrorCode.paymentNotFound);
+  }
+
+  const debt = await findOwnedDebtForUpdate(tx, {
+    ownerProfileId: command.ownerProfileId,
+    customerId: command.customerId,
+    debtId: source.debtId,
+  });
+
+  if (!debt) {
+    throw paymentException(paymentApiErrorCode.paymentNotFound);
+  }
+
+  if (debt.version !== command.request.expectedDebtVersion) {
+    throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
+  }
+
+  const [scheduleItem] = await tx
+    .select()
+    .from(debtScheduleItems)
+    .where(
+      and(
+        eq(debtScheduleItems.id, source.scheduleItemId),
+        eq(debtScheduleItems.debtId, debt.id),
+      ),
+    )
+    .limit(1)
+    .for('update');
+
+  if (!scheduleItem) {
+    throw paymentException(paymentApiErrorCode.paymentNotFound);
+  }
+
+  const [payment] = await tx
+    .select()
+    .from(payments)
+    .where(eq(payments.id, command.paymentId))
+    .limit(1)
+    .for('update');
+
+  if (!payment || payment.scheduleItemId !== scheduleItem.id) {
+    throw paymentException(paymentApiErrorCode.paymentNotFound);
+  }
+
+  const [deletedPayment] = await tx
+    .delete(payments)
+    .where(
+      and(
+        eq(payments.id, payment.id),
+        eq(payments.scheduleItemId, scheduleItem.id),
+      ),
+    )
+    .returning({ id: payments.id });
+
+  if (!deletedPayment) {
+    throw paymentException(paymentApiErrorCode.paymentNotFound);
+  }
+
+  const [updatedDebt] = await tx
+    .update(debts)
+    .set({
+      version: debt.version + 1,
+      updatedAt: operationInstant,
+    })
+    .where(and(eq(debts.id, debt.id), eq(debts.version, debt.version)))
+    .returning();
+
+  if (!updatedDebt) {
+    throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
+  }
+
+  return { paymentId: deletedPayment.id, debt: updatedDebt };
+}
+
+async function findOwnedPaymentSource(
+  tx: Transaction,
+  command: PaymentDeletionCommand,
+): Promise<{ debtId: string; scheduleItemId: string } | null> {
+  const [row] = await tx
+    .select({
+      debtId: debts.id,
+      scheduleItemId: payments.scheduleItemId,
+    })
+    .from(payments)
+    .innerJoin(debtScheduleItems, eq(debtScheduleItems.id, payments.scheduleItemId))
+    .innerJoin(debts, eq(debts.id, debtScheduleItems.debtId))
+    .innerJoin(customers, eq(customers.id, debts.customerId))
+    .where(
+      and(
+        eq(payments.id, command.paymentId),
+        eq(debts.customerId, command.customerId),
+        eq(customers.ownerProfileId, command.ownerProfileId),
+      ),
+    )
+    .limit(1);
+
+  return row ?? null;
+}

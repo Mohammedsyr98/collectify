@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   isPaymentApiErrorCode,
+  type DeletePaymentRequest,
   type ReplacePaymentRequest,
   type RecordPaymentRequest,
 } from '@collectify/contracts';
@@ -18,6 +19,7 @@ import {
   type PaymentSubmissionRequest,
 } from '../api/record-payment';
 import { replacePayment as sendReplacement } from '../api/replace-payment';
+import { deletePayment as sendDeletion } from '../api/delete-payment';
 import { paymentTargetListQueryKey } from './paymentTargetQueries';
 
 async function invalidatePaymentData(
@@ -141,6 +143,31 @@ export function useReplacePaymentMutation({
         // Error presentation is handled by the mutation path.
       }
     },
+  };
+}
+
+export function useDeletePaymentMutation({
+  customerId,
+}: {
+  customerId: string;
+}) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: ({
+      paymentId,
+      request,
+    }: {
+      paymentId: string;
+      request: DeletePaymentRequest;
+    }) => sendDeletion(customerId, paymentId, request),
+    onSuccess: () => invalidatePaymentData(queryClient, customerId),
+    onError: () => invalidatePaymentData(queryClient, customerId),
+  });
+
+  return {
+    deletePayment: (paymentId: string, request: DeletePaymentRequest) =>
+      mutation.mutateAsync({ paymentId, request }),
+    isDeleting: mutation.isPending,
   };
 }
 

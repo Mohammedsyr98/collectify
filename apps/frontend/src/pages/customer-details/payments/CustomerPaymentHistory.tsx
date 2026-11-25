@@ -1,4 +1,5 @@
-import { CreditCard, Pencil } from 'lucide-react';
+import { CreditCard, Pencil, Trash2 } from 'lucide-react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { PaymentHistoryItem } from '@collectify/contracts';
@@ -14,14 +15,21 @@ const paymentSkeletonRows = Array.from({ length: 3 }, (_, index) => index);
 
 export function CustomerPaymentHistory({
   customerId,
+  onDeletePayment,
   onEditPayment,
 }: {
   customerId: string;
+  onDeletePayment: (
+    payment: PaymentHistoryItem,
+    trigger: HTMLButtonElement,
+    historyHeading: HTMLElement | null,
+  ) => void;
   onEditPayment: (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const historyQuery = useCustomerPaymentHistoryQuery(customerId);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const items = historyQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const totalItems = historyQuery.data?.pages[0]?.totalItems ?? 0;
   const isInitialRetry = historyQuery.isError && historyQuery.isFetching;
@@ -34,7 +42,11 @@ export function CustomerPaymentHistory({
       aria-label={t('customers.details.payments')}
       className="grid min-h-[190px] content-start gap-4 rounded-md border border-border bg-card p-4"
     >
-      <h2 className="m-0 text-[0.95rem] font-black tracking-normal">
+      <h2
+        className="m-0 text-[0.95rem] font-black tracking-normal"
+        ref={headingRef}
+        tabIndex={-1}
+      >
         {t('customers.details.payments')}
       </h2>
 
@@ -95,6 +107,9 @@ export function CustomerPaymentHistory({
               <PaymentHistoryRow
                 key={payment.id}
                 locale={locale}
+                onDeletePayment={(selectedPayment, trigger) =>
+                  onDeletePayment(selectedPayment, trigger, headingRef.current)
+                }
                 onEditPayment={onEditPayment}
                 payment={payment}
               />
@@ -170,10 +185,12 @@ export function CustomerPaymentHistory({
 
 function PaymentHistoryRow({
   locale,
+  onDeletePayment,
   onEditPayment,
   payment,
 }: {
   locale: string;
+  onDeletePayment: (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => void;
   onEditPayment: (payment: PaymentHistoryItem, trigger: HTMLButtonElement) => void;
   payment: PaymentHistoryItem;
 }) {
@@ -212,14 +229,24 @@ function PaymentHistoryRow({
           ) : null}
         </div>
       </div>
-      <button
-        aria-label={t('customers.details.paymentHistory.editPayment')}
-        className="inline-flex min-h-9 min-w-9 items-center justify-center self-start rounded-[5px] border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
-        onClick={(event) => onEditPayment(payment, event.currentTarget)}
-        type="button"
-      >
-        <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />
-      </button>
+      <div className="flex items-start gap-1">
+        <button
+          aria-label={t('customers.details.paymentHistory.editPayment')}
+          className="inline-flex min-h-9 min-w-9 items-center justify-center self-start rounded-[5px] border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          onClick={(event) => onEditPayment(payment, event.currentTarget)}
+          type="button"
+        >
+          <Pencil aria-hidden="true" size={15} strokeWidth={2.5} />
+        </button>
+        <button
+          aria-label={t('customers.details.paymentHistory.deletePayment')}
+          className="inline-flex min-h-9 min-w-9 items-center justify-center self-start rounded-[5px] border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          onClick={(event) => onDeletePayment(payment, event.currentTarget)}
+          type="button"
+        >
+          <Trash2 aria-hidden="true" size={15} strokeWidth={2.5} />
+        </button>
+      </div>
     </li>
   );
 }

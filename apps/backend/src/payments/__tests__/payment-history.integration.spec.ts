@@ -107,6 +107,7 @@ describe('payment history route', () => {
       debtVersion: 4,
       amount: '1.00',
       maximumReplacementAmount: '90.00',
+      paymentStateAfterDeletion: 'partiallyPaid',
       currency: 'EUR',
       paymentDate: '2026-10-11',
       note: 'Newest payment note',

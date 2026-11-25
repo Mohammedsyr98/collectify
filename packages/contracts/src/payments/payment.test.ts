@@ -6,6 +6,8 @@ import {
   isPaymentApiErrorCode,
 } from './api-error-codes.js';
 import {
+  deletePaymentRequestSchema,
+  deletePaymentResponseSchema,
   paymentErrorResponseSchema,
   replacePaymentRequestSchema,
   replacePaymentResponseSchema,
@@ -172,6 +174,48 @@ describe('replace payment response contract', () => {
     };
 
     expect(replacePaymentResponseSchema.parse(response)).toEqual(response);
+  });
+});
+
+describe('delete payment contract', () => {
+  it('requires the debt version and returns the committed debt and customer impact', () => {
+    const request = { expectedDebtVersion: 4 };
+    const response = {
+      deletedPaymentId: 'payment_contract',
+      debt: {
+        ...createDebtResponse('debt_source'),
+        paidAmount: '0.00',
+        remainingAmount: '100.00',
+        paymentState: 'unpaid' as const,
+        paymentCount: 0,
+        version: 5,
+        scheduleItems: [
+          {
+            id: 'schedule_payment_contract',
+            position: 1 as const,
+            amount: '100.00',
+            paidAmount: '0.00',
+            remainingAmount: '100.00',
+            paymentState: 'unpaid' as const,
+            paymentCount: 0,
+            dueDate: '2026-10-20',
+            timing: 'upcoming' as const,
+          },
+        ],
+      },
+      customerFinancialSummary: [
+        {
+          currency: 'USD' as const,
+          totalDebtAmount: '100.00',
+          totalPaidAmount: '0.00',
+          remainingAmount: '100.00',
+        },
+      ],
+    };
+
+    expect(deletePaymentRequestSchema.parse(request)).toEqual(request);
+    expect(deletePaymentResponseSchema.parse(response)).toEqual(response);
+    expect(deletePaymentRequestSchema.safeParse({ expectedDebtVersion: 0 }).success).toBe(false);
   });
 });
 

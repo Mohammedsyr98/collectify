@@ -29,6 +29,7 @@ const payment: PaymentHistoryItem = {
   debtVersion: 4,
   amount: '25.00',
   maximumReplacementAmount: '70.00',
+  paymentStateAfterDeletion: 'partiallyPaid',
   currency: 'USD',
   paymentDate: '2026-10-20',
   note: 'Original note',

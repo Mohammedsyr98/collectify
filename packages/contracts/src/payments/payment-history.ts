@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { currencySchema } from '../owner-profile/owner-profile.js';
 import { moneySchema } from '../money.js';
+import { paymentStateSchema } from '../debts/debt.js';
 
 const dateOnlySyntaxPattern = /^\d{4}-\d{2}-\d{2}$/;
 const dateOnlySchema = z.string().regex(dateOnlySyntaxPattern);
@@ -38,6 +39,7 @@ export const paymentHistoryItemSchema = z
     debtVersion: z.number().int().positive(),
     amount: moneySchema,
     maximumReplacementAmount: moneySchema,
+    paymentStateAfterDeletion: paymentStateSchema.exclude(['paid']),
     currency: currencySchema,
     paymentDate: dateOnlySchema,
     note: z.string().max(500).nullable(),

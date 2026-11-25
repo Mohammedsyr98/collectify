@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   paymentApiErrorCode,
+  type CustomerDetailsResponse,
+  type DeletePaymentRequest,
+  type DeletePaymentResponse,
   type Payment,
   type RecordPaymentRequest,
   type RecordPaymentResponse,
@@ -16,9 +19,13 @@ import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts, payments } from '../database/schema';
 import { findOwnedDebtForUpdate, loadDebtsWithPaymentDetails } from '../debts';
-import { loadPaidTotalsByScheduleItemId } from '../receivables';
+import {
+  CustomerReceivables,
+  loadPaidTotalsByScheduleItemId,
+} from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
+import { deletePayment as deletePersistedPayment } from './payment-deletion';
 import { replacePayment } from './payment-replacement';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -27,7 +34,10 @@ type ScheduleItemRow = typeof debtScheduleItems.$inferSelect;
 
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly customerReceivables: CustomerReceivables,
+  ) {}
 
   async recordPayment(
     currentOwner: AuthenticatedOwner,
@@ -170,6 +180,63 @@ export class PaymentsService {
         payment: toPaymentResponse(replacementResult.payment),
         sourceDebt: sourceDebtProjection,
         destinationDebt: destinationDebtProjection,
+      };
+    });
+  }
+
+  async deletePayment(
+    currentOwner: AuthenticatedOwner,
+    customerId: string,
+    paymentId: string,
+    request: DeletePaymentRequest,
+  ): Promise<DeletePaymentResponse> {
+    const operationInstant = new Date();
+
+    return this.databaseService.db.transaction(async (tx) => {
+      const deletion = await deletePersistedPayment(
+        tx,
+        {
+          ownerProfileId: currentOwner.ownerProfile.id,
+          customerId,
+          paymentId,
+          request,
+        },
+        operationInstant,
+      );
+      const [debt] = await loadDebtsWithPaymentDetails(
+        tx,
+        [deletion.debt],
+        getIstanbulBusinessDate(operationInstant),
+      );
+
+      if (!debt) {
+        throw new Error('Payment deletion debt projection was not returned.');
+      }
+
+      const summariesByCustomerId =
+        await this.customerReceivables.summarizeCustomers(
+          {
+            ownerProfileId: currentOwner.ownerProfile.id,
+            customerIds: [customerId],
+            asOf: operationInstant,
+            preferredCurrency: currentOwner.ownerProfile.defaultCurrency,
+          },
+          tx,
+        );
+      const customerFinancialSummary: CustomerDetailsResponse['financialSummary'] =
+        (summariesByCustomerId.get(customerId) ?? []).map(
+          ({ currency, totalDebtAmount, totalPaidAmount, remainingAmount }) => ({
+            currency,
+            totalDebtAmount,
+            totalPaidAmount,
+            remainingAmount,
+          }),
+        );
+
+      return {
+        deletedPaymentId: deletion.paymentId,
+        debt,
+        customerFinancialSummary,
       };
     });
   }
