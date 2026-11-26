@@ -26,6 +26,7 @@ const payment: PaymentHistoryItem = {
   debtVersion: 7,
   amount: '25.00',
   maximumReplacementAmount: '70.00',
+  deletionPreview: { remainingAmount: '70.00', targetPaymentState: 'partiallyPaid' },
   currency: 'USD',
   paymentDate: '2026-10-20',
   note: 'Original note',

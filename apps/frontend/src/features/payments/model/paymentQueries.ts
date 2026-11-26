@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import {
   isPaymentApiErrorCode,
+  paymentApiErrorCode,
+  type DeletePaymentRequest,
   type ReplacePaymentRequest,
   type RecordPaymentRequest,
 } from '@collectify/contracts';
@@ -11,13 +13,14 @@ import {
 import { customerCache } from '@/entities/customer';
 import { debtCache } from '@/entities/debt';
 
-import { resolveApiErrorDescription } from '@/shared/api';
+import { isApiError, resolveApiErrorDescription } from '@/shared/api';
 import { useToast } from '@/shared/ui/toast';
 import {
   recordPayment as sendPayment,
   type PaymentSubmissionRequest,
 } from '../api/record-payment';
 import { replacePayment as sendReplacement } from '../api/replace-payment';
+import { deletePayment as sendDeletion } from '../api/delete-payment';
 import { paymentTargetListQueryKey } from './paymentTargetQueries';
 
 async function invalidatePaymentData(
@@ -141,6 +144,56 @@ export function useReplacePaymentMutation({
         // Error presentation is handled by the mutation path.
       }
     },
+  };
+}
+
+export function useDeletePaymentMutation({
+  customerId,
+  onDeleted,
+}: {
+  customerId: string;
+  onDeleted?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const mutation = useMutation({
+    mutationFn: ({
+      paymentId,
+      request,
+    }: {
+      paymentId: string;
+      request: DeletePaymentRequest;
+    }) => sendDeletion(customerId, paymentId, request),
+    onSuccess: async () => {
+      await invalidatePaymentData(queryClient, customerId);
+      showToast({
+        variant: 'success',
+        title: t('payments.delete.toast.successTitle'),
+      });
+      onDeleted?.();
+    },
+    onError: async (error) => {
+      await invalidatePaymentData(queryClient, customerId);
+      const description =
+        isApiError(error) && isPaymentApiErrorCode(error.code)
+          ? error.code === paymentApiErrorCode.paymentDebtVersionConflict
+            ? t('payments.delete.toast.staleDescription')
+            : t(`payments.errors.${error.code}`)
+          : t('errors.genericDescription');
+
+      showToast({
+        variant: 'error',
+        title: t('payments.delete.toast.errorTitle'),
+        description,
+      });
+    },
+  });
+
+  return {
+    deletePayment: (paymentId: string, request: DeletePaymentRequest) =>
+      mutation.mutate({ paymentId, request }),
+    isDeleting: mutation.isPending,
   };
 }
 

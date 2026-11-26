@@ -179,7 +179,8 @@ function toPaymentHistoryItem(
   paidTotals: ReadonlyMap<string, string>,
 ): PaymentHistoryItem {
   const totalPaid = parseMoney(paidTotals.get(row.scheduleItemId) ?? '0.00');
-  const maximumReplacementAmount = formatMoney(
+  const paidAfterDeletion = totalPaid - parseMoney(row.amount);
+  const remainingAmount = formatMoney(
     parseMoney(row.scheduleItemAmount) - totalPaid + parseMoney(row.amount),
   );
 
@@ -190,7 +191,11 @@ function toPaymentHistoryItem(
     debtDescription: row.debtDescription,
     debtVersion: row.debtVersion,
     amount: row.amount,
-    maximumReplacementAmount,
+    maximumReplacementAmount: remainingAmount,
+    deletionPreview: {
+      remainingAmount,
+      targetPaymentState: paidAfterDeletion === 0n ? 'unpaid' : 'partiallyPaid',
+    },
     currency: row.currency,
     paymentDate: row.paymentDate,
     note: row.note,

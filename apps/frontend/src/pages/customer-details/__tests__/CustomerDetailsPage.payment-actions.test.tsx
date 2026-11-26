@@ -607,6 +607,7 @@ function createHistoryItem(
     debtVersion: 1,
     amount: '25.00',
     maximumReplacementAmount: '100.00',
+    deletionPreview: { remainingAmount: '100.00', targetPaymentState: 'unpaid' },
     currency: 'USD',
     paymentDate: '2026-10-20',
     note: null,

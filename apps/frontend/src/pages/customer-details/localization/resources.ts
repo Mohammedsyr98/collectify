@@ -22,6 +22,7 @@ export const customerDetailsResources = {
           payments: 'Payments',
           paymentHistory: {
             allLoaded: 'All payments loaded',
+            deletePayment: 'Delete payment',
             editPayment: 'Edit payment',
             empty: 'No payments yet.',
             errorTitle: 'Could not load payments',
@@ -111,6 +112,7 @@ export const customerDetailsResources = {
           payments: 'Ödemeler',
           paymentHistory: {
             allLoaded: 'Tüm ödemeler yüklendi',
+            deletePayment: 'Ödemeyi sil',
             editPayment: 'Ödemeyi düzenle',
             empty: 'Henüz ödeme yok.',
             errorTitle: 'Ödemeler yüklenemedi',
@@ -200,6 +202,7 @@ export const customerDetailsResources = {
           payments: 'الدفعات',
           paymentHistory: {
             allLoaded: 'تم تحميل جميع الدفعات',
+            deletePayment: 'حذف الدفعة',
             editPayment: 'تعديل الدفعة',
             empty: 'لا توجد دفعات بعد.',
             errorTitle: 'تعذر تحميل الدفعات',

@@ -26,12 +26,15 @@ export type SummarizeCustomersRequest = {
   preferredCurrency: Currency;
 };
 
+type SelectExecutor = Pick<Database, 'select'>;
+
 @Injectable()
 export class CustomerReceivables {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async summarizeCustomers(
     request: SummarizeCustomersRequest,
+    executor: SelectExecutor = this.databaseService.db,
   ): Promise<ReadonlyMap<string, readonly CustomerCurrencySummary[]>> {
     const customerIds = request.customerIds;
     const summariesByCustomerId = new Map<
@@ -45,7 +48,7 @@ export class CustomerReceivables {
 
     const businessDate = getIstanbulBusinessDate(request.asOf);
     const summaryRows = await loadCustomerCurrencySummaryRows(
-      this.databaseService.db,
+      executor,
       request.ownerProfileId,
       customerIds,
       businessDate,
@@ -79,7 +82,7 @@ type CustomerCurrencySummaryRow = CustomerCurrencySummary & {
 };
 
 async function loadCustomerCurrencySummaryRows(
-  database: Database,
+  database: SelectExecutor,
   ownerProfileId: string,
   customerIds: readonly string[],
   businessDate: string,

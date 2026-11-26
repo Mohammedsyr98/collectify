@@ -6,6 +6,8 @@ import {
   isPaymentApiErrorCode,
 } from './api-error-codes.js';
 import {
+  deletePaymentRequestSchema,
+  deletePaymentResponseSchema,
   paymentErrorResponseSchema,
   replacePaymentRequestSchema,
   replacePaymentResponseSchema,
@@ -172,6 +174,24 @@ describe('replace payment response contract', () => {
     };
 
     expect(replacePaymentResponseSchema.parse(response)).toEqual(response);
+  });
+});
+
+describe('delete payment contract', () => {
+  it('requires the debt version and returns only the deleted payment ID and new debt version', () => {
+    const request = { expectedDebtVersion: 4 };
+    const response = {
+      deletedPaymentId: 'payment_contract',
+      debtVersion: 5,
+    };
+
+    expect(deletePaymentRequestSchema.parse(request)).toEqual(request);
+    expect(deletePaymentResponseSchema.parse(response)).toEqual(response);
+    expect(
+      deletePaymentResponseSchema.safeParse({ ...response, customerFinancialSummary: [] }).success,
+    ).toBe(false);
+    expect(deletePaymentResponseSchema.safeParse({ ...response, debtVersion: 0 }).success).toBe(false);
+    expect(deletePaymentRequestSchema.safeParse({ expectedDebtVersion: 0 }).success).toBe(false);
   });
 });
 

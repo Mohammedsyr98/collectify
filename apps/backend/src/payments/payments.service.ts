@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   paymentApiErrorCode,
+  type DeletePaymentRequest,
+  type DeletePaymentResponse,
   type Payment,
   type RecordPaymentRequest,
   type RecordPaymentResponse,
@@ -19,6 +21,7 @@ import { findOwnedDebtForUpdate, loadDebtsWithPaymentDetails } from '../debts';
 import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
+import { deletePayment as deletePersistedPayment } from './payment-deletion';
 import { replacePayment } from './payment-replacement';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -170,6 +173,33 @@ export class PaymentsService {
         payment: toPaymentResponse(replacementResult.payment),
         sourceDebt: sourceDebtProjection,
         destinationDebt: destinationDebtProjection,
+      };
+    });
+  }
+
+  async deletePayment(
+    currentOwner: AuthenticatedOwner,
+    customerId: string,
+    paymentId: string,
+    request: DeletePaymentRequest,
+  ): Promise<DeletePaymentResponse> {
+    const operationInstant = new Date();
+
+    return this.databaseService.db.transaction(async (tx) => {
+      const deletion = await deletePersistedPayment(
+        tx,
+        {
+          ownerProfileId: currentOwner.ownerProfile.id,
+          customerId,
+          paymentId,
+          request,
+        },
+        operationInstant,
+      );
+
+      return {
+        deletedPaymentId: deletion.paymentId,
+        debtVersion: deletion.debtVersion,
       };
     });
   }
