@@ -26,7 +26,7 @@ export type PaymentDeleter = {
 };
 
 export function usePaymentDeleter({ customerId }: { customerId: string }): PaymentDeleter {
-  const [payment, setPayment] = useState<PaymentHistoryItem | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentHistoryItem | null>(null);
   const [failure, setFailure] = useState<PaymentDeletionFailure | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const historyHeadingRef = useRef<HTMLElement | null>(null);
@@ -36,13 +36,13 @@ export function usePaymentDeleter({ customerId }: { customerId: string }): Payme
   const { t } = useTranslation();
   const { locale } = useLocalization();
 
-  const confirmDelete = async (selectedPayment: PaymentHistoryItem) => {
+  const confirmDelete = async (paymentToDelete: PaymentHistoryItem) => {
     try {
-      const response = await deletePayment(selectedPayment.id, {
-        expectedDebtVersion: selectedPayment.debtVersion,
+      const response = await deletePayment(paymentToDelete.id, {
+        expectedDebtVersion: paymentToDelete.debtVersion,
       });
       const target = response.debt.scheduleItems.find(
-        ({ id }) => id === selectedPayment.scheduleItemId,
+        ({ id }) => id === paymentToDelete.scheduleItemId,
       );
 
       if (!target) {
@@ -51,11 +51,11 @@ export function usePaymentDeleter({ customerId }: { customerId: string }): Payme
       }
 
       const targetLabel =
-        selectedPayment.plan.type === 'onePayment'
+        paymentToDelete.plan.type === 'onePayment'
           ? t('payments.delete.targetLabel.onePayment')
           : t('payments.delete.targetLabel.installment', {
-              position: selectedPayment.plan.position,
-              total: selectedPayment.plan.total,
+              position: paymentToDelete.plan.position,
+              total: paymentToDelete.plan.total,
             });
       const statusLabel = t(`payments.delete.status.${target.paymentState}`);
 
@@ -70,14 +70,14 @@ export function usePaymentDeleter({ customerId }: { customerId: string }): Payme
       });
       closeFocusRef.current = historyHeadingRef.current;
       setFailure(null);
-      setPayment(null);
+      setSelectedPayment(null);
     } catch (error) {
       setFailure(getDeletionFailure(error));
     }
   };
 
   return {
-    dialog: payment ? (
+    dialog: selectedPayment ? (
       <PaymentDeletionDialog
         failure={failure}
         fallbackFocusRef={historyHeadingRef}
@@ -85,22 +85,22 @@ export function usePaymentDeleter({ customerId }: { customerId: string }): Payme
         onClose={() => {
           closeFocusRef.current = null;
           setFailure(null);
-          setPayment(null);
+          setSelectedPayment(null);
         }}
-        onConfirm={() => confirmDelete(payment)}
-        payment={payment}
+        onConfirm={() => confirmDelete(selectedPayment)}
+        payment={selectedPayment}
         returnFocusRef={returnFocusRef}
         closeFocusRef={closeFocusRef}
       />
     ) : null,
-    open: (selectedPayment, focusTargets) => {
-      if (payment) return;
+    open: (paymentToOpen, focusTargets) => {
+      if (selectedPayment) return;
 
       returnFocusRef.current = focusTargets.returnFocusTarget;
       historyHeadingRef.current = focusTargets.afterDelete;
       closeFocusRef.current = null;
       setFailure(null);
-      setPayment(selectedPayment);
+      setSelectedPayment(paymentToOpen);
     },
   };
 }
