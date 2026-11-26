@@ -6,10 +6,7 @@ import type { PaymentHistoryItem } from '@collectify/contracts';
 
 import { formatCurrencyAmount, formatDateOnly, useLocalization } from '@/shared/localization';
 
-type PaymentDeletionFailure = 'noChange' | 'stale' | 'missing' | 'uncertain';
-
 type PaymentDeletionDialogProps = {
-  failure: PaymentDeletionFailure | null;
   fallbackFocusRef: RefObject<HTMLElement | null>;
   focusTargetRef: RefObject<HTMLElement | null>;
   isDeleting: boolean;
@@ -19,7 +16,6 @@ type PaymentDeletionDialogProps = {
 };
 
 export function PaymentDeletionDialog({
-  failure,
   fallbackFocusRef,
   focusTargetRef,
   isDeleting,
@@ -30,7 +26,6 @@ export function PaymentDeletionDialog({
   const { t } = useTranslation();
   const { locale } = useLocalization();
   const keepPaymentRef = useRef<HTMLButtonElement | null>(null);
-  const errorId = useId();
   const descriptionId = useId();
   const targetLabel =
     payment.plan.type === 'onePayment'
@@ -39,16 +34,6 @@ export function PaymentDeletionDialog({
           position: payment.plan.position,
           total: payment.plan.total,
         });
-  const failureMessageKey = failure
-    ? {
-        noChange: 'payments.delete.failure.noChange',
-        stale: 'payments.delete.failure.stale',
-        missing: 'payments.delete.failure.missing',
-        uncertain: 'payments.delete.failure.uncertain',
-      }[failure]
-    : undefined;
-  const isRetryBlocked = failure !== null && failure !== 'noChange';
-
   return (
     <Dialog.Root
       onOpenChange={(open) => {
@@ -60,7 +45,6 @@ export function PaymentDeletionDialog({
         <Dialog.Overlay className="fixed inset-0 z-10 bg-foreground/25" />
         <Dialog.Content
           aria-describedby={descriptionId}
-          aria-errormessage={failure ? errorId : undefined}
           className="fixed start-1/2 top-1/2 z-10 grid max-h-[min(90vh,820px)] w-[calc(100%-32px)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-y-auto rounded-md border border-border bg-card p-5 text-start shadow-[var(--shadow-md)]"
           onCloseAutoFocus={(event) => {
             const target = focusTargetRef.current;
@@ -145,16 +129,6 @@ export function PaymentDeletionDialog({
               {t('payments.delete.pendingAnnouncement')}
             </p>
           ) : null}
-          {failureMessageKey ? (
-            <p
-              className="m-0 rounded-[5px] border border-status-overdue-border bg-background p-3 text-[0.82rem] text-destructive"
-              id={errorId}
-              role="alert"
-            >
-              {t(failureMessageKey)}
-            </p>
-          ) : null}
-
           <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
             <button
               className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
@@ -167,7 +141,7 @@ export function PaymentDeletionDialog({
             </button>
             <button
               className="min-h-11 cursor-pointer rounded-[5px] border-0 bg-destructive px-[18px] text-[0.84rem] font-extrabold text-destructive-foreground transition duration-150 hover:-translate-y-px hover:brightness-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
-              disabled={isDeleting || isRetryBlocked}
+              disabled={isDeleting}
               onClick={onConfirm}
               type="button"
             >

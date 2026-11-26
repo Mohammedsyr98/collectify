@@ -182,10 +182,10 @@ describe('payment deletion flow', () => {
     expect(screen.getByRole('heading', { name: 'Payment History' })).toHaveFocus();
     expect(
       await screen.findByRole('status', { name: 'Payment deleted' }),
-    ).toHaveTextContent('Installment 2 of 4 remaining: $75.00. Status: Partially paid.');
+    ).toHaveTextContent(/^Payment deleted$/);
   });
 
-  it('keeps a stale preview open and blocks retry until the dialog is reopened', async () => {
+  it('shows a conflict toast and allows a retry with the same stale version', async () => {
     const user = userEvent.setup();
     let requestCount = 0;
     server.use(
@@ -206,28 +206,65 @@ describe('payment deletion flow', () => {
     );
     const trigger = screen.getByRole('button', { name: 'Delete payment' });
     await user.click(trigger);
-    let dialog = await screen.findByRole('dialog', {
+    const dialog = await screen.findByRole('dialog', {
       name: paymentResources.en.common.payments.delete.title,
     });
     await user.click(within(dialog).getByRole('button', { name: 'Delete payment' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      paymentResources.en.common.payments.delete.failure.stale,
+    const errorToast = await screen.findByRole('alert', {
+      name: paymentResources.en.common.payments.delete.toast.errorTitle,
+    });
+    expect(errorToast).toHaveTextContent(
+      paymentResources.en.common.payments.delete.toast.staleDescription,
     );
+    expect(screen.getByRole('dialog', {
+      name: paymentResources.en.common.payments.delete.title,
+    })).toBeInTheDocument();
     const deleteButton = within(dialog).getByRole('button', { name: 'Delete payment' });
-    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toBeEnabled();
+    await user.click(deleteButton);
+    await waitFor(() => expect(requestCount).toBe(2));
+    await waitFor(() => expect(deleteButton).toBeEnabled());
+
     await user.click(within(dialog).getByRole('button', { name: 'Keep payment' }));
     expect(trigger).toHaveFocus();
 
     rerender(<PaymentDeletionHarness payment={refreshedPayment} />);
     await user.click(trigger);
-    dialog = await screen.findByRole('dialog', {
+    const refreshedDialog = await screen.findByRole('dialog', {
       name: paymentResources.en.common.payments.delete.title,
     });
-    expect(dialog).toHaveTextContent('$65.00');
-    expect(within(dialog).getByRole('button', { name: 'Delete payment' })).toBeEnabled();
-    expect(requestCount).toBe(1);
-    await user.click(within(dialog).getByRole('button', { name: 'Keep payment' }));
+    expect(refreshedDialog).toHaveTextContent('$65.00');
+    expect(within(refreshedDialog).getByRole('button', { name: 'Delete payment' })).toBeEnabled();
+    await user.click(within(refreshedDialog).getByRole('button', { name: 'Keep payment' }));
+  });
+
+  it('shows a generic error toast and leaves the confirmation open on a network failure', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete(
+        `${getBackendUrl()}/customers/:customerId/payments/:paymentId`,
+        () => HttpResponse.error(),
+      ),
+    );
+
+    renderWithAppProviders(<PaymentDeletionHarness payment={payment} />);
+    await user.click(screen.getByRole('button', { name: 'Delete payment' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: paymentResources.en.common.payments.delete.title,
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete payment' }));
+
+    const errorToast = await screen.findByRole('alert', {
+      name: paymentResources.en.common.payments.delete.toast.errorTitle,
+    });
+    expect(errorToast).toHaveTextContent('Something went wrong. Try again.');
+    expect(screen.getByRole('dialog', {
+      name: paymentResources.en.common.payments.delete.title,
+    })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Delete payment' })).toBeEnabled(),
+    );
   });
 
   it('disables both actions and prevents Escape dismissal while deletion is pending', async () => {

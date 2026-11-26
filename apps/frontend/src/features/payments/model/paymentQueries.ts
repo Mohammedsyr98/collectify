@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   isPaymentApiErrorCode,
+  paymentApiErrorCode,
   type DeletePaymentRequest,
   type ReplacePaymentRequest,
   type RecordPaymentRequest,
@@ -12,7 +13,7 @@ import {
 import { customerCache } from '@/entities/customer';
 import { debtCache } from '@/entities/debt';
 
-import { resolveApiErrorDescription } from '@/shared/api';
+import { isApiError, resolveApiErrorDescription } from '@/shared/api';
 import { useToast } from '@/shared/ui/toast';
 import {
   recordPayment as sendPayment,
@@ -148,10 +149,14 @@ export function useReplacePaymentMutation({
 
 export function useDeletePaymentMutation({
   customerId,
+  onDeleted,
 }: {
   customerId: string;
+  onDeleted?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { showToast } = useToast();
   const mutation = useMutation({
     mutationFn: ({
       paymentId,
@@ -160,13 +165,34 @@ export function useDeletePaymentMutation({
       paymentId: string;
       request: DeletePaymentRequest;
     }) => sendDeletion(customerId, paymentId, request),
-    onSuccess: () => invalidatePaymentData(queryClient, customerId),
-    onError: () => invalidatePaymentData(queryClient, customerId),
+    onSuccess: async () => {
+      await invalidatePaymentData(queryClient, customerId);
+      showToast({
+        variant: 'success',
+        title: t('payments.delete.toast.successTitle'),
+      });
+      onDeleted?.();
+    },
+    onError: async (error) => {
+      await invalidatePaymentData(queryClient, customerId);
+      const description =
+        isApiError(error) && isPaymentApiErrorCode(error.code)
+          ? error.code === paymentApiErrorCode.paymentDebtVersionConflict
+            ? t('payments.delete.toast.staleDescription')
+            : t(`payments.errors.${error.code}`)
+          : t('errors.genericDescription');
+
+      showToast({
+        variant: 'error',
+        title: t('payments.delete.toast.errorTitle'),
+        description,
+      });
+    },
   });
 
   return {
     deletePayment: (paymentId: string, request: DeletePaymentRequest) =>
-      mutation.mutateAsync({ paymentId, request }),
+      mutation.mutate({ paymentId, request }),
     isDeleting: mutation.isPending,
   };
 }

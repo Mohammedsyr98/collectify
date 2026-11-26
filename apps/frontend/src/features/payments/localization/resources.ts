@@ -80,15 +80,10 @@ export const paymentResources = {
           confirm: 'Delete payment',
           deleting: 'Deleting payment…',
           pendingAnnouncement: 'Deleting payment. Please wait.',
-          failure: {
-            noChange: 'Payment could not be deleted. Nothing changed.',
-            stale: 'The debt changed since this preview was calculated. Nothing changed. Close and reopen this dialog to review the current balance.',
-            missing: 'This payment no longer exists. Nothing changed by this request. Payment history was refreshed.',
-            uncertain: 'We could not confirm whether the payment was deleted. Payment history was refreshed. Close this dialog to check before trying again.',
-          },
           toast: {
             successTitle: 'Payment deleted',
-            successDescription: '{{target}} remaining: {{remaining}}. Status: {{status}}.',
+            errorTitle: 'Payment could not be deleted',
+            staleDescription: 'The debt changed since this preview was calculated. Close and reopen this dialog to review the current balance.',
           },
         },
         toast: {
@@ -185,15 +180,10 @@ export const paymentResources = {
           confirm: 'Ödemeyi sil',
           deleting: 'Ödeme siliniyor…',
           pendingAnnouncement: 'Ödeme siliniyor. Lütfen bekleyin.',
-          failure: {
-            noChange: 'Ödeme silinemedi. Hiçbir şey değişmedi.',
-            stale: 'Borç bu önizleme oluşturulduktan sonra değişti. Hiçbir şey değişmedi. Güncel bakiyeyi görmek için bu iletişim kutusunu kapatıp yeniden açın.',
-            missing: 'Bu ödeme artık mevcut değil. Bu isteğiniz hiçbir şeyi değiştirmedi. Ödeme geçmişi güncellendi.',
-            uncertain: 'Ödemenin silinip silinmediği doğrulanamadı. Ödeme geçmişi güncellendi. Yeniden denemeden önce durumu kontrol etmek için bu iletişim kutusunu kapatın.',
-          },
           toast: {
             successTitle: 'Ödeme silindi',
-            successDescription: '{{target}} kalan: {{remaining}}. Durum: {{status}}.',
+            errorTitle: 'Ödeme silinemedi',
+            staleDescription: 'Bu önizleme oluşturulduktan sonra borç değişti. Güncel bakiyeyi incelemek için bu iletişim kutusunu kapatıp yeniden açın.',
           },
         },
         toast: {
@@ -290,15 +280,10 @@ export const paymentResources = {
           confirm: 'حذف الدفعة',
           deleting: 'جارٍ حذف الدفعة…',
           pendingAnnouncement: 'جارٍ حذف الدفعة. يرجى الانتظار.',
-          failure: {
-            noChange: 'تعذر حذف الدفعة. لم يتغير شيء.',
-            stale: 'تغير الدين بعد إعداد هذه المعاينة. لم يتغير شيء. أغلق مربع الحوار وافتحه مجددًا لمراجعة الرصيد الحالي.',
-            missing: 'لم تعد هذه الدفعة موجودة. لم يغير هذا الطلب شيئًا. تم تحديث سجل الدفعات.',
-            uncertain: 'تعذر تأكيد حذف الدفعة. تم تحديث سجل الدفعات. أغلق مربع الحوار للتحقق من الحالة قبل إعادة المحاولة.',
-          },
           toast: {
             successTitle: 'تم حذف الدفعة',
-            successDescription: 'المتبقي من {{target}}: {{remaining}}. الحالة: {{status}}.',
+            errorTitle: 'تعذر حذف الدفعة',
+            staleDescription: 'تغير الدين بعد إعداد هذه المعاينة. أغلق مربع الحوار وافتحه مجددًا لمراجعة الرصيد الحالي.',
           },
         },
         toast: {
