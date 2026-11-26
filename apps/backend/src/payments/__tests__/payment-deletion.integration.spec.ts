@@ -201,7 +201,7 @@ describe('payment deletion route', () => {
     expect(await helpers.readDebtVersion(debtId)).toBe(2);
   });
 
-  it('serializes a delete against a concurrent payment update', async () => {
+  it('allows only one of a concurrent delete and payment update to succeed', async () => {
     const helpers = createPaymentTestHelpers(() => context);
     const { owner, customerId, debtId, scheduleItemId } =
       await helpers.setupSingleSchedulePaymentScenario({
