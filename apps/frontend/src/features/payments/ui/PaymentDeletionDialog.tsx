@@ -9,25 +9,23 @@ import { formatCurrencyAmount, formatDateOnly, useLocalization } from '@/shared/
 type PaymentDeletionFailure = 'noChange' | 'stale' | 'missing' | 'uncertain';
 
 type PaymentDeletionDialogProps = {
-  closeFocusRef: RefObject<HTMLElement | null>;
   failure: PaymentDeletionFailure | null;
   fallbackFocusRef: RefObject<HTMLElement | null>;
+  focusTargetRef: RefObject<HTMLElement | null>;
   isDeleting: boolean;
   onClose: () => void;
   onConfirm: () => void;
   payment: PaymentHistoryItem;
-  returnFocusRef: RefObject<HTMLElement | null>;
 };
 
 export function PaymentDeletionDialog({
-  closeFocusRef,
   failure,
   fallbackFocusRef,
+  focusTargetRef,
   isDeleting,
   onClose,
   onConfirm,
   payment,
-  returnFocusRef,
 }: PaymentDeletionDialogProps) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
@@ -65,7 +63,7 @@ export function PaymentDeletionDialog({
           aria-errormessage={failure ? errorId : undefined}
           className="fixed start-1/2 top-1/2 z-10 grid max-h-[min(90vh,820px)] w-[calc(100%-32px)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-y-auto rounded-md border border-border bg-card p-5 text-start shadow-[var(--shadow-md)]"
           onCloseAutoFocus={(event) => {
-            const target = closeFocusRef.current ?? returnFocusRef.current;
+            const target = focusTargetRef.current;
             const focusTarget = target?.isConnected ? target : fallbackFocusRef.current;
 
             if (focusTarget?.isConnected) {

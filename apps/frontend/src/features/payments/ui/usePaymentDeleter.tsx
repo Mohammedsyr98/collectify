@@ -28,9 +28,8 @@ export type PaymentDeleter = {
 export function usePaymentDeleter({ customerId }: { customerId: string }): PaymentDeleter {
   const [selectedPayment, setSelectedPayment] = useState<PaymentHistoryItem | null>(null);
   const [failure, setFailure] = useState<PaymentDeletionFailure | null>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const focusTargetRef = useRef<HTMLElement | null>(null);
   const historyHeadingRef = useRef<HTMLElement | null>(null);
-  const closeFocusRef = useRef<HTMLElement | null>(null);
   const { deletePayment, isDeleting } = useDeletePaymentMutation({ customerId });
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -68,7 +67,7 @@ export function usePaymentDeleter({ customerId }: { customerId: string }): Payme
           status: statusLabel,
         }),
       });
-      closeFocusRef.current = historyHeadingRef.current;
+      focusTargetRef.current = historyHeadingRef.current;
       setFailure(null);
       setSelectedPayment(null);
     } catch (error) {
@@ -83,22 +82,19 @@ export function usePaymentDeleter({ customerId }: { customerId: string }): Payme
         fallbackFocusRef={historyHeadingRef}
         isDeleting={isDeleting}
         onClose={() => {
-          closeFocusRef.current = null;
           setFailure(null);
           setSelectedPayment(null);
         }}
         onConfirm={() => confirmDelete(selectedPayment)}
         payment={selectedPayment}
-        returnFocusRef={returnFocusRef}
-        closeFocusRef={closeFocusRef}
+        focusTargetRef={focusTargetRef}
       />
     ) : null,
     open: (paymentToOpen, focusTargets) => {
       if (selectedPayment) return;
 
-      returnFocusRef.current = focusTargets.returnFocusTarget;
+      focusTargetRef.current = focusTargets.returnFocusTarget;
       historyHeadingRef.current = focusTargets.afterDelete;
-      closeFocusRef.current = null;
       setFailure(null);
       setSelectedPayment(paymentToOpen);
     },
