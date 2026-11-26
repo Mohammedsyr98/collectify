@@ -232,7 +232,7 @@ describe('payment deletion route', () => {
     const deletionWon = deletionResponse.status === 200;
     const updateWon = updateResponse.status === 200;
 
-    expect(Number(deletionWon) + Number(updateWon)).toBe(1);
+    expect(deletionWon).not.toBe(updateWon);
     expect(await helpers.readDebtVersion(debtId)).toBe(3);
 
     const remainingPayments = await helpers.readPayments(scheduleItemId);
