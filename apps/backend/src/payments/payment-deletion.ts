@@ -21,7 +21,7 @@ export type PaymentDeletionCommand = {
 
 export type PaymentDeletionResult = {
   paymentId: string;
-  debt: typeof debts.$inferSelect;
+  debtVersion: number;
 };
 
 export async function deletePayment(
@@ -76,7 +76,7 @@ export async function deletePayment(
     throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
   }
 
-  return { paymentId: deletedPayment.id, debt: updatedDebt };
+  return { paymentId: deletedPayment.id, debtVersion: updatedDebt.version };
 }
 
 async function findOwnedPaymentSource(

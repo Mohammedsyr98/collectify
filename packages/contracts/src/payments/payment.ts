@@ -2,7 +2,6 @@ import { formatMoney, isMoneyWithinNumeric182Precision, parseMoney } from '@coll
 import { z } from 'zod';
 
 import { debtResponseSchema } from '../debts/debt.js';
-import { customerFinancialSummarySchema } from '../customers/customer.js';
 import { moneySchema } from '../money.js';
 import {
   paymentApiErrorCode,
@@ -89,9 +88,8 @@ export const replacePaymentResponseSchema = z.object({
 
 export const deletePaymentResponseSchema = z.object({
   deletedPaymentId: z.string().min(1),
-  debt: debtResponseSchema,
-  customerFinancialSummary: customerFinancialSummarySchema,
-});
+  debtVersion: z.number().int().positive(),
+}).strict();
 
 export const paymentErrorCodeSchema = z.enum(paymentApiErrorCode);
 

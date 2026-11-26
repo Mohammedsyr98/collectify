@@ -40,7 +40,7 @@ describe('payment deletion route', () => {
     await backend.app.close();
   });
 
-  it('permanently removes the payment and returns the reopened debt and customer balances', async () => {
+  it('permanently removes the payment and returns only its ID and new debt version', async () => {
     const helpers = createPaymentTestHelpers(() => context);
     const { owner, customerId, debtId, scheduleItemId } =
       await helpers.setupSingleSchedulePaymentScenario({
@@ -66,33 +66,9 @@ describe('payment deletion route', () => {
 
     expect(deletionResponse.status).toBe(200);
     const deleted = deletePaymentResponseSchema.parse(await deletionResponse.json());
-    expect(deleted).toMatchObject({
+    expect(deleted).toEqual({
       deletedPaymentId: recorded.payment.id,
-      debt: {
-        id: debtId,
-        version: 3,
-        paidAmount: '0.00',
-        remainingAmount: '100.00',
-        paymentState: 'unpaid',
-        paymentCount: 0,
-        scheduleItems: [
-          {
-            id: scheduleItemId,
-            paidAmount: '0.00',
-            remainingAmount: '100.00',
-            paymentState: 'unpaid',
-            paymentCount: 0,
-          },
-        ],
-      },
-      customerFinancialSummary: [
-        {
-          currency: 'USD',
-          totalDebtAmount: '100.00',
-          totalPaidAmount: '0.00',
-          remainingAmount: '100.00',
-        },
-      ],
+      debtVersion: 3,
     });
     expect(await helpers.readPayments(scheduleItemId)).toEqual([]);
     expect(await helpers.readDebtVersion(debtId)).toBe(3);

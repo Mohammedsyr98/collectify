@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
   paymentApiErrorCode,
-  type CustomerDetailsResponse,
   type DeletePaymentRequest,
   type DeletePaymentResponse,
   type Payment,
@@ -19,10 +18,7 @@ import type { AuthenticatedOwner } from '../auth';
 import { DatabaseService, type Database } from '../database/database.service';
 import { customers, debtScheduleItems, debts, payments } from '../database/schema';
 import { findOwnedDebtForUpdate, loadDebtsWithPaymentDetails } from '../debts';
-import {
-  CustomerReceivables,
-  loadPaidTotalsByScheduleItemId,
-} from '../receivables';
+import { loadPaidTotalsByScheduleItemId } from '../receivables';
 import { getIstanbulBusinessDate } from '../shared/istanbul-business-date';
 import { paymentException } from './payments.errors';
 import { deletePayment as deletePersistedPayment } from './payment-deletion';
@@ -34,10 +30,7 @@ type ScheduleItemRow = typeof debtScheduleItems.$inferSelect;
 
 @Injectable()
 export class PaymentsService {
-  constructor(
-    private readonly databaseService: DatabaseService,
-    private readonly customerReceivables: CustomerReceivables,
-  ) {}
+  constructor(private readonly databaseService: DatabaseService) {}
 
   async recordPayment(
     currentOwner: AuthenticatedOwner,
@@ -203,40 +196,10 @@ export class PaymentsService {
         },
         operationInstant,
       );
-      const [debt] = await loadDebtsWithPaymentDetails(
-        tx,
-        [deletion.debt],
-        getIstanbulBusinessDate(operationInstant),
-      );
-
-      if (!debt) {
-        throw new Error('Payment deletion debt projection was not returned.');
-      }
-
-      const summariesByCustomerId =
-        await this.customerReceivables.summarizeCustomers(
-          {
-            ownerProfileId: currentOwner.ownerProfile.id,
-            customerIds: [customerId],
-            asOf: operationInstant,
-            preferredCurrency: currentOwner.ownerProfile.defaultCurrency,
-          },
-          tx,
-        );
-      const customerFinancialSummary: CustomerDetailsResponse['financialSummary'] =
-        (summariesByCustomerId.get(customerId) ?? []).map(
-          ({ currency, totalDebtAmount, totalPaidAmount, remainingAmount }) => ({
-            currency,
-            totalDebtAmount,
-            totalPaidAmount,
-            remainingAmount,
-          }),
-        );
 
       return {
         deletedPaymentId: deletion.paymentId,
-        debt,
-        customerFinancialSummary,
+        debtVersion: deletion.debtVersion,
       };
     });
   }

@@ -178,43 +178,19 @@ describe('replace payment response contract', () => {
 });
 
 describe('delete payment contract', () => {
-  it('requires the debt version and returns the committed debt and customer impact', () => {
+  it('requires the debt version and returns only the deleted payment ID and new debt version', () => {
     const request = { expectedDebtVersion: 4 };
     const response = {
       deletedPaymentId: 'payment_contract',
-      debt: {
-        ...createDebtResponse('debt_source'),
-        paidAmount: '0.00',
-        remainingAmount: '100.00',
-        paymentState: 'unpaid' as const,
-        paymentCount: 0,
-        version: 5,
-        scheduleItems: [
-          {
-            id: 'schedule_payment_contract',
-            position: 1 as const,
-            amount: '100.00',
-            paidAmount: '0.00',
-            remainingAmount: '100.00',
-            paymentState: 'unpaid' as const,
-            paymentCount: 0,
-            dueDate: '2026-10-20',
-            timing: 'upcoming' as const,
-          },
-        ],
-      },
-      customerFinancialSummary: [
-        {
-          currency: 'USD' as const,
-          totalDebtAmount: '100.00',
-          totalPaidAmount: '0.00',
-          remainingAmount: '100.00',
-        },
-      ],
+      debtVersion: 5,
     };
 
     expect(deletePaymentRequestSchema.parse(request)).toEqual(request);
     expect(deletePaymentResponseSchema.parse(response)).toEqual(response);
+    expect(
+      deletePaymentResponseSchema.safeParse({ ...response, customerFinancialSummary: [] }).success,
+    ).toBe(false);
+    expect(deletePaymentResponseSchema.safeParse({ ...response, debtVersion: 0 }).success).toBe(false);
     expect(deletePaymentRequestSchema.safeParse({ expectedDebtVersion: 0 }).success).toBe(false);
   });
 });
