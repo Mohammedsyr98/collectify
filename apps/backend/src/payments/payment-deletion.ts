@@ -49,39 +49,12 @@ export async function deletePayment(
     throw paymentException(paymentApiErrorCode.paymentDebtVersionConflict);
   }
 
-  const [scheduleItem] = await tx
-    .select()
-    .from(debtScheduleItems)
-    .where(
-      and(
-        eq(debtScheduleItems.id, source.scheduleItemId),
-        eq(debtScheduleItems.debtId, debt.id),
-      ),
-    )
-    .limit(1)
-    .for('update');
-
-  if (!scheduleItem) {
-    throw paymentException(paymentApiErrorCode.paymentNotFound);
-  }
-
-  const [payment] = await tx
-    .select()
-    .from(payments)
-    .where(eq(payments.id, command.paymentId))
-    .limit(1)
-    .for('update');
-
-  if (!payment || payment.scheduleItemId !== scheduleItem.id) {
-    throw paymentException(paymentApiErrorCode.paymentNotFound);
-  }
-
   const [deletedPayment] = await tx
     .delete(payments)
     .where(
       and(
-        eq(payments.id, payment.id),
-        eq(payments.scheduleItemId, scheduleItem.id),
+        eq(payments.id, command.paymentId),
+        eq(payments.scheduleItemId, source.scheduleItemId),
       ),
     )
     .returning({ id: payments.id });
