@@ -169,7 +169,7 @@ describe('payment deletion route', () => {
     expect(await helpers.readDebtVersion(debtId)).toBe(3);
   });
 
-  it('hides a payment from a different owner and leaves its row and version untouched', async () => {
+  it('returns not found for another owner without changing the payment', async () => {
     const helpers = createPaymentTestHelpers(() => context);
     const { owner, customerId, debtId, scheduleItemId } =
       await helpers.setupSingleSchedulePaymentScenario({
