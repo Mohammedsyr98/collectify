@@ -61,7 +61,7 @@ export function FormInput<
     .filter(Boolean)
     .join(' ');
   const inputClassName = [
-    'min-h-10 w-full border-0 bg-transparent py-0 text-foreground outline-none placeholder:text-muted-foreground/70',
+    'min-h-10 w-full border-0 bg-transparent py-0 text-foreground outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:text-muted-foreground',
     icon ? 'ps-9' : 'ps-3.5',
     endAdornment ? 'pe-[42px]' : 'pe-3.5',
     className,

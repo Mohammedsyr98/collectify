@@ -44,6 +44,8 @@ export function DebtDrawer(props: DebtDrawerProps) {
   const { isSubmitting, mode = 'create', onClose, returnFocusRef } = props;
   const { t } = useTranslation();
   const formatValidationError = useDebtValidationErrorFormatter();
+  const hasPayments = props.mode === 'edit' && props.debt.paymentCount > 0;
+  const isFullyPaid = props.mode === 'edit' && props.debt.paymentState === 'paid';
   const descriptionKey =
     props.mode === 'edit'
       ? props.debt.paymentPlanType === 'installment'
@@ -73,7 +75,11 @@ export function DebtDrawer(props: DebtDrawerProps) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-10 bg-foreground/25" />
         <Dialog.Content
-          aria-describedby="debt-drawer-description"
+          aria-describedby={
+            hasPayments
+              ? 'debt-drawer-description debt-payment-restriction-notice'
+              : 'debt-drawer-description'
+          }
           className="fixed inset-y-0 end-0 z-10 grid w-full max-w-[460px] content-start gap-4 overflow-y-auto border-s border-border bg-card p-5 shadow-[var(--shadow-md)]"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
@@ -118,6 +124,20 @@ export function DebtDrawer(props: DebtDrawerProps) {
             )}
           </Dialog.Description>
 
+          {hasPayments ? (
+            <p
+              className="m-0 rounded-[5px] border border-border bg-background p-3 text-[0.78rem] leading-[1.45] text-muted-foreground"
+              id="debt-payment-restriction-notice"
+              role="note"
+            >
+              {t(
+                isFullyPaid
+                  ? 'debts.drawer.fullyPaidRestrictions'
+                  : 'debts.drawer.paymentRestrictions',
+              )}
+            </p>
+          ) : null}
+
           <FormProvider {...form}>
             <form
               className="grid gap-[13px]"
@@ -152,6 +172,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
                 }
                 label={t('debts.form.totalAmountLabel')}
                 name="totalAmount"
+                disabled={isSubmitting || isFullyPaid}
                 placeholder={t('debts.form.totalAmountPlaceholder')}
                 type="text"
                 inputMode="decimal"
@@ -161,6 +182,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
                 icon={<CircleDollarSign aria-hidden="true" size={16} strokeWidth={2.2} />}
                 label={t('debts.form.currencyLabel')}
                 name="currency"
+                disabled={isSubmitting || hasPayments}
                 options={[
                   { label: 'TRY', value: 'TRY' },
                   { label: 'USD', value: 'USD' },
@@ -169,8 +191,10 @@ export function DebtDrawer(props: DebtDrawerProps) {
                 formatError={formatValidationError}
               />
               <DebtPlanFields
-                disabled={isSubmitting}
+                addInstallmentDisabled={isFullyPaid}
                 formatError={formatValidationError}
+                isPlanSelectionDisabled={hasPayments}
+                isSubmitting={isSubmitting}
                 mode={mode}
               />
               {form.formState.errors.root?.message ? (

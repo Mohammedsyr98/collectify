@@ -8,6 +8,7 @@ export const debtApiErrorCode = {
   debtScheduleItemHasPayments: 'DEBT_SCHEDULE_ITEM_HAS_PAYMENTS',
   debtScheduleItemAmountBelowPaid: 'DEBT_SCHEDULE_ITEM_AMOUNT_BELOW_PAID',
   debtTotalAmountBelowPaid: 'DEBT_TOTAL_AMOUNT_BELOW_PAID',
+  debtFullyPaidReopenBlocked: 'DEBT_FULLY_PAID_REOPEN_BLOCKED',
 } as const;
 
 export const debtApiErrorCodes = [
@@ -20,6 +21,7 @@ export const debtApiErrorCodes = [
   debtApiErrorCode.debtScheduleItemHasPayments,
   debtApiErrorCode.debtScheduleItemAmountBelowPaid,
   debtApiErrorCode.debtTotalAmountBelowPaid,
+  debtApiErrorCode.debtFullyPaidReopenBlocked,
 ] as const;
 
 export type DebtApiErrorCode = (typeof debtApiErrorCodes)[number];

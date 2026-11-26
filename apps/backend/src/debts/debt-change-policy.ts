@@ -6,7 +6,8 @@ type DebtChangeConflictCode =
   | typeof debtApiErrorCode.debtPaymentPlanChangeBlocked
   | typeof debtApiErrorCode.debtScheduleItemHasPayments
   | typeof debtApiErrorCode.debtScheduleItemAmountBelowPaid
-  | typeof debtApiErrorCode.debtTotalAmountBelowPaid;
+  | typeof debtApiErrorCode.debtTotalAmountBelowPaid
+  | typeof debtApiErrorCode.debtFullyPaidReopenBlocked;
 
 type DebtChange =
   | { kind: 'delete' }
@@ -25,6 +26,7 @@ type DebtChange =
 type DebtChangeInput = {
   currentDebt: {
     currency: string;
+    totalAmount: string;
   };
   currentScheduleItems: readonly { id: string }[];
   paidTotalsByScheduleItemId: ReadonlyMap<string, string>;
@@ -52,6 +54,16 @@ export function checkDebtChange(input: DebtChangeInput): DebtChangeConflictCode 
   const replacementIsOnePayment = input.change.replacement.scheduleItems.length === 1;
   if (currentIsOnePayment !== replacementIsOnePayment) {
     return debtApiErrorCode.debtPaymentPlanChangeBlocked;
+  }
+
+  const currentTotalAmount = toMinorUnits(input.currentDebt.totalAmount);
+  const isFullyPaid = totalReceivedAmount === currentTotalAmount;
+  if (
+    isFullyPaid &&
+    (toMinorUnits(input.change.replacement.totalAmount) > currentTotalAmount ||
+      input.change.replacement.scheduleItems.some(({ id }) => !id))
+  ) {
+    return debtApiErrorCode.debtFullyPaidReopenBlocked;
   }
 
   for (const [scheduleItemId, receivedAmount] of input.paidTotalsByScheduleItemId) {

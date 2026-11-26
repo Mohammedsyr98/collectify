@@ -26,6 +26,7 @@ export function DebtDeletionDialog({
 }: DebtDeletionDialogProps) {
   const { t } = useTranslation();
   const { locale } = useLocalization();
+  const hasPayments = debt.paymentCount > 0;
 
   return (
     <Dialog.Root
@@ -52,46 +53,81 @@ export function DebtDeletionDialog({
         >
           <div className="grid gap-2">
             <Dialog.Title className="m-0 text-[1.15rem] font-black leading-tight tracking-normal">
-              {t('debts.delete.title')}
+              {t(
+                hasPayments
+                  ? 'debts.delete.paymentBlockedTitle'
+                  : 'debts.delete.title',
+              )}
             </Dialog.Title>
             <Dialog.Description
               className="m-0 text-[0.86rem] leading-[1.45] text-muted-foreground"
               id="debt-deletion-description"
             >
-              {t('debts.delete.description', {
-                description: debt.description,
-              })}
+              {hasPayments
+                ? t(
+                    debt.paymentCount === 1
+                      ? 'debts.delete.paymentBlockedDescriptionOne'
+                      : 'debts.delete.paymentBlockedDescriptionMany',
+                  )
+                : t('debts.delete.description', {
+                    description: debt.description,
+                  })}
             </Dialog.Description>
           </div>
 
-          <div className="grid gap-1 rounded-[5px] border border-border bg-background p-3">
-            <span className="text-[0.72rem] font-black text-muted-foreground">
-              {t('debts.delete.amountLabel')}
-            </span>
-            <bdi className="text-[1rem] font-black" dir="ltr">
-              {formatCurrencyAmount(debt.totalAmount, debt.currency, locale)}
-            </bdi>
-          </div>
+          {hasPayments ? (
+            <div className="flex items-center justify-between gap-3 rounded-[5px] border border-border bg-background p-3">
+              <span className="text-[0.72rem] font-black text-muted-foreground">
+                {t('debts.delete.paymentCountLabel')}
+              </span>
+              <bdi className="text-[1rem] font-black" dir="ltr">
+                {debt.paymentCount}
+              </bdi>
+            </div>
+          ) : (
+            <div className="grid gap-1 rounded-[5px] border border-border bg-background p-3">
+              <span className="text-[0.72rem] font-black text-muted-foreground">
+                {t('debts.delete.amountLabel')}
+              </span>
+              <bdi className="text-[1rem] font-black" dir="ltr">
+                {formatCurrencyAmount(debt.totalAmount, debt.currency, locale)}
+              </bdi>
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
-            <Dialog.Close asChild>
+          {hasPayments ? (
+            <div className="flex justify-end">
+              <Dialog.Close asChild>
+                <button
+                  className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+                  disabled={isDeleting}
+                  type="button"
+                >
+                  {t('debts.delete.close')}
+                </button>
+              </Dialog.Close>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 max-[430px]:grid-cols-1">
+              <Dialog.Close asChild>
+                <button
+                  className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+                  disabled={isDeleting}
+                  type="button"
+                >
+                  {t('debts.delete.cancel')}
+                </button>
+              </Dialog.Close>
               <button
-                className="min-h-11 cursor-pointer rounded-[5px] border border-border bg-background px-[18px] text-[0.84rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+                className="min-h-11 cursor-pointer rounded-[5px] border-0 bg-destructive px-[18px] text-[0.84rem] font-extrabold text-destructive-foreground transition duration-150 hover:-translate-y-px hover:brightness-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
                 disabled={isDeleting}
+                onClick={onConfirm}
                 type="button"
               >
-                {t('debts.delete.cancel')}
+                {t(isDeleting ? 'debts.delete.deleting' : 'debts.delete.confirm')}
               </button>
-            </Dialog.Close>
-            <button
-              className="min-h-11 cursor-pointer rounded-[5px] border-0 bg-destructive px-[18px] text-[0.84rem] font-extrabold text-destructive-foreground transition duration-150 hover:-translate-y-px hover:brightness-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
-              disabled={isDeleting}
-              onClick={onConfirm}
-              type="button"
-            >
-              {t(isDeleting ? 'debts.delete.deleting' : 'debts.delete.confirm')}
-            </button>
-          </div>
+            </div>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

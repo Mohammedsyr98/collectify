@@ -160,6 +160,100 @@ describe('debt changes with recorded payments', () => {
     expect(await readDebtWithScheduleRows('debt_currency_lock')).toEqual(before);
   });
 
+  it('serializes a currency edit against a concurrent payment', async () => {
+    const owner = await signUpOwner('debt-currency-payment-race-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_currency_payment_race',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+
+    const editResponsePromise = replaceDebtRequest(
+      owner.cookieHeader,
+      'debt_currency_payment_race',
+      {
+        expectedVersion: 1,
+        description: 'Currency race edit',
+        totalAmount: '100.00',
+        currency: 'EUR',
+        scheduleItems: [
+          {
+            id: 'debt_currency_payment_race_schedule',
+            amount: '100.00',
+            dueDate: '2026-09-30',
+          },
+        ],
+      },
+    );
+    const paymentResponsePromise = fetch(
+      `${backend.baseUrl}/customers/customer_debt/payments`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: owner.cookieHeader,
+        },
+        body: JSON.stringify({
+          targetScheduleItemId: 'debt_currency_payment_race_schedule',
+          amount: '10.00',
+          paymentDate: '2026-09-15',
+          expectedDebtVersion: 1,
+          idempotencyKey: '00000000-0000-4000-8000-000000000030',
+        }),
+      },
+    );
+    const [editResponse, paymentResponse] = await Promise.all([
+      editResponsePromise,
+      paymentResponsePromise,
+    ]);
+
+    expect([editResponse.status, paymentResponse.status].sort()).toEqual(
+      [200, 409],
+    );
+
+    const [persistedState] = await postgres.query<{
+      currency: string;
+      version: number;
+      payment_count: number;
+    }>(
+      `
+        SELECT
+          d."currency",
+          d."version",
+          count(p."id")::int AS "payment_count"
+        FROM "debts" d
+        JOIN "debt_schedule_items" s ON s."debt_id" = d."id"
+        LEFT JOIN "payments" p ON p."schedule_item_id" = s."id"
+        WHERE d."id" = $1
+        GROUP BY d."id"
+      `,
+      ['debt_currency_payment_race'],
+    );
+
+    if (paymentResponse.status === 201) {
+      expect(editResponse.status).toBe(409);
+      await expect(editResponse.json()).resolves.toMatchObject({
+        code: 'DEBT_VERSION_CONFLICT',
+      });
+      expect(persistedState).toEqual({
+        currency: 'USD',
+        version: 2,
+        payment_count: 1,
+      });
+    } else {
+      expect(paymentResponse.status).toBe(409);
+      await expect(paymentResponse.json()).resolves.toMatchObject({
+        code: 'PAYMENT_DEBT_VERSION_CONFLICT',
+      });
+      expect(persistedState).toEqual({
+        currency: 'EUR',
+        version: 2,
+        payment_count: 0,
+      });
+    }
+  });
+
   it('rejects converting a one-payment debt with a recorded payment to installments', async () => {
     const owner = await signUpOwner('debt-plan-lock-owner@example.com');
     await insertCustomer(owner.ownerProfileId);
@@ -333,6 +427,136 @@ describe('debt changes with recorded payments', () => {
           amount: '125.00',
           paidAmount: '25.00',
           remainingAmount: '100.00',
+          paymentCount: 1,
+        },
+      ],
+    });
+  });
+
+  it('rejects increasing principal after the debt is fully paid without changing the debt', async () => {
+    const owner = await signUpOwner('debt-fully-paid-principal-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_fully_paid_principal',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_fully_paid_principal',
+      scheduleItemId: 'debt_fully_paid_principal_schedule',
+      amount: '100.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000026',
+    });
+    const before = await readDebtWithScheduleRows('debt_fully_paid_principal');
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_fully_paid_principal', {
+      expectedVersion: 1,
+      description: 'Reopened debt',
+      totalAmount: '125.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: 'debt_fully_paid_principal_schedule',
+          amount: '125.00',
+          dueDate: '2026-09-30',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_FULLY_PAID_REOPEN_BLOCKED',
+    });
+    expect(await readDebtWithScheduleRows('debt_fully_paid_principal')).toEqual(before);
+  });
+
+  it('rejects adding an installment after all saved installments are paid', async () => {
+    const owner = await signUpOwner('debt-fully-paid-installment-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_fully_paid_installment',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+      scheduleItems: [
+        { id: 'debt_fully_paid_installment_first', amount: '60.00', dueDate: '2026-09-30' },
+        { id: 'debt_fully_paid_installment_second', amount: '40.00', dueDate: '2026-10-30' },
+      ],
+    });
+    await insertPayment({
+      id: 'payment_fully_paid_installment_first',
+      scheduleItemId: 'debt_fully_paid_installment_first',
+      amount: '60.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000027',
+    });
+    await insertPayment({
+      id: 'payment_fully_paid_installment_second',
+      scheduleItemId: 'debt_fully_paid_installment_second',
+      amount: '40.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000028',
+    });
+    const before = await readDebtWithScheduleRows('debt_fully_paid_installment');
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_fully_paid_installment', {
+      expectedVersion: 1,
+      description: 'Add one more installment',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        { id: 'debt_fully_paid_installment_first', amount: '50.00', dueDate: '2026-09-30' },
+        { id: 'debt_fully_paid_installment_second', amount: '40.00', dueDate: '2026-10-30' },
+        { amount: '10.00', dueDate: '2026-11-30' },
+      ],
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'DEBT_FULLY_PAID_REOPEN_BLOCKED',
+    });
+    expect(await readDebtWithScheduleRows('debt_fully_paid_installment')).toEqual(before);
+  });
+
+  it('allows description and due-date edits after the debt is fully paid', async () => {
+    const owner = await signUpOwner('debt-fully-paid-correction-owner@example.com');
+    await insertCustomer(owner.ownerProfileId);
+    await insertDebt({
+      id: 'debt_fully_paid_correction',
+      createdAt: '2026-09-10 10:00:00',
+      totalAmount: '100.00',
+    });
+    await insertPayment({
+      id: 'payment_fully_paid_correction',
+      scheduleItemId: 'debt_fully_paid_correction_schedule',
+      amount: '100.00',
+      idempotencyKey: '00000000-0000-4000-8000-000000000029',
+    });
+
+    const response = await replaceDebtRequest(owner.cookieHeader, 'debt_fully_paid_correction', {
+      expectedVersion: 1,
+      description: 'Corrected description',
+      totalAmount: '100.00',
+      currency: 'USD',
+      scheduleItems: [
+        {
+          id: 'debt_fully_paid_correction_schedule',
+          amount: '100.00',
+          dueDate: '2026-11-15',
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      description: 'Corrected description',
+      totalAmount: '100.00',
+      paidAmount: '100.00',
+      remainingAmount: '0.00',
+      paymentCount: 1,
+      version: 2,
+      scheduleItems: [
+        {
+          id: 'debt_fully_paid_correction_schedule',
+          dueDate: '2026-11-15',
+          paidAmount: '100.00',
           paymentCount: 1,
         },
       ],

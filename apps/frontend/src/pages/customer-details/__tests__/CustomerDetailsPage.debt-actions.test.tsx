@@ -172,6 +172,83 @@ describe('CustomerDetailsPage debt actions', () => {
     ).toBeEmptyDOMElement();
   });
 
+  it.each([
+    { paymentCount: 1, closeWithEscape: true },
+    { paymentCount: 3, closeWithEscape: false },
+  ])(
+    'explains why a debt with $paymentCount payment(s) cannot be deleted and offers only Close',
+    async ({ paymentCount, closeWithEscape }) => {
+      const user = userEvent.setup();
+      const initialDebt = createDebtFixture(baseCustomer.id, {
+        description: 'Debt with payments',
+        paymentCount,
+        paidAmount: '25.00',
+        remainingAmount: '100.50',
+        paymentState: 'partiallyPaid',
+      });
+      let deleteRequestCount = 0;
+
+      server.use(
+        http.get(`${getBackendUrl()}/customers/:customerId`, () =>
+          HttpResponse.json(baseCustomer),
+        ),
+        http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+          HttpResponse.json({
+            ...emptyDebtList,
+            items: [initialDebt],
+            totalItems: 1,
+            totalPages: 1,
+          }),
+        ),
+        http.delete(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () => {
+          deleteRequestCount += 1;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+
+      await screen.findByRole('heading', { name: initialDebt.description });
+      const { actionsMenu, actionsTrigger } = await openDebtActionMenu(
+        user,
+        initialDebt.description,
+      );
+      await user.click(
+        within(actionsMenu).getByRole('menuitem', {
+          name: debtMessages.card.actions.delete,
+        }),
+      );
+
+      const dialog = await screen.findByRole('dialog', {
+        name: debtMessages.delete.paymentBlockedTitle,
+      });
+      expect(
+        within(dialog).getByText(
+          paymentCount === 1
+            ? debtMessages.delete.paymentBlockedDescriptionOne
+            : debtMessages.delete.paymentBlockedDescriptionMany,
+        ),
+      ).toBeInTheDocument();
+      expect(within(dialog).getByText(debtMessages.delete.paymentCountLabel)).toBeInTheDocument();
+      expect(within(dialog).getByText(String(paymentCount))).toBeInTheDocument();
+      expect(within(dialog).getAllByRole('button')).toHaveLength(1);
+
+      const closeButton = within(dialog).getByRole('button', {
+        name: debtMessages.delete.close,
+      });
+      await waitFor(() => expect(closeButton).toHaveFocus());
+      if (closeWithEscape) {
+        await user.keyboard('{Escape}');
+      } else {
+        await user.click(closeButton);
+      }
+
+      await waitFor(() => expect(dialog).not.toBeInTheDocument());
+      expect(deleteRequestCount).toBe(0);
+      await waitFor(() => expect(actionsTrigger).toHaveFocus());
+    },
+  );
+
   it('saves an edited debt and refreshes affected views', async () => {
     const user = userEvent.setup();
     const initialDebt = createDebtFixture(baseCustomer.id, {
@@ -323,6 +400,79 @@ describe('CustomerDetailsPage debt actions', () => {
         name: `${baseCustomer.name} remaining balances`,
       }),
     ).toHaveTextContent('EUR 275.70');
+  });
+
+  it('keeps the edit draft open and does not refetch after a version conflict', async () => {
+    const user = userEvent.setup();
+    const initialDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Website redesign',
+      totalAmount: '125.50',
+      currency: 'USD',
+    });
+    let debtListFetchCount = 0;
+    let customerFetchCount = 0;
+
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () => {
+        customerFetchCount += 1;
+        return HttpResponse.json(baseCustomer);
+      }),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () => {
+        debtListFetchCount += 1;
+        return HttpResponse.json({
+          ...emptyDebtList,
+          items: [initialDebt],
+          totalItems: 1,
+          totalPages: 1,
+        });
+      }),
+      http.put(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () =>
+        HttpResponse.json(
+          {
+            code: 'DEBT_VERSION_CONFLICT',
+            message: 'Debt was changed elsewhere.',
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`], {
+      defaultCurrency: 'USD',
+    });
+
+    await screen.findByRole('heading', { name: initialDebt.description });
+    const debtCard = getDebtCard(initialDebt.description);
+    await user.click(
+      within(debtCard).getByRole('button', {
+        name: debtOpenMenuLabel(initialDebt.description),
+      }),
+    );
+    const actionsMenu = await screen.findByRole('menu', {
+      name: debtActionsMenuLabel(initialDebt.description),
+    });
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', { name: debtMessages.card.actions.edit }),
+    );
+
+    const drawer = await screen.findByRole('dialog', { name: debtMessages.drawer.editTitle });
+    const description = within(drawer).getByLabelText(debtMessages.form.descriptionLabel);
+    await user.clear(description);
+    await user.type(description, 'My draft should stay');
+    const debtListFetchesBeforeSave = debtListFetchCount;
+    const customerFetchesBeforeSave = customerFetchCount;
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
+
+    const conflictDescription = debtMessages.errors['DEBT_VERSION_CONFLICT'];
+    expect(
+      await screen.findByRole('alert', { name: debtMessages.toast.edit.errorTitle }),
+    ).toHaveTextContent(conflictDescription);
+    expect(screen.getByRole('dialog', { name: debtMessages.drawer.editTitle })).toBeInTheDocument();
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toHaveValue(
+      'My draft should stay',
+    );
+    expect(debtListFetchCount).toBe(debtListFetchesBeforeSave);
+    expect(customerFetchCount).toBe(customerFetchesBeforeSave);
   });
 });
 

@@ -9,12 +9,16 @@ import type { DebtDraft } from '../../model/debt-draft';
 import { InstallmentPlanFields } from './InstallmentPlanFields';
 
 export function DebtPlanFields({
-  disabled,
+  addInstallmentDisabled,
   formatError,
+  isPlanSelectionDisabled,
+  isSubmitting,
   mode,
 }: {
-  disabled: boolean;
+  addInstallmentDisabled: boolean;
   formatError: (error: string) => string;
+  isPlanSelectionDisabled: boolean;
+  isSubmitting: boolean;
   mode: 'create' | 'edit';
 }) {
   const { t } = useTranslation();
@@ -40,12 +44,13 @@ export function DebtPlanFields({
 
   return (
     <div className="grid gap-[13px]">
-      <fieldset className="m-0 grid gap-[5px] border-0 p-0" disabled={disabled}>
+      <fieldset className="m-0 grid gap-[5px] border-0 p-0" disabled={isSubmitting}>
         <legend className="p-0 text-[0.73rem] font-bold leading-[1.3] text-card-foreground">
           {t('debts.form.paymentPlanLabel')}
         </legend>
         <SegmentedControl
           ariaLabel={t('debts.form.paymentPlanLabel')}
+          disabled={isSubmitting || isPlanSelectionDisabled}
           onChange={selectPaymentPlan}
           options={[
             {
@@ -63,7 +68,7 @@ export function DebtPlanFields({
 
       {paymentPlan === 'onePayment' ? (
         <FormInput<DebtDraft>
-          disabled={disabled}
+          disabled={isSubmitting}
           formatError={formatError}
           icon={<CalendarDays aria-hidden="true" size={16} strokeWidth={2.2} />}
           label={t('debts.form.dueDateLabel')}
@@ -73,8 +78,9 @@ export function DebtPlanFields({
       ) : (
         <InstallmentPlanFields
           allowScheduleGeneration={mode === 'create'}
-          disabled={disabled}
+          addInstallmentDisabled={addInstallmentDisabled}
           formatError={formatError}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>
