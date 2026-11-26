@@ -39,7 +39,12 @@ export const paymentHistoryItemSchema = z
     debtVersion: z.number().int().positive(),
     amount: moneySchema,
     maximumReplacementAmount: moneySchema,
-    paymentStateAfterDeletion: paymentStateSchema.exclude(['paid']),
+    deletionPreview: z
+      .object({
+        remainingAmount: moneySchema,
+        targetPaymentState: paymentStateSchema.exclude(['paid']),
+      })
+      .strict(),
     currency: currencySchema,
     paymentDate: dateOnlySchema,
     note: z.string().max(500).nullable(),

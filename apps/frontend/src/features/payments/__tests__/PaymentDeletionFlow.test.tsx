@@ -29,7 +29,7 @@ const payment: PaymentHistoryItem = {
   debtVersion: 4,
   amount: '25.00',
   maximumReplacementAmount: '75.00',
-  paymentStateAfterDeletion: 'partiallyPaid',
+  deletionPreview: { remainingAmount: '75.00', targetPaymentState: 'partiallyPaid' },
   currency: 'USD',
   paymentDate: '2026-10-20',
   note: null,
@@ -40,6 +40,7 @@ const refreshedPayment = {
   ...payment,
   debtVersion: 5,
   maximumReplacementAmount: '65.00',
+  deletionPreview: { ...payment.deletionPreview, remainingAmount: '65.00' },
 } satisfies PaymentHistoryItem;
 
 const deleteResponse: DeletePaymentResponse = {

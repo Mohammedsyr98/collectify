@@ -22,7 +22,7 @@ const firstPayment: PaymentHistoryItem = {
   debtVersion: 2,
   amount: '10.00',
   maximumReplacementAmount: '90.00',
-  paymentStateAfterDeletion: 'unpaid',
+  deletionPreview: { remainingAmount: '90.00', targetPaymentState: 'unpaid' },
   currency: 'USD',
   paymentDate: '2026-10-19',
   note: null,
@@ -38,7 +38,7 @@ const selectedPayment: PaymentHistoryItem = {
   debtVersion: 4,
   amount: '25.00',
   maximumReplacementAmount: '75.00',
-  paymentStateAfterDeletion: 'partiallyPaid',
+  deletionPreview: { remainingAmount: '75.00', targetPaymentState: 'partiallyPaid' },
   paymentDate: '2026-10-20',
   plan: { type: 'installment', position: 2, total: 4 },
 };

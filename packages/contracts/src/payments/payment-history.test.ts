@@ -14,7 +14,10 @@ const validHistoryItem = {
   debtVersion: 4,
   amount: '25.00',
   maximumReplacementAmount: '100.00',
-  paymentStateAfterDeletion: 'unpaid',
+  deletionPreview: {
+    remainingAmount: '75.00',
+    targetPaymentState: 'unpaid',
+  },
   currency: 'USD',
   paymentDate: '2026-10-20',
   note: 'Paid in cash',
@@ -56,9 +59,17 @@ describe('payment history response contract', () => {
     expect(paymentHistoryListResponseSchema.parse(response)).toEqual(response);
   });
 
-  it('includes the server-computed target status after deleting each payment', () => {
+  it('groups the projected remaining amount and target status under a deletion preview', () => {
     const response = {
-      items: [{ ...validHistoryItem, paymentStateAfterDeletion: 'partiallyPaid' as const }],
+      items: [
+        {
+          ...validHistoryItem,
+          deletionPreview: {
+            remainingAmount: '75.00',
+            targetPaymentState: 'partiallyPaid' as const,
+          },
+        },
+      ],
       pageSize: paymentHistoryPageSize,
       totalItems: 1,
       nextCursor: null,

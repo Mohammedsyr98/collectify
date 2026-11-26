@@ -126,7 +126,7 @@ export function PaymentDeletionDialog({
               <DataRow label={t('payments.delete.targetRemaining')}>
                 <bdi className="font-black" dir="ltr">
                   {formatCurrencyAmount(
-                    payment.maximumReplacementAmount,
+                    payment.deletionPreview.remainingAmount,
                     payment.currency,
                     locale,
                   )}
@@ -134,7 +134,7 @@ export function PaymentDeletionDialog({
               </DataRow>
               <DataRow label={t('payments.delete.targetStatus')}>
                 <span className="font-extrabold">
-                  {t(`payments.delete.status.${payment.paymentStateAfterDeletion}`)}
+                  {t(`payments.delete.status.${payment.deletionPreview.targetPaymentState}`)}
                 </span>
               </DataRow>
             </dl>
