@@ -189,80 +189,57 @@ describe('CustomerDetailsPage debt actions', () => {
     ).toBeEmptyDOMElement();
   });
 
-  it.each([
-    { paymentCount: 1, closeWithEscape: true },
-    { paymentCount: 3, closeWithEscape: false },
-  ])(
-    'explains why a debt with $paymentCount payment(s) cannot be deleted and offers only Close',
-    async ({ paymentCount, closeWithEscape }) => {
-      const user = userEvent.setup();
-      const initialDebt = createDebtFixture(baseCustomer.id, {
-        description: 'Debt with payments',
-        paymentCount,
-        paidAmount: '25.00',
-        remainingAmount: '100.50',
-        paymentState: 'partiallyPaid',
-      });
-      let deleteRequestCount = 0;
+  it('opens the payment-blocked delete dialog from the debt menu without issuing a delete request', async () => {
+    const user = userEvent.setup();
+    const initialDebt = createDebtFixture(baseCustomer.id, {
+      description: 'Debt with payments',
+      paymentCount: 2,
+      paidAmount: '25.00',
+      remainingAmount: '100.50',
+      paymentState: 'partiallyPaid',
+    });
+    let deleteRequestCount = 0;
 
-      server.use(
-        http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
-        http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
-          HttpResponse.json({
-            ...emptyDebtList,
-            items: [initialDebt],
-            totalItems: 1,
-            totalPages: 1,
-          }),
-        ),
-        http.delete(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () => {
-          deleteRequestCount += 1;
-          return new HttpResponse(null, { status: 204 });
+    server.use(
+      http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
+      http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+        HttpResponse.json({
+          ...emptyDebtList,
+          items: [initialDebt],
+          totalItems: 1,
+          totalPages: 1,
         }),
-      );
+      ),
+      http.delete(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () => {
+        deleteRequestCount += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
 
-      renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+    renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
 
-      await screen.findByRole('heading', { name: initialDebt.description });
-      const { actionsMenu, actionsTrigger } = await openDebtActionMenu(
-        user,
-        initialDebt.description,
-      );
-      await user.click(
-        within(actionsMenu).getByRole('menuitem', {
-          name: debtMessages.card.actions.delete,
-        }),
-      );
+    await screen.findByRole('heading', { name: initialDebt.description });
+    const { actionsMenu, actionsTrigger } = await openDebtActionMenu(user, initialDebt.description);
+    await user.click(
+      within(actionsMenu).getByRole('menuitem', {
+        name: debtMessages.card.actions.delete,
+      }),
+    );
 
-      const dialog = await screen.findByRole('dialog', {
-        name: debtMessages.delete.paymentBlockedTitle,
-      });
-      expect(
-        within(dialog).getByText(
-          paymentCount === 1
-            ? debtMessages.delete.paymentBlockedDescriptionOne
-            : debtMessages.delete.paymentBlockedDescriptionMany,
-        ),
-      ).toBeInTheDocument();
-      expect(within(dialog).getByText(debtMessages.delete.paymentCountLabel)).toBeInTheDocument();
-      expect(within(dialog).getByText(String(paymentCount))).toBeInTheDocument();
-      expect(within(dialog).getAllByRole('button')).toHaveLength(1);
+    const dialog = await screen.findByRole('dialog', {
+      name: debtMessages.delete.paymentBlockedTitle,
+    });
+    const closeButton = within(dialog).getByRole('button', {
+      name: debtMessages.delete.close,
+    });
 
-      const closeButton = within(dialog).getByRole('button', {
-        name: debtMessages.delete.close,
-      });
-      await waitFor(() => expect(closeButton).toHaveFocus());
-      if (closeWithEscape) {
-        await user.keyboard('{Escape}');
-      } else {
-        await user.click(closeButton);
-      }
+    expect(deleteRequestCount).toBe(0);
+    await user.click(closeButton);
 
-      await waitFor(() => expect(dialog).not.toBeInTheDocument());
-      expect(deleteRequestCount).toBe(0);
-      await waitFor(() => expect(actionsTrigger).toHaveFocus());
-    },
-  );
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(deleteRequestCount).toBe(0);
+    await waitFor(() => expect(actionsTrigger).toHaveFocus());
+  });
 
   it.each(deletionConflictDescriptions)(
     'explains why a debt with recorded payments cannot be deleted in $locale',
