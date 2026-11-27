@@ -475,7 +475,7 @@ describe('debt changes with recorded payments', () => {
   });
 
   describe('concurrent currency edit and payment', () => {
-    it('serializes a currency edit against a concurrent payment', async () => {
+    it('allows either a currency edit or concurrent payment, but not both', async () => {
       const owner = await signUpOwner('debt-currency-payment-race-owner@example.com');
       await insertCustomer(owner.ownerProfileId);
       await insertDebt({
@@ -520,7 +520,10 @@ describe('debt changes with recorded payments', () => {
         paymentResponsePromise,
       ]);
 
-      expect([editResponse.status, paymentResponse.status].sort()).toEqual([200, 409]);
+      expect([
+        [200, 409],
+        [409, 201],
+      ]).toContainEqual([editResponse.status, paymentResponse.status]);
 
       const [persistedState] = await postgres.query<{
         currency: string;
