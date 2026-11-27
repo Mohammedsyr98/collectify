@@ -25,13 +25,13 @@ export function InstallmentPlanFields({
   addInstallmentDisabled,
   formatError,
   isSubmitting,
-  installmentIdsWithPayments,
+  installmentIdsWithRecordedPayments,
 }: {
   allowScheduleGeneration: boolean;
   addInstallmentDisabled: boolean;
   formatError: (error: string) => string;
   isSubmitting: boolean;
-  installmentIdsWithPayments: ReadonlySet<string>;
+  installmentIdsWithRecordedPayments: ReadonlySet<string>;
 }) {
   const { t } = useTranslation();
   const {
@@ -203,7 +203,7 @@ export function InstallmentPlanFields({
               const dateBounds = getManualDateBounds(manualScheduleItems, index);
               const installmentHasPayments =
                 field.savedScheduleItemId !== undefined &&
-                installmentIdsWithPayments.has(field.savedScheduleItemId);
+                installmentIdsWithRecordedPayments.has(field.savedScheduleItemId);
 
               return (
                 <div className="grid gap-2" key={field.id}>
