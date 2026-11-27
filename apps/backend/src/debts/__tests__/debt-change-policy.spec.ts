@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { checkDebtChange } from '../debt-change-policy';
 
-const currentDebt = { currency: 'USD' };
+const currentDebt = { currency: 'USD', totalAmount: '100.00' };
 const onePaymentSchedule = [{ id: 'schedule_one' }];
 
 function facts(
@@ -79,6 +79,24 @@ describe('checkDebtChange', () => {
         },
       }),
     ).toBe(debtApiErrorCode.debtPaymentPlanChangeBlocked);
+  });
+
+  it('rejects increasing a fully paid debt total', () => {
+    expect(
+      checkDebtChange({
+        currentDebt,
+        currentScheduleItems: onePaymentSchedule,
+        paidTotalsByScheduleItemId: facts([['schedule_one', '100.00']]),
+        change: {
+          kind: 'replace',
+          replacement: {
+            currency: 'USD',
+            totalAmount: '125.00',
+            scheduleItems: [{ id: 'schedule_one', amount: '125.00' }],
+          },
+        },
+      }),
+    ).toBe('DEBT_FULLY_PAID_REOPEN_BLOCKED');
   });
 
   it('rejects removing a schedule item with recorded payments', () => {

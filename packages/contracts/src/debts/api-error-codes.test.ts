@@ -18,10 +18,12 @@ describe('debt API error code contracts', () => {
       'DEBT_SCHEDULE_ITEM_HAS_PAYMENTS',
       'DEBT_SCHEDULE_ITEM_AMOUNT_BELOW_PAID',
       'DEBT_TOTAL_AMOUNT_BELOW_PAID',
+      'DEBT_FULLY_PAID_REOPEN_BLOCKED',
     ]);
     expect(isDebtApiErrorCode(debtApiErrorCode.debtNotFound)).toBe(true);
     expect(isDebtApiErrorCode(debtApiErrorCode.debtVersionConflict)).toBe(true);
     expect(isDebtApiErrorCode(debtApiErrorCode.debtHasPayments)).toBe(true);
+    expect(isDebtApiErrorCode('DEBT_FULLY_PAID_REOPEN_BLOCKED')).toBe(true);
     expect(isDebtApiErrorCode('SOMETHING_ELSE')).toBe(false);
   });
 });

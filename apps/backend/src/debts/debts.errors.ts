@@ -64,6 +64,13 @@ const debtApiErrors = {
     },
     status: HttpStatus.CONFLICT,
   },
+  [debtApiErrorCode.debtFullyPaidReopenBlocked]: {
+    response: {
+      code: debtApiErrorCode.debtFullyPaidReopenBlocked,
+      message: 'A fully paid debt cannot be reopened with additional principal or installments.',
+    },
+    status: HttpStatus.CONFLICT,
+  },
 } as const;
 
 const debtValidationMessages = {
@@ -109,7 +116,8 @@ export function debtException(
     | typeof debtApiErrorCode.debtPaymentPlanChangeBlocked
     | typeof debtApiErrorCode.debtScheduleItemHasPayments
     | typeof debtApiErrorCode.debtScheduleItemAmountBelowPaid
-    | typeof debtApiErrorCode.debtTotalAmountBelowPaid,
+    | typeof debtApiErrorCode.debtTotalAmountBelowPaid
+    | typeof debtApiErrorCode.debtFullyPaidReopenBlocked,
 ): HttpException {
   const error = debtApiErrors[code];
 

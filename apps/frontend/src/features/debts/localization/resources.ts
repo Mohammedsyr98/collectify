@@ -14,6 +14,13 @@ export const debtResources = {
           description:
             'Are you sure you want to permanently delete "{{description}}"? This action cannot be undone.',
           title: 'Delete debt',
+          close: 'Close',
+          paymentBlockedTitle: 'This debt can’t be deleted',
+          paymentBlockedDescriptionOne:
+            'This debt has a recorded payment. Delete or move it before deleting the debt.',
+          paymentBlockedDescriptionMany:
+            'This debt has recorded payments. Delete or move them before deleting the debt.',
+          paymentCountLabel: 'Recorded payments',
         },
         drawer: {
           close: 'Close debt form',
@@ -22,6 +29,12 @@ export const debtResources = {
           editInstallmentDescription: 'Edit this installment debt for this customer.',
           editTitle: 'Edit debt',
           createTitle: 'Add debt',
+          paymentRestrictions:
+            'Payments are recorded. Currency and payment plan are locked. The total must stay at least the amount already paid.',
+          fullyPaidRestrictions:
+            'This debt is paid in full. Currency, payment plan, and total amount are locked, and you can’t add installments. Create a new debt for additional money owed.',
+          installmentsWithPaymentsCannotBeRemoved:
+            'Installments with recorded payments cannot be removed.',
         },
         errors: debtApiErrorTranslations.en,
         form: {
@@ -95,6 +108,13 @@ export const debtResources = {
           description:
             '"{{description}}" borcunu kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
           title: 'Borcu sil',
+          close: 'Kapat',
+          paymentBlockedTitle: 'Bu borç silinemez',
+          paymentBlockedDescriptionOne:
+            'Bu borçta kayıtlı bir ödeme var. Borcu silmeden önce ödemeyi silin veya başka bir borca taşıyın.',
+          paymentBlockedDescriptionMany:
+            'Bu borçta kayıtlı ödemeler var. Borcu silmeden önce ödemeleri silin veya başka bir borca taşıyın.',
+          paymentCountLabel: 'Kayıtlı ödemeler',
         },
         drawer: {
           close: 'Borç formunu kapat',
@@ -103,6 +123,12 @@ export const debtResources = {
           editInstallmentDescription: 'Bu müşterinin taksitli borcunu düzenleyin.',
           editTitle: 'Borcu düzenle',
           createTitle: 'Borç ekle',
+          paymentRestrictions:
+            'Ödemeler kaydedildi. Para birimi ve ödeme planı kilitlendi. Toplam, ödenen tutardan düşük olamaz.',
+          fullyPaidRestrictions:
+            'Bu borç tamamen ödendi. Para birimi, ödeme planı ve toplam tutar kilitlendi; yeni taksit eklenemez. Ek tutar için yeni bir borç oluşturun.',
+          installmentsWithPaymentsCannotBeRemoved:
+            'Kaydedilmiş ödemesi olan taksitler kaldırılamaz.',
         },
         form: {
           cancel: 'İptal',
@@ -176,6 +202,13 @@ export const debtResources = {
           description:
             'هل أنت متأكد من حذف الدين "{{description}}" نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.',
           title: 'حذف الدين',
+          close: 'إغلاق',
+          paymentBlockedTitle: 'لا يمكن حذف هذا الدين',
+          paymentBlockedDescriptionOne:
+            'يحتوي هذا الدين على دفعة مسجلة. احذفها أو انقلها قبل حذف الدين.',
+          paymentBlockedDescriptionMany:
+            'يحتوي هذا الدين على دفعات مسجلة. احذفها أو انقلها قبل حذف الدين.',
+          paymentCountLabel: 'المدفوعات المسجلة',
         },
         drawer: {
           close: 'إغلاق نموذج الدين',
@@ -184,6 +217,12 @@ export const debtResources = {
           editInstallmentDescription: 'حرّر الدين المقسّط لهذا العميل.',
           editTitle: 'تحرير الدين',
           createTitle: 'إضافة دين',
+          paymentRestrictions:
+            'تم تسجيل مدفوعات. تم قفل العملة وخطة الدفع. يجب ألا يقل الإجمالي عن المبلغ المدفوع.',
+          fullyPaidRestrictions:
+            'تم سداد هذا الدين بالكامل. تم قفل العملة وخطة الدفع والمبلغ الإجمالي، ولا يمكن إضافة أقساط. أنشئ دينًا جديدًا لأي مبلغ إضافي.',
+          installmentsWithPaymentsCannotBeRemoved:
+            'لا يمكن إزالة الأقساط التي لديها مدفوعات مسجلة.',
         },
         form: {
           cancel: 'إلغاء',

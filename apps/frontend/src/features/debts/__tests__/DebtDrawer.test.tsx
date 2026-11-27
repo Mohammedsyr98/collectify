@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,13 +7,14 @@ import {
   debtPlanIssueCode,
   debtRequestValidationCode,
   type CreateDebtRequest,
+  type ReplaceDebtRequest,
 } from '@collectify/contracts';
 
 import { localeStorageKey } from '@/shared/localization';
 import { renderWithAppProviders } from './render';
 import { DebtDrawer } from '../ui/editor/DebtDrawer';
 import { debtResources } from '../localization/resources';
-import { createDebtFixture } from './debtTestData';
+import { createDebtFixture, createInstallmentDebtFixture } from './debtTestData';
 
 const debtMessages = debtResources.en.common.debts;
 
@@ -77,6 +78,256 @@ describe('DebtDrawer', () => {
     expect(within(drawer).getByLabelText(debtMessages.form.totalAmountLabel)).toHaveValue('275.75');
     expect(within(drawer).getByLabelText(debtMessages.form.currencyLabel)).toHaveValue('EUR');
     expect(within(drawer).getByLabelText(debtMessages.form.dueDateLabel)).toHaveValue('2026-10-01');
+    expect(within(drawer).queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('locks currency and payment plan after a payment while preserving them for allowed edits', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<(request: ReplaceDebtRequest) => Promise<void>>(
+      async () => undefined,
+    );
+    const debt = createDebtFixture('customer_123', {
+      totalAmount: '125.50',
+      paidAmount: '25.00',
+      remainingAmount: '100.50',
+      paymentState: 'partiallyPaid',
+      paymentCount: 1,
+      scheduleItems: [
+        {
+          id: 'schedule_123',
+          position: 1,
+          amount: '125.50',
+          dueDate: '2026-10-01',
+          timing: 'upcoming',
+          paidAmount: '25.00',
+          remainingAmount: '100.50',
+          paymentState: 'partiallyPaid',
+          paymentCount: 1,
+        },
+      ],
+    });
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: debtMessages.drawer.editTitle });
+    const currency = within(drawer).getByLabelText(debtMessages.form.currencyLabel);
+    const totalAmount = within(drawer).getByLabelText(debtMessages.form.totalAmountLabel);
+    const description = within(drawer).getByLabelText(debtMessages.form.descriptionLabel);
+    const dueDate = within(drawer).getByLabelText(debtMessages.form.dueDateLabel);
+
+    expect(
+      within(drawer).getByText(
+        'Payments are recorded. Currency and payment plan are locked. The total must stay at least the amount already paid.',
+      ),
+    ).toBeInTheDocument();
+    expect(currency).toBeDisabled();
+    expect(
+      within(drawer).getByRole('button', { name: debtMessages.form.onePaymentOption }),
+    ).toBeDisabled();
+    expect(totalAmount).toBeEnabled();
+    expect(description).toBeEnabled();
+    expect(dueDate).toBeEnabled();
+
+    await user.clear(description);
+    await user.type(description, 'Updated description');
+    await user.clear(dueDate);
+    await user.type(dueDate, '2026-10-15');
+    await user.click(within(drawer).getByRole('button', { name: debtMessages.form.save }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expectedVersion: 1,
+          description: 'Updated description',
+          totalAmount: '125.50',
+          currency: 'USD',
+          scheduleItems: [
+            expect.objectContaining({
+              id: 'schedule_123',
+              amount: '125.50',
+              dueDate: '2026-10-15',
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('locks the total and installment addition when the debt is fully paid', () => {
+    const debt = createInstallmentDebtFixture('customer_123', {
+      totalAmount: '100.00',
+      paidAmount: '100.00',
+      remainingAmount: '0.00',
+      paymentState: 'paid',
+      paymentCount: 4,
+      scheduleItems: [
+        {
+          id: 'schedule_paid_1',
+          position: 1,
+          amount: '50.00',
+          dueDate: '2026-09-30',
+          timing: 'upcoming',
+          paidAmount: '50.00',
+          remainingAmount: '0.00',
+          paymentState: 'paid',
+          paymentCount: 2,
+        },
+        {
+          id: 'schedule_paid_2',
+          position: 2,
+          amount: '50.00',
+          dueDate: '2026-10-30',
+          timing: 'upcoming',
+          paidAmount: '50.00',
+          remainingAmount: '0.00',
+          paymentState: 'paid',
+          paymentCount: 2,
+        },
+      ],
+    });
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: debtMessages.drawer.editTitle });
+    expect(
+      within(drawer).getByText(debtMessages.drawer.fullyPaidRestrictions),
+    ).toBeInTheDocument();
+    expect(within(drawer).getByLabelText(debtMessages.form.currencyLabel)).toBeDisabled();
+    expect(within(drawer).getByLabelText(debtMessages.form.totalAmountLabel)).toBeDisabled();
+    expect(
+      within(drawer).getByRole('button', { name: debtMessages.form.installmentsOption }),
+    ).toBeDisabled();
+    expect(
+      within(drawer).getByRole('button', { name: debtMessages.form.addInstallment }),
+    ).toBeDisabled();
+    expect(within(drawer).getByLabelText(debtMessages.form.descriptionLabel)).toBeEnabled();
+    expect(
+      within(drawer).getByLabelText(debtMessages.form.installmentDueDateFieldLabel.replace('{{number}}', '1')),
+    ).toBeEnabled();
+  });
+
+  it('disables removal for installments with any recorded payment', () => {
+    const debt = createInstallmentDebtFixture('customer_123', {
+      totalAmount: '100.00',
+      paidAmount: '20.00',
+      remainingAmount: '80.00',
+      paymentState: 'partiallyPaid',
+      paymentCount: 1,
+      scheduleItems: [
+        {
+          id: 'schedule_paid',
+          position: 1,
+          amount: '40.00',
+          dueDate: '2026-09-30',
+          timing: 'overdue',
+          paidAmount: '20.00',
+          remainingAmount: '20.00',
+          paymentState: 'partiallyPaid',
+          paymentCount: 1,
+        },
+        {
+          id: 'schedule_unpaid_1',
+          position: 2,
+          amount: '30.00',
+          dueDate: '2026-10-30',
+          timing: 'upcoming',
+        },
+        {
+          id: 'schedule_unpaid_2',
+          position: 3,
+          amount: '30.00',
+          dueDate: '2026-11-30',
+          timing: 'upcoming',
+        },
+      ],
+    });
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: debtMessages.drawer.editTitle });
+
+    expect(screen.getByRole('note')).toHaveTextContent(
+      debtMessages.drawer.installmentsWithPaymentsCannotBeRemoved,
+    );
+    const paidInstallmentRemoveButton = within(drawer).getByRole('button', {
+      name: debtMessages.form.removeInstallment.replace('{{number}}', '1'),
+    });
+    expect(paidInstallmentRemoveButton).toBeDisabled();
+    expect(paidInstallmentRemoveButton).toHaveAccessibleDescription(
+      expect.stringContaining(debtMessages.drawer.installmentsWithPaymentsCannotBeRemoved),
+    );
+    expect(
+      within(drawer).getByRole('button', {
+        name: debtMessages.form.removeInstallment.replace('{{number}}', '2'),
+      }),
+    ).toBeEnabled();
+  });
+
+  it.each([
+    {
+      locale: 'en',
+      notice: debtResources.en.common.debts.drawer.paymentRestrictions,
+      direction: 'ltr',
+    },
+    {
+      locale: 'tr',
+      notice: debtResources.tr.common.debts.drawer.paymentRestrictions,
+      direction: 'ltr',
+    },
+    {
+      locale: 'ar',
+      notice: debtResources.ar.common.debts.drawer.paymentRestrictions,
+      direction: 'rtl',
+    },
+  ])('renders the payment restrictions in $locale with the correct direction', ({
+    locale,
+    notice,
+    direction,
+  }) => {
+    window.localStorage.setItem(localeStorageKey, locale);
+    const debt = createDebtFixture('customer_123', {
+      paymentCount: 1,
+      paidAmount: '25.00',
+      remainingAmount: '100.50',
+      paymentState: 'partiallyPaid',
+    });
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(screen.getByRole('note')).toHaveTextContent(notice);
+    expect(document.documentElement).toHaveAttribute('dir', direction);
   });
 
   it('describes edit mode accessibly', () => {
