@@ -1,7 +1,4 @@
-import {
-  debtApiErrorCode,
-  type DebtApiErrorCode,
-} from '@collectify/contracts';
+import { debtApiErrorCode, type DebtApiErrorCode } from '@collectify/contracts';
 
 import type { SupportedLocale } from '@/shared/localization';
 
@@ -13,8 +10,7 @@ export const debtApiErrorTranslations = {
     [debtApiErrorCode.debtNotFound]: 'Debt was not found.',
     [debtApiErrorCode.debtVersionConflict]:
       'This debt changed elsewhere. Close this form, refresh the page, and try again.',
-    [debtApiErrorCode.debtHasPayments]:
-      'This debt has recorded payments and can no longer be deleted. Close this dialog, refresh the page, and try again.',
+    [debtApiErrorCode.debtHasPayments]: 'This debt has recorded payments and cannot be deleted.',
     [debtApiErrorCode.debtCurrencyChangeBlocked]:
       'Currency cannot be changed after a payment is recorded.',
     [debtApiErrorCode.debtPaymentPlanChangeBlocked]:
@@ -29,8 +25,7 @@ export const debtApiErrorTranslations = {
       'A fully paid debt cannot be reopened. Create a new debt for additional money owed.',
   },
   tr: {
-    [debtApiErrorCode.debtHasPayments]:
-      'Bu borçta kayıtlı ödemeler var ve artık silinemez. Bu iletişim kutusunu kapatıp sayfayı yenileyin ve tekrar deneyin.',
+    [debtApiErrorCode.debtHasPayments]: 'Bu borçta kayıtlı ödemeler var, bu nedenle silinemez.',
     [debtApiErrorCode.debtCurrencyChangeBlocked]:
       '\u00d6deme kaydedildikten sonra para birimi de\u011fi\u015ftirilemez.',
     [debtApiErrorCode.debtPaymentPlanChangeBlocked]:
@@ -49,8 +44,7 @@ export const debtApiErrorTranslations = {
     [debtApiErrorCode.debtNotFound]: 'Borç bulunamadı.',
   },
   ar: {
-    [debtApiErrorCode.debtHasPayments]:
-      'توجد مدفوعات مسجلة لهذا الدين ولا يمكن حذفه الآن. أغلق مربع الحوار وحدّث الصفحة ثم حاول مرة أخرى.',
+    [debtApiErrorCode.debtHasPayments]: 'توجد مدفوعات مسجلة لهذا الدين، لذلك لا يمكن حذفه.',
     [debtApiErrorCode.debtCurrencyChangeBlocked]:
       '\u0644\u0627 \u064a\u0645\u0643\u0646 \u062a\u063a\u064a\u064a\u0631 \u0627\u0644\u0639\u0645\u0644\u0629 \u0628\u0639\u062f \u062a\u0633\u062c\u064a\u0644 \u062f\u0641\u0639.',
     [debtApiErrorCode.debtPaymentPlanChangeBlocked]:

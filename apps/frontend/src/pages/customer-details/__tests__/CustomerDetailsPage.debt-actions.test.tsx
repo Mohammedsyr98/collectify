@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { debtResources } from '@/features/debts';
 import { getBackendUrl } from '@/shared/api';
+import { localeStorageKey } from '@/shared/localization';
 import { server } from '@/shared/test';
 import { createDebtFixture, emptyDebtList } from './debtTestData';
 import { customerMessages, debtMessages } from './customerDetailsTestMessages';
@@ -14,6 +16,7 @@ import {
   emptyCustomerList,
   resetCustomerTestEnvironment,
 } from './customerDetailsTestData';
+import { customerDetailsResources } from '../localization/resources';
 import { renderCustomerRoutes } from './renderCustomerRoutes';
 
 const debtDeleteSuccessDescription = (description: string) =>
@@ -22,6 +25,20 @@ const debtOpenMenuLabel = (description: string) =>
   debtMessages.card.actions.openMenu.replace('{{description}}', description);
 const debtActionsMenuLabel = (description: string) =>
   debtMessages.card.actions.menuLabel.replace('{{description}}', description);
+const deletionConflictDescriptions = [
+  {
+    locale: 'en',
+    description: 'This debt has recorded payments and cannot be deleted.',
+  },
+  {
+    locale: 'tr',
+    description: 'Bu borçta kayıtlı ödemeler var, bu nedenle silinemez.',
+  },
+  {
+    locale: 'ar',
+    description: 'توجد مدفوعات مسجلة لهذا الدين، لذلك لا يمكن حذفه.',
+  },
+] as const;
 
 describe('CustomerDetailsPage debt actions', () => {
   beforeEach(() => {
@@ -189,9 +206,7 @@ describe('CustomerDetailsPage debt actions', () => {
       let deleteRequestCount = 0;
 
       server.use(
-        http.get(`${getBackendUrl()}/customers/:customerId`, () =>
-          HttpResponse.json(baseCustomer),
-        ),
+        http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
         http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
           HttpResponse.json({
             ...emptyDebtList,
@@ -246,6 +261,79 @@ describe('CustomerDetailsPage debt actions', () => {
       await waitFor(() => expect(dialog).not.toBeInTheDocument());
       expect(deleteRequestCount).toBe(0);
       await waitFor(() => expect(actionsTrigger).toHaveFocus());
+    },
+  );
+
+  it.each(deletionConflictDescriptions)(
+    'explains why a debt with recorded payments cannot be deleted in $locale',
+    async ({ locale, description }) => {
+      const user = userEvent.setup();
+      const initialDebt = createDebtFixture(baseCustomer.id, {
+        description: 'Debt that gained a payment',
+      });
+      const localizedDebtMessages = {
+        ...debtResources[locale].common.debts,
+        ...customerDetailsResources[locale].common.debts,
+      };
+      window.localStorage.setItem(localeStorageKey, locale);
+
+      server.use(
+        http.get(`${getBackendUrl()}/customers/:customerId`, () => HttpResponse.json(baseCustomer)),
+        http.get(`${getBackendUrl()}/customers/:customerId/debts`, () =>
+          HttpResponse.json({
+            ...emptyDebtList,
+            items: [initialDebt],
+            totalItems: 1,
+            totalPages: 1,
+          }),
+        ),
+        http.delete(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () =>
+          HttpResponse.json(
+            {
+              code: 'DEBT_HAS_PAYMENTS',
+              message: 'The debt now has recorded payments.',
+            },
+            { status: 409 },
+          ),
+        ),
+      );
+
+      renderCustomerRoutes([`/customers/${baseCustomer.id}`]);
+
+      await screen.findByRole('heading', { name: initialDebt.description });
+      const debtCard = getDebtCard(initialDebt.description);
+      await user.click(
+        within(debtCard).getByRole('button', {
+          name: localizedDebtMessages.card.actions.openMenu.replace(
+            '{{description}}',
+            initialDebt.description,
+          ),
+        }),
+      );
+      const actionsMenu = await screen.findByRole('menu', {
+        name: localizedDebtMessages.card.actions.menuLabel.replace(
+          '{{description}}',
+          initialDebt.description,
+        ),
+      });
+      await user.click(
+        within(actionsMenu).getByRole('menuitem', {
+          name: localizedDebtMessages.card.actions.delete,
+        }),
+      );
+      const dialog = await screen.findByRole('dialog', {
+        name: localizedDebtMessages.delete.title,
+      });
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: localizedDebtMessages.delete.confirm,
+        }),
+      );
+
+      const errorToast = await screen.findByRole('alert', {
+        name: localizedDebtMessages.toast.delete.errorTitle,
+      });
+      expect(errorToast).toHaveTextContent(description);
     },
   );
 
