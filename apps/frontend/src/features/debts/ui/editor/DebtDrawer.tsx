@@ -46,6 +46,14 @@ export function DebtDrawer(props: DebtDrawerProps) {
   const formatValidationError = useDebtValidationErrorFormatter();
   const hasPayments = props.mode === 'edit' && props.debt.paymentCount > 0;
   const isFullyPaid = props.mode === 'edit' && props.debt.paymentState === 'paid';
+  const installmentIdsWithPayments: ReadonlySet<string> =
+    props.mode === 'edit' && props.debt.paymentPlanType === 'installment'
+      ? new Set(
+          props.debt.scheduleItems
+            .filter(({ paymentCount }) => paymentCount > 0)
+            .map(({ id }) => id),
+        )
+      : new Set();
   const descriptionKey =
     props.mode === 'edit'
       ? props.debt.paymentPlanType === 'installment'
@@ -135,6 +143,11 @@ export function DebtDrawer(props: DebtDrawerProps) {
                   ? 'debts.drawer.fullyPaidRestrictions'
                   : 'debts.drawer.paymentRestrictions',
               )}
+              {installmentIdsWithPayments.size > 0 ? (
+                <span className="block">
+                  {t('debts.drawer.installmentsWithPaymentsCannotBeRemoved')}
+                </span>
+              ) : null}
             </p>
           ) : null}
 
@@ -196,6 +209,7 @@ export function DebtDrawer(props: DebtDrawerProps) {
                 isPlanSelectionDisabled={hasPayments}
                 isSubmitting={isSubmitting}
                 mode={mode}
+                installmentIdsWithPayments={installmentIdsWithPayments}
               />
               {form.formState.errors.root?.message ? (
                 <p

@@ -222,6 +222,71 @@ describe('DebtDrawer', () => {
     ).toBeEnabled();
   });
 
+  it('disables removal for installments with any recorded payment', () => {
+    const debt = createInstallmentDebtFixture('customer_123', {
+      totalAmount: '100.00',
+      paidAmount: '20.00',
+      remainingAmount: '80.00',
+      paymentState: 'partiallyPaid',
+      paymentCount: 1,
+      scheduleItems: [
+        {
+          id: 'schedule_paid',
+          position: 1,
+          amount: '40.00',
+          dueDate: '2026-09-30',
+          timing: 'overdue',
+          paidAmount: '20.00',
+          remainingAmount: '20.00',
+          paymentState: 'partiallyPaid',
+          paymentCount: 1,
+        },
+        {
+          id: 'schedule_unpaid_1',
+          position: 2,
+          amount: '30.00',
+          dueDate: '2026-10-30',
+          timing: 'upcoming',
+        },
+        {
+          id: 'schedule_unpaid_2',
+          position: 3,
+          amount: '30.00',
+          dueDate: '2026-11-30',
+          timing: 'upcoming',
+        },
+      ],
+    });
+
+    renderWithAppProviders(
+      <DebtDrawer
+        debt={debt}
+        isSubmitting={false}
+        mode="edit"
+        onClose={vi.fn()}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: debtMessages.drawer.editTitle });
+
+    expect(screen.getByRole('note')).toHaveTextContent(
+      debtMessages.drawer.installmentsWithPaymentsCannotBeRemoved,
+    );
+    const paidInstallmentRemoveButton = within(drawer).getByRole('button', {
+      name: debtMessages.form.removeInstallment.replace('{{number}}', '1'),
+    });
+    expect(paidInstallmentRemoveButton).toBeDisabled();
+    expect(paidInstallmentRemoveButton).toHaveAccessibleDescription(
+      expect.stringContaining(debtMessages.drawer.installmentsWithPaymentsCannotBeRemoved),
+    );
+    expect(
+      within(drawer).getByRole('button', {
+        name: debtMessages.form.removeInstallment.replace('{{number}}', '2'),
+      }),
+    ).toBeEnabled();
+  });
+
   it.each([
     {
       locale: 'en',

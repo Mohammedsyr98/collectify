@@ -25,11 +25,13 @@ export function InstallmentPlanFields({
   addInstallmentDisabled,
   formatError,
   isSubmitting,
+  installmentIdsWithPayments,
 }: {
   allowScheduleGeneration: boolean;
   addInstallmentDisabled: boolean;
   formatError: (error: string) => string;
   isSubmitting: boolean;
+  installmentIdsWithPayments: ReadonlySet<string>;
 }) {
   const { t } = useTranslation();
   const {
@@ -199,6 +201,9 @@ export function InstallmentPlanFields({
           <div className="grid gap-3">
             {fields.map((field, index) => {
               const dateBounds = getManualDateBounds(manualScheduleItems, index);
+              const installmentHasPayments =
+                field.savedScheduleItemId !== undefined &&
+                installmentIdsWithPayments.has(field.savedScheduleItemId);
 
               return (
                 <div className="grid gap-2" key={field.id}>
@@ -220,10 +225,16 @@ export function InstallmentPlanFields({
                     type="date"
                   />
                   <button
-                    aria-describedby="manual-installment-count-guidance"
+                    aria-describedby={
+                      installmentHasPayments
+                        ? 'manual-installment-count-guidance debt-payment-restriction-notice'
+                        : 'manual-installment-count-guidance'
+                    }
                     aria-label={t('debts.form.removeInstallment', { number: index + 1 })}
                     className="min-h-9 cursor-pointer rounded-[5px] border border-border bg-background px-3 text-[0.75rem] font-extrabold text-foreground transition duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={isSubmitting || fields.length <= 2}
+                    disabled={
+                      isSubmitting || fields.length <= 2 || installmentHasPayments
+                    }
                     onClick={() => remove(index)}
                     type="button"
                   >

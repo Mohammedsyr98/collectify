@@ -33,6 +33,8 @@ export const debtResources = {
             'Payments are recorded. Currency and payment plan are locked. The total must stay at least the amount already paid.',
           fullyPaidRestrictions:
             'This debt is paid in full. Currency, payment plan, and total amount are locked, and you can’t add installments. Create a new debt for additional money owed.',
+          installmentsWithPaymentsCannotBeRemoved:
+            'Installments with recorded payments cannot be removed.',
         },
         errors: debtApiErrorTranslations.en,
         form: {
@@ -125,6 +127,8 @@ export const debtResources = {
             'Ödemeler kaydedildi. Para birimi ve ödeme planı kilitlendi. Toplam, ödenen tutardan düşük olamaz.',
           fullyPaidRestrictions:
             'Bu borç tamamen ödendi. Para birimi, ödeme planı ve toplam tutar kilitlendi; yeni taksit eklenemez. Ek tutar için yeni bir borç oluşturun.',
+          installmentsWithPaymentsCannotBeRemoved:
+            'Kaydedilmiş ödemesi olan taksitler kaldırılamaz.',
         },
         form: {
           cancel: 'İptal',
@@ -217,6 +221,8 @@ export const debtResources = {
             'تم تسجيل مدفوعات. تم قفل العملة وخطة الدفع. يجب ألا يقل الإجمالي عن المبلغ المدفوع.',
           fullyPaidRestrictions:
             'تم سداد هذا الدين بالكامل. تم قفل العملة وخطة الدفع والمبلغ الإجمالي، ولا يمكن إضافة أقساط. أنشئ دينًا جديدًا لأي مبلغ إضافي.',
+          installmentsWithPaymentsCannotBeRemoved:
+            'لا يمكن إزالة الأقساط التي لديها مدفوعات مسجلة.',
         },
         form: {
           cancel: 'إلغاء',

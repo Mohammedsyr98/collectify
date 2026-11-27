@@ -14,12 +14,14 @@ export function DebtPlanFields({
   isPlanSelectionDisabled,
   isSubmitting,
   mode,
+  installmentIdsWithPayments,
 }: {
   addInstallmentDisabled: boolean;
   formatError: (error: string) => string;
   isPlanSelectionDisabled: boolean;
   isSubmitting: boolean;
   mode: 'create' | 'edit';
+  installmentIdsWithPayments: ReadonlySet<string>;
 }) {
   const { t } = useTranslation();
   const { control, setValue } = useFormContext<DebtDraft>();
@@ -81,6 +83,7 @@ export function DebtPlanFields({
           addInstallmentDisabled={addInstallmentDisabled}
           formatError={formatError}
           isSubmitting={isSubmitting}
+          installmentIdsWithPayments={installmentIdsWithPayments}
         />
       )}
     </div>
