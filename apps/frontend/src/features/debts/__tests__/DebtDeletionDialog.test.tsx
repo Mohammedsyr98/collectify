@@ -27,14 +27,19 @@ describe('DebtDeletionDialog', () => {
   });
 
   it.each([
-    { paymentCount: 1, closeWithEscape: true },
-    { paymentCount: 3, closeWithEscape: false },
+    {
+      paymentCount: 1,
+      description: debtMessages.delete.paymentBlockedDescriptionOne,
+    },
+    {
+      paymentCount: 3,
+      description: debtMessages.delete.paymentBlockedDescriptionMany,
+    },
   ])(
-    'explains why a debt with $paymentCount payment(s) cannot be deleted and offers only Close',
-    async ({ paymentCount, closeWithEscape }) => {
+    'shows the correct payment details and only offers Close',
+    async ({ paymentCount, description }) => {
       const user = userEvent.setup();
-      const onConfirm = vi.fn();
-      renderDebtDeletionHarness({ paymentCount, onConfirm });
+      renderDebtDeletionHarness({ paymentCount, onConfirm: vi.fn() });
 
       const openButton = screen.getByRole('button', { name: 'Open deletion dialog' });
       await user.click(openButton);
@@ -42,33 +47,51 @@ describe('DebtDeletionDialog', () => {
       const dialog = await screen.findByRole('dialog', {
         name: debtMessages.delete.paymentBlockedTitle,
       });
-      expect(
-        within(dialog).getByText(
-          paymentCount === 1
-            ? debtMessages.delete.paymentBlockedDescriptionOne
-            : debtMessages.delete.paymentBlockedDescriptionMany,
-        ),
-      ).toBeInTheDocument();
+      expect(within(dialog).getByText(description)).toBeInTheDocument();
       expect(within(dialog).getByText(debtMessages.delete.paymentCountLabel)).toBeInTheDocument();
       expect(within(dialog).getByText(String(paymentCount))).toBeInTheDocument();
       expect(within(dialog).getAllByRole('button')).toHaveLength(1);
-      expect(onConfirm).not.toHaveBeenCalled();
-
-      const closeButton = within(dialog).getByRole('button', {
-        name: debtMessages.delete.close,
-      });
-      await waitFor(() => expect(closeButton).toHaveFocus());
-      if (closeWithEscape) {
-        await user.keyboard('{Escape}');
-      } else {
-        await user.click(closeButton);
-      }
-
-      await waitFor(() => expect(dialog).not.toBeInTheDocument());
-      expect(onConfirm).not.toHaveBeenCalled();
-      expect(openButton).toHaveFocus();
+      expect(
+        within(dialog).getByRole('button', { name: debtMessages.delete.close }),
+      ).toBeInTheDocument();
     },
   );
+
+  it('closes with Escape without confirming and restores focus to the trigger', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    renderDebtDeletionHarness({ paymentCount: 1, onConfirm });
+
+    const openButton = screen.getByRole('button', { name: 'Open deletion dialog' });
+    await user.click(openButton);
+    const dialog = await screen.findByRole('dialog', {
+      name: debtMessages.delete.paymentBlockedTitle,
+    });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(openButton).toHaveFocus();
+  });
+
+  it('closes with the Close button without confirming and restores focus to the trigger', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    renderDebtDeletionHarness({ paymentCount: 3, onConfirm });
+
+    const openButton = screen.getByRole('button', { name: 'Open deletion dialog' });
+    await user.click(openButton);
+    const dialog = await screen.findByRole('dialog', {
+      name: debtMessages.delete.paymentBlockedTitle,
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: debtMessages.delete.close }));
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(openButton).toHaveFocus();
+  });
 });
 
 function renderDebtDeletionHarness({
