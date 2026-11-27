@@ -102,6 +102,11 @@ cheaper diagnosis. Entity tests verify observable query/cache behavior, not raw
 query-key tuple shapes. Fixtures and render helpers stay with their owning
 slice unless they are genuinely generic Shared infrastructure.
 
+Keep each test focused on one observable behavior. Assertions that establish
+the same behavior can stay together; put independent interactions or outcomes
+in separate tests. For expected localized UI copy, use the owning localization
+resources. Hard-code wording only when exact copy is an explicit requirement.
+
 ## Migration and coordination
 
 Architecture changes must preserve routes, copy, accessibility, localization,
