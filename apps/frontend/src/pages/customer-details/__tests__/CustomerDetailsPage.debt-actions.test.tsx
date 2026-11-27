@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { debtApiErrorCode } from '@collectify/contracts';
+
 import { debtResources } from '@/features/debts';
 import { getBackendUrl } from '@/shared/api';
 import { localeStorageKey } from '@/shared/localization';
@@ -25,20 +27,7 @@ const debtOpenMenuLabel = (description: string) =>
   debtMessages.card.actions.openMenu.replace('{{description}}', description);
 const debtActionsMenuLabel = (description: string) =>
   debtMessages.card.actions.menuLabel.replace('{{description}}', description);
-const deletionConflictDescriptions = [
-  {
-    locale: 'en',
-    description: 'This debt has recorded payments and cannot be deleted.',
-  },
-  {
-    locale: 'tr',
-    description: 'Bu borçta kayıtlı ödemeler var, bu nedenle silinemez.',
-  },
-  {
-    locale: 'ar',
-    description: 'توجد مدفوعات مسجلة لهذا الدين، لذلك لا يمكن حذفه.',
-  },
-] as const;
+const deletionConflictLocales = ['en', 'tr', 'ar'] as const;
 
 describe('CustomerDetailsPage debt actions', () => {
   beforeEach(() => {
@@ -241,9 +230,9 @@ describe('CustomerDetailsPage debt actions', () => {
     await waitFor(() => expect(actionsTrigger).toHaveFocus());
   });
 
-  it.each(deletionConflictDescriptions)(
-    'explains why a debt with recorded payments cannot be deleted in $locale',
-    async ({ locale, description }) => {
+  it.each(deletionConflictLocales)(
+    'shows the localized debt deletion conflict in %s',
+    async (locale) => {
       const user = userEvent.setup();
       const initialDebt = createDebtFixture(baseCustomer.id, {
         description: 'Debt that gained a payment',
@@ -267,7 +256,7 @@ describe('CustomerDetailsPage debt actions', () => {
         http.delete(`${getBackendUrl()}/customers/:customerId/debts/:debtId`, () =>
           HttpResponse.json(
             {
-              code: 'DEBT_HAS_PAYMENTS',
+              code: debtApiErrorCode.debtHasPayments,
               message: 'The debt now has recorded payments.',
             },
             { status: 409 },
@@ -310,7 +299,9 @@ describe('CustomerDetailsPage debt actions', () => {
       const errorToast = await screen.findByRole('alert', {
         name: localizedDebtMessages.toast.delete.errorTitle,
       });
-      expect(errorToast).toHaveTextContent(description);
+      expect(errorToast).toHaveTextContent(
+        localizedDebtMessages.errors[debtApiErrorCode.debtHasPayments],
+      );
     },
   );
 
